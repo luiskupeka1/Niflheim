@@ -517,18 +517,37 @@ function NutricaoPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
+                  {/* Ajuste de Tempo Espaçoso e Visível (Sem corte de setas) */}
+                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded-lg p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateCardioSegment(seg.id, { minutes: Math.max(1, seg.minutes - 5) })}
+                      className="size-6 rounded bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-black text-xs flex items-center justify-center transition-all cursor-pointer"
+                      title="-5 minutos"
+                    >
+                      -
+                    </button>
                     <input
                       type="number"
                       min="1"
-                      max="120"
-                      value={seg.minutes}
+                      max="180"
+                      value={seg.minutes === 0 ? '' : seg.minutes}
+                      placeholder="10"
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) =>
                         handleUpdateCardioSegment(seg.id, { minutes: Math.max(1, parseInt(e.target.value) || 0) })
                       }
-                      className="w-12 rounded border border-border bg-background px-1 py-0.5 text-center font-mono text-xs font-bold"
+                      className="w-14 text-center font-mono text-sm font-black text-foreground bg-transparent border-0 p-0 focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
-                    <span className="text-[10px] text-muted-foreground">min</span>
+                    <span className="text-[10px] font-bold text-muted-foreground pr-1">min</span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateCardioSegment(seg.id, { minutes: seg.minutes + 5 })}
+                      className="size-6 rounded bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-black text-xs flex items-center justify-center transition-all cursor-pointer"
+                      title="+5 minutos"
+                    >
+                      +
+                    </button>
                   </div>
 
                   <select

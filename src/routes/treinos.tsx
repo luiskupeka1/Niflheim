@@ -1192,8 +1192,9 @@ function TreinosPage() {
                 max="300"
                 step="5"
                 value={restWarmupSeconds}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => setRestWarmupSeconds(Math.max(10, parseInt(e.target.value) || 60))}
-                className="w-12 rounded border border-border bg-background px-1 py-0.5 text-center font-mono text-xs font-bold text-foreground"
+                className="w-16 rounded border border-border bg-background px-1 py-1 text-center font-mono text-xs font-black text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
                 title="Editar segundos personalizados para aquecimento"
               />
               <span className="text-[10px] text-muted-foreground">s</span>
@@ -1209,7 +1210,7 @@ function TreinosPage() {
                   key={sec}
                   type="button"
                   onClick={() => setRestWorkingSeconds(sec)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
                     restWorkingSeconds === sec
                       ? 'bg-primary text-primary-foreground font-black shadow-sm'
                       : 'bg-muted/60 text-muted-foreground hover:bg-muted'
@@ -1224,8 +1225,9 @@ function TreinosPage() {
                 max="600"
                 step="10"
                 value={restWorkingSeconds}
+                onFocus={(e) => e.target.select()}
                 onChange={(e) => setRestWorkingSeconds(Math.max(30, parseInt(e.target.value) || 120))}
-                className="w-14 rounded border border-primary bg-background px-1 py-0.5 text-center font-mono text-xs font-bold text-primary"
+                className="w-16 rounded border border-primary bg-background px-1 py-1 text-center font-mono text-xs font-black text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
                 title="Editar segundos personalizados para séries de trabalho"
               />
               <span className="text-[10px] text-muted-foreground">s</span>
@@ -1383,6 +1385,7 @@ function TreinosPage() {
                         <AdvancedSetRow
                           key={set.id}
                           data={set}
+                          mode={workoutMode}
                           restWarmupSeconds={restWarmupSeconds}
                           restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
@@ -1455,6 +1458,7 @@ function TreinosPage() {
                             targetReps: set.targetReps ?? ex.targetReps,
                           }}
                           workingIndex={wIdx + 1}
+                          mode={workoutMode}
                           restWarmupSeconds={restWarmupSeconds}
                           restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
