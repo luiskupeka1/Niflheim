@@ -11,7 +11,9 @@ import {
   MoreVertical,
   Layers,
   Zap,
-  Info
+  Info,
+  Target,
+  CornerDownRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -32,20 +34,36 @@ export interface MyoMicroSet {
   completed: boolean;
 }
 
+export interface ClusterBlock {
+  id: string;
+  reps: number;
+  completed: boolean;
+}
+
+export interface RestPauseSubSet {
+  id: string;
+  reps: number;
+  completed: boolean;
+}
+
 export interface AdvancedSetRowData {
   id: string;
   setNumber: number;
   baseType: BaseSetType;
   technique: IntensityTechnique;
-  weight: number;
-  reps: number;
-  rir: number; // 0 a 5
+  targetWeight?: number; // Carga programada/meta
+  targetReps?: number;   // Repetições programadas/meta
+  weight: number;        // Carga realmente levantada
+  reps: number;          // Repetições realmente levantadas
+  rir: number;           // 0 a 5 (reps guardadas antes de falhar)
   previousWeight?: number;
   previousReps?: number;
   previousRir?: number;
   completed: boolean;
   dropSets?: DropSubSet[];
   myoMicroSets?: MyoMicroSet[];
+  clusterBlocks?: ClusterBlock[];
+  restPauseSubSets?: RestPauseSubSet[];
 }
 
 interface AdvancedSetRowProps {
@@ -65,7 +83,7 @@ export function AdvancedSetRow({
 }: AdvancedSetRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   
-  // Micro-temporizador para Myo-reps e Cluster sets (10 a 15 segundos)
+  // Micro-temporizador para Myo-reps, Cluster sets e Rest-Pause (10 a 20 segundos)
   const [microTimer, setMicroTimer] = useState<number>(0);
   const [microTimerActive, setMicroTimerActive] = useState<boolean>(false);
 
@@ -100,6 +118,13 @@ export function AdvancedSetRow({
   // Cálculo da Tonelagem Total (Carga x Repetições)
   const currentTonnage = data.weight * data.reps;
   const previousTonnage = (data.previousWeight ?? 0) * (data.previousReps ?? 0);
+
+  // Verificação de Meta de Carga Batida
+  const isTargetAchieved = 
+    data.targetWeight !== undefined && 
+    data.weight >= data.targetWeight && 
+    (data.targetReps === undefined || data.reps >= data.targetReps);
+
   // PR só faz sentido em séries de trabalho efetivas
   const isPrTonnage = 
     !isPreparatory &&
@@ -113,34 +138,88 @@ export function AdvancedSetRow({
     onUpdate({ ...data, completed: nextCompleted });
 
     if (nextCompleted) {
-      // Dispara o timer apropriado
-      if (data.technique === 'MYO_REPS' || data.technique === 'CLUSTER_SET') {
+      if (data.technique === 'MYO_REPS' || data.technique === 'CLUSTER_SET' || data.technique === 'REST_PAUSE') {
         startMicroRest(15);
       } else if (isPreparatory) {
-        onTriggerRestTimer(45); // Descanso mais curto para aquecimento
+        onTriggerRestTimer(45);
       } else {
         onTriggerRestTimer(90);
       }
     }
   };
 
-  // Handler de seleção de Técnica Avançada
-  const handleSelectTechnique = (tech: IntensityTechnique) => {
-    let updated = { ...data, technique: tech };
-    if (tech === 'MYO_REPS' && (!data.myoMicroSets || data.myoMicroSets.length === 0)) {
-      updated.myoMicroSets = [
-        { id: crypto.randomUUID(), reps: 4, completed: false },
-        { id: crypto.randomUUID(), reps: 4, completed: false },
-        { id: crypto.randomUUID(), reps: 3, completed: false },
-      ];
+  // Manipulação de Tipos e Técnicas
+  const handleSelectSetMode = (mode: string) => {
+    if (mode === 'WARMUP' || mode === 'FEEDER') {
+      onUpdate({ ...data, baseType: mode as BaseSetType, technique: 'NONE' });
+      return;
     }
-    if (tech === 'DROP_SET' && (!data.dropSets || data.dropSets.length === 0)) {
-      updated.dropSets = [
-        { id: crypto.randomUUID(), weight: Math.round(data.weight * 0.75), reps: 8, completed: false },
-      ];
+
+    if (mode === 'BACKOFF') {
+      const discountedWeight = data.weight > 0 ? Math.round(data.weight * 0.88 * 2) / 2 : data.weight;
+      onUpdate({ 
+        ...data, 
+        baseType: 'BACKOFF', 
+        technique: 'NONE', 
+        weight: discountedWeight 
+      });
+      return;
     }
-    onUpdate(updated);
-    setShowMenu(false);
+
+    if (mode === 'CLUSTER_SET') {
+      onUpdate({
+        ...data,
+        baseType: 'WORKING',
+        technique: 'CLUSTER_SET',
+        clusterBlocks: data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : [
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+        ],
+      });
+      return;
+    }
+
+    if (mode === 'MYO_REPS') {
+      onUpdate({
+        ...data,
+        baseType: 'WORKING',
+        technique: 'MYO_REPS',
+        myoMicroSets: data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : [
+          { id: crypto.randomUUID(), reps: 4, completed: false },
+          { id: crypto.randomUUID(), reps: 4, completed: false },
+          { id: crypto.randomUUID(), reps: 3, completed: false },
+        ],
+      });
+      return;
+    }
+
+    if (mode === 'DROP_SET') {
+      onUpdate({
+        ...data,
+        baseType: 'WORKING',
+        technique: 'DROP_SET',
+        dropSets: data.dropSets && data.dropSets.length > 0 ? data.dropSets : [
+          { id: crypto.randomUUID(), weight: Math.round(data.weight * 0.75 * 2) / 2, reps: 8, completed: false },
+        ],
+      });
+      return;
+    }
+
+    if (mode === 'REST_PAUSE') {
+      onUpdate({
+        ...data,
+        baseType: 'WORKING',
+        technique: 'REST_PAUSE',
+        restPauseSubSets: data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : [
+          { id: crypto.randomUUID(), reps: 4, completed: false },
+        ],
+      });
+      return;
+    }
+
+    // Normal
+    onUpdate({ ...data, baseType: 'WORKING', technique: 'NONE' });
   };
 
   // Render do Badge BaseSetType
@@ -186,6 +265,18 @@ export function AdvancedSetRow({
     }
   };
 
+  // Valor atual do seletor
+  const currentSelectValue = () => {
+    if (data.baseType === 'WARMUP') return 'WARMUP';
+    if (data.baseType === 'FEEDER') return 'FEEDER';
+    if (data.baseType === 'BACKOFF') return 'BACKOFF';
+    if (data.technique === 'CLUSTER_SET') return 'CLUSTER_SET';
+    if (data.technique === 'MYO_REPS') return 'MYO_REPS';
+    if (data.technique === 'DROP_SET') return 'DROP_SET';
+    if (data.technique === 'REST_PAUSE') return 'REST_PAUSE';
+    return 'WORKING_NORMAL';
+  };
+
   return (
     <div 
       className={`rounded-xl border transition-all p-3 space-y-3 ${
@@ -200,43 +291,67 @@ export function AdvancedSetRow({
     >
       {/* Linha Principal da Série */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* Lado Esquerdo: Badge e Seletor de BaseSetType */}
+        {/* Lado Esquerdo: Badge e Seletor EXCLUSIVO para o contexto */}
         <div className="flex items-center gap-2">
           {renderBaseBadge()}
 
-          <select
-            value={data.baseType}
-            onChange={(e) => onUpdate({ ...data, baseType: e.target.value as BaseSetType })}
-            className={`rounded border px-2 py-1 text-[11px] font-bold focus:border-primary ${
-              isPreparatory
-                ? 'border-border/60 bg-background/80 text-muted-foreground'
-                : 'border-border bg-background text-foreground'
-            }`}
-          >
-            <option value="WORKING">Trabalho (Valida p/ MEV)</option>
-            <option value="WARMUP">Aquecimento / Ativação (W)</option>
-            <option value="FEEDER">Feeder / Reconhecimento (F)</option>
-            <option value="BACKOFF">Back-off Set (B)</option>
-          </select>
+          {/* SELETOR: SE PREPARATÓRIA, APENAS OPÇÕES PREPARATÓRIAS. SE TRABALHO, APENAS TÉCNICAS DE TRABALHO! */}
+          {isPreparatory ? (
+            <select
+              value={data.baseType}
+              onChange={(e) => handleSelectSetMode(e.target.value)}
+              className="rounded border border-border/60 bg-background/80 px-2 py-1 text-[11px] font-bold text-muted-foreground focus:border-primary"
+            >
+              <option value="WARMUP">Aquecimento / Ativação (W)</option>
+              <option value="FEEDER">Feeder / Reconhecimento (F)</option>
+            </select>
+          ) : (
+            <select
+              value={currentSelectValue()}
+              onChange={(e) => handleSelectSetMode(e.target.value)}
+              className="rounded border border-primary/40 bg-background px-2.5 py-1 text-[11px] font-black text-foreground focus:border-primary"
+            >
+              <option value="WORKING_NORMAL">Série Normal de Trabalho</option>
+              <option value="BACKOFF">Back-off Set (B) (-12% Carga)</option>
+              <option value="CLUSTER_SET">Cluster Set (Blocos Intra-série)</option>
+              <option value="MYO_REPS">Myo-Reps (Ativação + Micros)</option>
+              <option value="DROP_SET">Drop Set (-25% Redução)</option>
+              <option value="REST_PAUSE">Rest-Pause (Pausa 15s)</option>
+            </select>
+          )}
 
           {data.technique !== 'NONE' && (
-            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary uppercase">
+            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-black text-primary uppercase">
               {data.technique.replace('_', ' ')}
             </span>
           )}
         </div>
 
-        {/* Inputs Centrais: Carga, Reps, RIR e Carga de Referência */}
+        {/* Inputs Centrais: Meta Programada, Carga Levantada, Reps e RIR */}
         <div className="flex items-center gap-3">
-          {/* Carga de Referência Anterior em Cinza Opaco */}
-          <div className="text-right hidden sm:block">
-            <span className="text-[10px] text-muted-foreground block">Anterior</span>
-            <span className="font-mono text-xs text-muted-foreground/80">
-              {data.previousWeight ? `${data.previousWeight}kg × ${data.previousReps}` : '—'}
-            </span>
-          </div>
+          {/* Carga Meta / Programada */}
+          {data.targetWeight !== undefined && (
+            <div className="text-right hidden sm:block">
+              <span className="text-[9px] text-primary/80 font-bold block flex items-center gap-0.5 justify-end">
+                <Target size={10} /> Meta
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {data.targetWeight}kg × {data.targetReps ?? 10}
+              </span>
+            </div>
+          )}
 
-          {/* Input Carga */}
+          {/* Carga Anterior (Referência) */}
+          {data.previousWeight !== undefined && data.targetWeight === undefined && (
+            <div className="text-right hidden sm:block">
+              <span className="text-[10px] text-muted-foreground block">Anterior</span>
+              <span className="font-mono text-xs text-muted-foreground/80">
+                {data.previousWeight}kg × {data.previousReps}
+              </span>
+            </div>
+          )}
+
+          {/* Input Carga Realmente Levantada */}
           <div className="relative text-center">
             <input
               type="number"
@@ -246,10 +361,10 @@ export function AdvancedSetRow({
               onChange={(e) => onUpdate({ ...data, weight: parseFloat(e.target.value) || 0 })}
               className="w-16 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary"
             />
-            <span className="text-[9px] text-muted-foreground block">kg</span>
+            <span className="text-[9px] text-muted-foreground block">kg feito</span>
           </div>
 
-          {/* Input Repetições */}
+          {/* Input Repetições Realmente Feitas */}
           <div className="relative text-center">
             <input
               type="number"
@@ -258,10 +373,10 @@ export function AdvancedSetRow({
               onChange={(e) => onUpdate({ ...data, reps: parseInt(e.target.value) || 0 })}
               className="w-14 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary"
             />
-            <span className="text-[9px] text-muted-foreground block">reps</span>
+            <span className="text-[9px] text-muted-foreground block">reps feitas</span>
           </div>
 
-          {/* Input RIR (Reps in Reserve: quantas repetições guardou antes da falha) */}
+          {/* Input RIR (Reps in Reserve: quantas reps guardou antes da falha) */}
           <div className="relative text-center">
             <select
               value={data.rir}
@@ -282,8 +397,19 @@ export function AdvancedSetRow({
           </div>
         </div>
 
-        {/* Lado Direito: Badge de PR, Checkbox de Conclusão e Menu de Técnicas */}
+        {/* Lado Direito: Gamificação de Meta / PR e Checkbox */}
         <div className="flex items-center gap-2">
+          {/* Badge de Meta Superada / Batida */}
+          {isTargetAchieved && data.completed && (
+            <div 
+              title="Você bateu ou superou a meta de carga programada!"
+              className="flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-1 text-[10px] font-black text-emerald-400"
+            >
+              <Target size={11} />
+              <span>META OK</span>
+            </div>
+          )}
+
           {/* Feedback de Recorde Pessoal (PR) */}
           {isPrTonnage && (
             <div 
@@ -310,71 +436,89 @@ export function AdvancedSetRow({
             <Check size={16} strokeWidth={data.completed ? 3 : 2} />
           </button>
 
-          {/* Menu Dropdown de Técnicas Avançadas */}
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-muted-foreground hover:text-foreground"
-              onClick={() => setShowMenu(!showMenu)}
-            >
-              <MoreVertical size={14} />
-            </Button>
-
-            {showMenu && (
-              <div className="absolute right-0 top-8 z-50 w-48 rounded-lg border border-border bg-popover p-1.5 shadow-xl text-xs">
-                <span className="block px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase">
-                  Técnica de Intensidade
-                </span>
-                <button
-                  onClick={() => handleSelectTechnique('NONE')}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-foreground"
-                >
-                  Normal (Sem técnica)
-                </button>
-                <button
-                  onClick={() => handleSelectTechnique('MYO_REPS')}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-primary font-bold flex items-center justify-between"
-                >
-                  Myo-Reps (15s rest)
-                  <Zap size={12} />
-                </button>
-                <button
-                  onClick={() => handleSelectTechnique('DROP_SET')}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-destructive font-semibold flex items-center justify-between"
-                >
-                  Drop Set (-25%)
-                  <ArrowDown size={12} />
-                </button>
-                <button
-                  onClick={() => handleSelectTechnique('CLUSTER_SET')}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-foreground flex items-center justify-between"
-                >
-                  Cluster Set
-                  <Layers size={12} />
-                </button>
-                <button
-                  onClick={() => handleSelectTechnique('REST_PAUSE')}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-foreground flex items-center justify-between"
-                >
-                  Rest-Pause
-                  <Clock size={12} />
-                </button>
-                <div className="my-1 border-t border-border" />
-                <button
-                  onClick={onDelete}
-                  className="w-full text-left px-2 py-1.5 rounded hover:bg-destructive/20 text-destructive font-semibold flex items-center justify-between"
-                >
-                  Excluir Série
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Excluir Linha */}
+          <button
+            type="button"
+            onClick={onDelete}
+            title="Remover esta série"
+            className="p-1.5 text-muted-foreground/60 hover:text-destructive rounded transition-colors"
+          >
+            <Trash2 size={13} />
+          </button>
         </div>
       </div>
 
-      {/* SUB-LINHAS DINÂMICAS: MYO-REPS */}
+      {/* SUB-LINHAS DINÂMICAS: 1. CLUSTER SET (BLOCOS INTRA-SÉRIE COM MICRO-DESCANSO) */}
+      {data.technique === 'CLUSTER_SET' && data.clusterBlocks && (
+        <div className="ml-8 rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-bold text-primary">
+            <span>Cluster Set com {data.weight}kg (Quebra em mini-blocos com 15s de descanso intra-série):</span>
+            {microTimer > 0 && (
+              <span className="font-mono text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                <Clock size={11} /> Micro-descanso: {microTimer}s
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {data.clusterBlocks.map((block, bIdx) => (
+              <div 
+                key={block.id}
+                className="flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 shadow-sm"
+              >
+                <span className="text-[10px] text-primary font-mono font-bold">Bloco #{bIdx + 1}:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={block.reps}
+                  onChange={(e) => {
+                    const newReps = parseInt(e.target.value) || 0;
+                    const updated = data.clusterBlocks?.map((b) =>
+                      b.id === block.id ? { ...b, reps: newReps } : b
+                    );
+                    onUpdate({ ...data, clusterBlocks: updated });
+                  }}
+                  className="w-8 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                />
+                <span className="text-[9px] text-muted-foreground">reps</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextState = !block.completed;
+                    const updated = data.clusterBlocks?.map((b) =>
+                      b.id === block.id ? { ...b, completed: nextState } : b
+                    );
+                    onUpdate({ ...data, clusterBlocks: updated });
+                    if (nextState) startMicroRest(15);
+                  }}
+                  className={`size-5 rounded border flex items-center justify-center transition-all ${
+                    block.completed 
+                      ? 'border-primary bg-primary text-primary-foreground' 
+                      : 'border-border text-muted-foreground hover:border-primary'
+                  }`}
+                >
+                  <Check size={11} strokeWidth={3} />
+                </button>
+              </div>
+            ))}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const newBlock: ClusterBlock = { id: crypto.randomUUID(), reps: 2, completed: false };
+                onUpdate({ ...data, clusterBlocks: [...(data.clusterBlocks || []), newBlock] });
+              }}
+              className="text-[10px] h-6 border-dashed"
+            >
+              + Mini-Bloco
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-LINHAS DINÂMICAS: 2. MYO-REPS (ATIVAÇÃO + MICRO-SÉRIES) */}
       {data.technique === 'MYO_REPS' && data.myoMicroSets && (
         <div className="ml-8 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-primary">
@@ -392,7 +536,7 @@ export function AdvancedSetRow({
                 key={micro.id}
                 className="flex items-center gap-1.5 rounded border border-border bg-background px-2 py-1"
               >
-                <span className="text-[10px] text-muted-foreground font-mono">#{idx + 1}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">Micro #{idx + 1}:</span>
                 <input
                   type="number"
                   min="1"
@@ -405,7 +549,7 @@ export function AdvancedSetRow({
                     );
                     onUpdate({ ...data, myoMicroSets: updatedMicros });
                   }}
-                  className="w-10 text-center font-mono text-xs font-bold border-0 bg-transparent p-0"
+                  className="w-8 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
                 />
                 <button
                   type="button"
@@ -443,12 +587,12 @@ export function AdvancedSetRow({
         </div>
       )}
 
-      {/* SUB-LINHAS DINÂMICAS: DROP-SET */}
+      {/* SUB-LINHAS DINÂMICAS: 3. DROP-SET (REDUÇÃO IMEDIATA SEM DESCANSO) */}
       {data.technique === 'DROP_SET' && data.dropSets && (
         <div className="ml-8 rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-destructive">
             <span className="flex items-center gap-1">
-              <ArrowDown size={13} /> Drops Acoplados (Redução imediata sem descanso):
+              <ArrowDown size={13} /> Drops Acoplados (Redução imediata de -25% sem descanso):
             </span>
           </div>
 
@@ -515,7 +659,7 @@ export function AdvancedSetRow({
               const lastWeight = data.dropSets?.[data.dropSets.length - 1]?.weight ?? data.weight;
               const newDrop: DropSubSet = {
                 id: crypto.randomUUID(),
-                weight: Math.round(lastWeight * 0.75),
+                weight: Math.round(lastWeight * 0.75 * 2) / 2,
                 reps: 6,
                 completed: false,
               };
@@ -525,6 +669,78 @@ export function AdvancedSetRow({
           >
             + Adicionar Drop
           </Button>
+        </div>
+      )}
+
+      {/* SUB-LINHAS DINÂMICAS: 4. REST-PAUSE (PAUSA 15-20S ATÉ NOVA FALHA) */}
+      {data.technique === 'REST_PAUSE' && data.restPauseSubSets && (
+        <div className="ml-8 rounded-lg border border-chart-3/40 bg-chart-3/5 p-3 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-bold text-chart-3">
+            <span className="flex items-center gap-1">
+              <CornerDownRight size={13} /> Rest-Pause (Descansa 15s e segue com a mesma carga de {data.weight}kg):
+            </span>
+            {microTimer > 0 && (
+              <span className="font-mono text-xs bg-chart-3 text-background px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1 font-black">
+                <Clock size={11} /> Descanso Rest-Pause: {microTimer}s
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {data.restPauseSubSets.map((rp, idx) => (
+              <div 
+                key={rp.id}
+                className="flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1"
+              >
+                <span className="text-[10px] text-muted-foreground font-mono">Pós-Pausa #{idx + 1}:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={rp.reps}
+                  onChange={(e) => {
+                    const newReps = parseInt(e.target.value) || 0;
+                    const updated = data.restPauseSubSets?.map((r) =>
+                      r.id === rp.id ? { ...r, reps: newReps } : r
+                    );
+                    onUpdate({ ...data, restPauseSubSets: updated });
+                  }}
+                  className="w-8 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                />
+                <span className="text-[9px] text-muted-foreground">reps</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextState = !rp.completed;
+                    const updated = data.restPauseSubSets?.map((r) =>
+                      r.id === rp.id ? { ...r, completed: nextState } : r
+                    );
+                    onUpdate({ ...data, restPauseSubSets: updated });
+                    if (nextState) startMicroRest(15);
+                  }}
+                  className={`size-5 rounded border flex items-center justify-center ${
+                    rp.completed 
+                      ? 'border-chart-3 bg-chart-3 text-background font-bold' 
+                      : 'border-border text-muted-foreground'
+                  }`}
+                >
+                  <Check size={11} />
+                </button>
+              </div>
+            ))}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const newRp: RestPauseSubSet = { id: crypto.randomUUID(), reps: 3, completed: false };
+                onUpdate({ ...data, restPauseSubSets: [...(data.restPauseSubSets || []), newRp] });
+              }}
+              className="text-[10px] h-6 border-dashed"
+            >
+              + Mini-Série Rest-Pause
+            </Button>
+          </div>
         </div>
       )}
     </div>
