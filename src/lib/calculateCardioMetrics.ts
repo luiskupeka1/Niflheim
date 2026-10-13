@@ -56,4 +56,53 @@ export function calculateCardioMetrics(
   };
 }
 
+export interface CardioSegment {
+  id: string;
+  name: string;
+  minutes: number;
+  intensity: CardioIntensity;
+}
+
+/**
+ * Cálculo composto não-linear de sessão de cardio multietapas.
+ * Permite calcular rotinas fracionadas (ex: 10min caminhada + 10min trote + 10min corrida).
+ */
+export function calculateMultiSegmentCardio(
+  segments: CardioSegment[],
+  weightKg: number
+): {
+  totalMinutes: number;
+  totalSteps: number;
+  totalCalories: number;
+  segmentBreakdown: { name: string; minutes: number; steps: number; calories: number }[];
+} {
+  let totalMinutes = 0;
+  let totalSteps = 0;
+  let totalCalories = 0;
+
+  const segmentBreakdown = segments.map((seg) => {
+    const mins = Math.max(0, seg.minutes);
+    totalMinutes += mins;
+    if (mins === 0) {
+      return { name: seg.name, minutes: 0, steps: 0, calories: 0 };
+    }
+    const metrics = calculateCardioMetrics(mins, seg.intensity, weightKg);
+    totalSteps += metrics.steps;
+    totalCalories += metrics.calories;
+    return {
+      name: seg.name,
+      minutes: mins,
+      steps: metrics.steps,
+      calories: metrics.calories,
+    };
+  });
+
+  return {
+    totalMinutes,
+    totalSteps,
+    totalCalories,
+    segmentBreakdown,
+  };
+}
+
 export default calculateCardioMetrics;

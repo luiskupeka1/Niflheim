@@ -150,7 +150,7 @@ export function AdvancedSetRow({
 
   // Manipulação de Tipos e Técnicas
   const handleSelectSetMode = (mode: string) => {
-    if (mode === 'WARMUP' || mode === 'FEEDER') {
+    if (mode === 'WARMUP' || mode === 'FEEDER' || mode === 'PAP') {
       onUpdate({ ...data, baseType: mode as BaseSetType, technique: 'NONE' });
       return;
     }
@@ -243,10 +243,19 @@ export function AdvancedSetRow({
             F
           </span>
         );
+      case 'PAP':
+        return (
+          <span 
+            title="PAP (Potenciação Pós-Ativação): 1-2 reps com sobrecarga máxima para acordar o SNC e aumentar produção de força"
+            className="flex h-7 px-1.5 items-center justify-center rounded bg-purple-500/20 border border-purple-500/50 font-mono text-[10px] font-black text-purple-400"
+          >
+            PAP
+          </span>
+        );
       case 'BACKOFF':
         return (
           <span 
-            title="Back-off Set (-10% a -15% de carga para volume)"
+            title="Back-off Set (B)"
             className="flex size-7 items-center justify-center rounded bg-chart-2/20 border border-chart-2/40 font-mono text-[11px] font-black text-chart-2"
           >
             B
@@ -269,6 +278,7 @@ export function AdvancedSetRow({
   const currentSelectValue = () => {
     if (data.baseType === 'WARMUP') return 'WARMUP';
     if (data.baseType === 'FEEDER') return 'FEEDER';
+    if (data.baseType === 'PAP') return 'PAP';
     if (data.baseType === 'BACKOFF') return 'BACKOFF';
     if (data.technique === 'CLUSTER_SET') return 'CLUSTER_SET';
     if (data.technique === 'MYO_REPS') return 'MYO_REPS';
@@ -303,7 +313,8 @@ export function AdvancedSetRow({
               className="rounded border border-border/60 bg-background/80 px-2 py-1 text-[11px] font-bold text-muted-foreground focus:border-primary"
             >
               <option value="WARMUP">Aquecimento / Ativação (W)</option>
-              <option value="FEEDER">Feeder / Reconhecimento (F)</option>
+              <option value="FEEDER">Feeder / Calibração (F)</option>
+              <option value="PAP">PAP (Potenciação Pós-Ativação)</option>
             </select>
           ) : (
             <select
@@ -312,10 +323,10 @@ export function AdvancedSetRow({
               className="rounded border border-primary/40 bg-background px-2.5 py-1 text-[11px] font-black text-foreground focus:border-primary"
             >
               <option value="WORKING_NORMAL">Série Normal de Trabalho</option>
-              <option value="BACKOFF">Back-off Set (B) (-12% Carga)</option>
+              <option value="BACKOFF">Back-off Set (B)</option>
               <option value="CLUSTER_SET">Cluster Set (Blocos Intra-série)</option>
               <option value="MYO_REPS">Myo-Reps (Ativação + Micros)</option>
-              <option value="DROP_SET">Drop Set (-25% Redução)</option>
+              <option value="DROP_SET">Drop Set (Redução)</option>
               <option value="REST_PAUSE">Rest-Pause (Pausa 15s)</option>
             </select>
           )}
@@ -327,19 +338,32 @@ export function AdvancedSetRow({
           )}
         </div>
 
-        {/* Inputs Centrais: Meta Programada, Carga Levantada, Reps e RIR */}
+        {/* Inputs Centrais: Meta Programada (FACILMENTE EDITÁVEL), Carga Levantada, Reps e RIR */}
         <div className="flex items-center gap-3">
-          {/* Carga Meta / Programada */}
-          {data.targetWeight !== undefined && (
-            <div className="text-right hidden sm:block">
-              <span className="text-[9px] text-primary/80 font-bold block flex items-center gap-0.5 justify-end">
-                <Target size={10} /> Meta
-              </span>
-              <span className="font-mono text-xs text-muted-foreground">
-                {data.targetWeight}kg × {data.targetReps ?? 10}
-              </span>
-            </div>
-          )}
+          {/* Carga Meta / Programada Facilmente Editável */}
+          <div className="text-right flex items-center gap-1 bg-background/60 border border-border/60 rounded px-1.5 py-0.5">
+            <span className="text-[9px] text-primary font-bold flex items-center gap-0.5" title="Altere sua meta de carga aqui diretamente">
+              <Target size={10} /> Meta:
+            </span>
+            <input
+              type="number"
+              step="0.5"
+              value={data.targetWeight ?? ''}
+              placeholder="kg"
+              onChange={(e) => onUpdate({ ...data, targetWeight: parseFloat(e.target.value) || 0 })}
+              className="w-12 text-center font-mono text-[11px] font-bold border-0 bg-transparent p-0 text-foreground"
+              title="Carga meta programada"
+            />
+            <span className="text-[9px] text-muted-foreground">×</span>
+            <input
+              type="number"
+              value={data.targetReps ?? ''}
+              placeholder="reps"
+              onChange={(e) => onUpdate({ ...data, targetReps: parseInt(e.target.value) || 0 })}
+              className="w-10 text-center font-mono text-[11px] font-bold border-0 bg-transparent p-0 text-foreground"
+              title="Reps meta programadas"
+            />
+          </div>
 
           {/* Carga Anterior (Referência) */}
           {data.previousWeight !== undefined && data.targetWeight === undefined && (

@@ -26,7 +26,7 @@ export type MuscleGroup =
 
 export type BiomechanicalCategory = 'Push' | 'Pull' | 'Legs' | 'Upper' | 'Lower' | 'FullBody';
 
-export type BaseSetType = 'WARMUP' | 'FEEDER' | 'WORKING' | 'BACKOFF';
+export type BaseSetType = 'WARMUP' | 'FEEDER' | 'PAP' | 'WORKING' | 'BACKOFF';
 
 export type IntensityTechnique = 'NONE' | 'MYO_REPS' | 'CLUSTER_SET' | 'REST_PAUSE' | 'DROP_SET';
 
@@ -84,8 +84,8 @@ export function getFunctionalSetWeight(
   baseType: BaseSetType,
   technique: IntensityTechnique
 ): number {
-  if (baseType === 'WARMUP' || baseType === 'FEEDER') {
-    return 0; // Séries de aquecimento e calibração não geram fadiga hipertrófica contabilizável
+  if (baseType === 'WARMUP' || baseType === 'FEEDER' || baseType === 'PAP') {
+    return 0; // Séries de aquecimento, calibração e PAP não geram fadiga hipertrófica contabilizável
   }
 
   // Séries WORKING ou BACKOFF:

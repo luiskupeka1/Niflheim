@@ -530,6 +530,22 @@ function TreinosPage() {
     );
   };
 
+  const handleDeleteSplit = (splitId: string) => {
+    if (splits.length <= 1) {
+      alert('Você deve manter pelo menos uma rotina cadastrada.');
+      return;
+    }
+    const toDelete = splits.find((s) => s.id === splitId);
+    if (!window.confirm(`Tem certeza que deseja excluir a rotina "${toDelete?.name}"?`)) {
+      return;
+    }
+    const remaining = splits.filter((s) => s.id !== splitId);
+    setSplits(remaining);
+    if (activeSplitId === splitId) {
+      setActiveSplitId(remaining[0].id);
+    }
+  };
+
   const handleAddWorkingSet = (exerciseId: string) => {
     setExercises((prev) =>
       prev.map((ex) => {
@@ -557,19 +573,32 @@ function TreinosPage() {
     );
   };
 
-  const handleAddPreparatorySet = (exerciseId: string, type: 'WARMUP' | 'FEEDER') => {
+  const handleAddPreparatorySet = (exerciseId: string, type: 'WARMUP' | 'FEEDER' | 'PAP') => {
     setExercises((prev) =>
       prev.map((ex) => {
         if (ex.id !== exerciseId) return ex;
         const baseWeight = ex.targetWeightKg ?? ex.sets[0]?.weight ?? 40;
+        let setWeight = Math.round(baseWeight * 0.5 * 2) / 2;
+        let setReps = 12;
+        let setRir = 4;
+        if (type === 'FEEDER') {
+          setWeight = Math.round(baseWeight * 0.8 * 2) / 2;
+          setReps = 3;
+          setRir = 4;
+        } else if (type === 'PAP') {
+          // PAP: ~90-95% da carga, 1 a 2 reps quase máximas para recrutar unidades motoras sem gerar fadiga
+          setWeight = Math.round(baseWeight * 0.95 * 2) / 2;
+          setReps = 1;
+          setRir = 3;
+        }
         const newSet: AdvancedSetRowData = {
           id: crypto.randomUUID(),
           setNumber: 0,
           baseType: type,
           technique: 'NONE',
-          weight: type === 'WARMUP' ? Math.round(baseWeight * 0.5 * 2) / 2 : Math.round(baseWeight * 0.8 * 2) / 2,
-          reps: type === 'WARMUP' ? 12 : 3,
-          rir: 4,
+          weight: setWeight,
+          reps: setReps,
+          rir: setRir,
           completed: false,
         };
         return {
@@ -919,17 +948,30 @@ function TreinosPage() {
               <Layers size={14} className="text-primary" /> Rotinas:
             </span>
             {splits.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setActiveSplitId(s.id)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                  activeSplit.id === s.id
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {s.name}
-              </button>
+              <div key={s.id} className="relative inline-flex items-center">
+                <button
+                  onClick={() => setActiveSplitId(s.id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    activeSplit.id === s.id
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {s.name}
+                </button>
+                {splits.length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSplit(s.id);
+                    }}
+                    title={`Excluir rotina ${s.name}`}
+                    className="ml-1 p-1 rounded-md text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
 
@@ -998,7 +1040,7 @@ function TreinosPage() {
       {/* 4. LISTA DE EXERCÍCIOS DA SESSÃO DIÁRIA */}
       <div className="space-y-6">
         {exercises.map((ex, exIndex) => {
-          const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER');
+          const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
           const workingSets = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
 
           return (
@@ -1158,7 +1200,7 @@ function TreinosPage() {
                     </p>
                   )}
 
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1175,6 +1217,19 @@ function TreinosPage() {
                     >
                       + Feeder / Reconhecimento (F)
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddPreparatorySet(ex.id, 'PAP')}
+                      className="text-[10px] h-6 px-2 text-cyan-400 hover:text-cyan-300 border border-dashed border-cyan-500/40"
+                    >
+                      + PAP (Potenciação Pós-Ativação)
+                    </Button>
+                  </div>
+
+                  {/* Explicação Didática da PAP */}
+                  <div className="rounded-lg bg-cyan-950/20 border border-cyan-800/30 p-2 text-[10px] text-cyan-200/90 leading-relaxed">
+                    <span className="font-bold text-cyan-300">💡 O que é PAP (Potenciação Pós-Ativação)?</span> Uma contração intensa e breve (1 a 2 reps com ~90-95% da carga, sem chegar à falha) logo antes da série de trabalho. Ela sensibiliza as pontes de miosina e ativa o Sistema Nervoso Central, permitindo produzir mais força e recrutar mais fibras musculares na série principal sem gerar fadiga metabólica.
                   </div>
                 </div>
 
@@ -1307,38 +1362,91 @@ function TreinosPage() {
 
       {/* 6. TIMER FLUTUANTE GLOBAL */}
       {restTime > 0 && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border border-primary/50 bg-card/95 px-5 py-3.5 shadow-2xl backdrop-blur-md">
-          <div className="flex size-10 items-center justify-center rounded-full bg-primary/20 text-primary">
-            <Clock size={20} className={timerActive ? 'animate-spin' : ''} />
-          </div>
-          <div>
-            <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-              {lastRestTriggerSource}
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 rounded-2xl border border-primary/50 bg-card/95 p-3.5 shadow-2xl backdrop-blur-md max-w-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+              <Clock size={20} className={timerActive ? 'animate-spin' : ''} />
             </div>
-            <div className="font-mono text-2xl font-black text-primary">
-              {formatTimer(restTime)}
+            <div className="flex-1 min-w-0">
+              <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+                {lastRestTriggerSource}
+              </div>
+              <div className="font-mono text-2xl font-black text-primary flex items-center gap-2">
+                {formatTimer(restTime)}
+                <input
+                  type="number"
+                  min="0"
+                  max="900"
+                  step="5"
+                  value={restTime}
+                  onChange={(e) => setRestTime(Math.max(0, parseInt(e.target.value) || 0))}
+                  title="Editar segundos de descanso"
+                  className="w-14 rounded border border-border/60 bg-background/80 px-1 py-0.5 text-center font-mono text-xs text-foreground focus:border-primary"
+                />
+                <span className="text-[10px] text-muted-foreground font-sans">s</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 pl-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-foreground"
+                onClick={() => setTimerActive(!timerActive)}
+              >
+                {timerActive ? <Pause size={15} /> : <Play size={15} />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setRestTime(0);
+                  setTimerActive(false);
+                }}
+              >
+                <RotateCcw size={14} />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-1 pl-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 text-foreground"
-              onClick={() => setTimerActive(!timerActive)}
+
+          {/* Controles Dinâmicos de Ajuste de Tempo */}
+          <div className="flex flex-wrap items-center gap-1 pt-1 border-t border-border/40 text-[10px]">
+            <button
+              onClick={() => setRestTime((prev) => Math.max(5, prev - 30))}
+              className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              {timerActive ? <Pause size={15} /> : <Play size={15} />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setRestTime(0);
-                setTimerActive(false);
-              }}
+              -30s
+            </button>
+            <button
+              onClick={() => setRestTime((prev) => prev + 30)}
+              className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <RotateCcw size={14} />
-            </Button>
+              +30s
+            </button>
+            <button
+              onClick={() => { setRestTime(60); setTimerActive(true); }}
+              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 60 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
+            >
+              60s
+            </button>
+            <button
+              onClick={() => { setRestTime(90); setTimerActive(true); }}
+              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 90 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
+            >
+              90s
+            </button>
+            <button
+              onClick={() => { setRestTime(120); setTimerActive(true); }}
+              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 120 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
+            >
+              120s
+            </button>
+            <button
+              onClick={() => { setRestTime(180); setTimerActive(true); }}
+              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 180 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
+            >
+              180s
+            </button>
           </div>
         </div>
       )}
