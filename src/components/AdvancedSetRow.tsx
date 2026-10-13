@@ -69,17 +69,23 @@ export interface AdvancedSetRowData {
 interface AdvancedSetRowProps {
   data: AdvancedSetRowData;
   workingIndex?: number; // Índice real entre as séries de trabalho (ex: #1, #2...)
+  restWarmupSeconds?: number;
+  restWorkingSeconds?: number;
   onUpdate: (updated: AdvancedSetRowData) => void;
   onDelete: () => void;
   onTriggerRestTimer: (seconds: number) => void;
+  onCelebratePR?: (info: { weight: number; reps: number; tonnage: number }) => void;
 }
 
 export function AdvancedSetRow({
   data,
   workingIndex,
+  restWarmupSeconds = 60,
+  restWorkingSeconds = 120,
   onUpdate,
   onDelete,
   onTriggerRestTimer,
+  onCelebratePR,
 }: AdvancedSetRowProps) {
   const [showMenu, setShowMenu] = useState(false);
   
@@ -87,7 +93,7 @@ export function AdvancedSetRow({
   const [microTimer, setMicroTimer] = useState<number>(0);
   const [microTimerActive, setMicroTimerActive] = useState<boolean>(false);
 
-  const isPreparatory = data.baseType === 'WARMUP' || data.baseType === 'FEEDER';
+  const isPreparatory = data.baseType === 'WARMUP' || data.baseType === 'FEEDER' || data.baseType === 'PAP';
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
@@ -128,10 +134,9 @@ export function AdvancedSetRow({
   // PR só faz sentido em séries de trabalho efetivas
   const isPrTonnage = 
     !isPreparatory &&
-    data.previousWeight !== undefined && 
-    data.previousReps !== undefined && 
-    currentTonnage > previousTonnage &&
-    data.rir <= (data.previousRir ?? 5);
+    ((previousTonnage > 0 && currentTonnage > previousTonnage) ||
+     ((data.previousWeight ?? 0) > 0 && data.weight > (data.previousWeight ?? 0)) ||
+     isTargetAchieved);
 
   const handleToggleComplete = () => {
     const nextCompleted = !data.completed;
@@ -141,9 +146,18 @@ export function AdvancedSetRow({
       if (data.technique === 'MYO_REPS' || data.technique === 'CLUSTER_SET' || data.technique === 'REST_PAUSE') {
         startMicroRest(15);
       } else if (isPreparatory) {
-        onTriggerRestTimer(45);
+        onTriggerRestTimer(restWarmupSeconds);
       } else {
-        onTriggerRestTimer(90);
+        onTriggerRestTimer(restWorkingSeconds);
+      }
+
+      // Se for série de trabalho e bateu PR, dispara celebração com partículas douradas!
+      if (!isPreparatory && isPrTonnage) {
+        onCelebratePR?.({
+          weight: data.weight,
+          reps: data.reps,
+          tonnage: currentTonnage,
+        });
       }
     }
   };

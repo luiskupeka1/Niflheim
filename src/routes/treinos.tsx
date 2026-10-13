@@ -44,6 +44,7 @@ import {
   WorkoutProgressionChart, 
   type ExerciseProgressionPoint 
 } from '@/components/WorkoutProgressionChart';
+import { PRConfetti } from '@/components/PRConfetti';
 import { 
   calculateWeeklyMuscleVolume, 
   type MuscleGroup, 
@@ -443,10 +444,61 @@ function TreinosPage() {
     };
   }, [timerActive, restTime]);
 
+  // Tempos de descanso configuráveis por tipo de série
+  const [restWarmupSeconds, setRestWarmupSeconds] = useState<number>(60);
+  const [restWorkingSeconds, setRestWorkingSeconds] = useState<number>(120);
+
+  // Efeito / Celebração de PR Batido
+  const [prCelebration, setPrCelebration] = useState<{
+    show: boolean;
+    exerciseName: string;
+    weight: number;
+    reps: number;
+    tonnage: number;
+  } | null>(null);
+
   const triggerFloatingTimer = (seconds = 90, source = 'Série Concluída') => {
     setRestTime(seconds);
     setTimerActive(true);
     setLastRestTriggerSource(source);
+  };
+
+  const handleTriggerPRCelebration = (
+    exerciseName: string,
+    info: { weight: number; reps: number; tonnage: number }
+  ) => {
+    // 1. Efeito sonoro triunfante em acorde sintetizado (Web Audio API)
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.08);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.08 + 0.6);
+        osc.start(ctx.currentTime + idx * 0.08);
+        osc.stop(ctx.currentTime + idx * 0.08 + 0.6);
+      });
+    } catch (e) {}
+
+    // 2. Vibração háptica no celular
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([100, 50, 150, 50, 250]);
+    }
+
+    // 3. Ativar partículas amarelas e banner
+    setPrCelebration({
+      show: true,
+      exerciseName,
+      weight: info.weight,
+      reps: info.reps,
+      tonnage: info.tonnage,
+    });
+
+    reward(50);
   };
 
   // Avaliação MRV
@@ -1037,6 +1089,89 @@ function TreinosPage() {
         </div>
       </div>
 
+      {/* 3.1 CONTROLE CONFIGURÁVEL DE TEMPOS DE DESCANSO (AQUECIMENTO VS TRABALHO) */}
+      <div className="rounded-2xl border border-primary/30 bg-card/70 p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/20 text-primary">
+            <Clock size={16} />
+          </div>
+          <div>
+            <h4 className="text-xs font-black uppercase text-foreground">
+              Tempos de Descanso Automáticos da Sessão
+            </h4>
+            <p className="text-[10px] text-muted-foreground">
+              Dispara automaticamente no cronômetro ao concluir a série.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-5 text-xs">
+          {/* Descanso de Aquecimento / Preparação */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-muted-foreground">Aquecimento / PAP:</span>
+            <div className="flex items-center gap-1">
+              {[45, 60, 90].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setRestWarmupSeconds(sec)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                    restWarmupSeconds === sec
+                      ? 'bg-amber-500 text-black font-black shadow-sm'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+              <input
+                type="number"
+                min="10"
+                max="300"
+                step="5"
+                value={restWarmupSeconds}
+                onChange={(e) => setRestWarmupSeconds(Math.max(10, parseInt(e.target.value) || 60))}
+                className="w-12 rounded border border-border bg-background px-1 py-0.5 text-center font-mono text-xs font-bold text-foreground"
+                title="Editar segundos personalizados para aquecimento"
+              />
+              <span className="text-[10px] text-muted-foreground">s</span>
+            </div>
+          </div>
+
+          {/* Descanso de Séries de Trabalho */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-black text-primary">Séries de Trabalho:</span>
+            <div className="flex items-center gap-1">
+              {[90, 120, 180].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => setRestWorkingSeconds(sec)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                    restWorkingSeconds === sec
+                      ? 'bg-primary text-primary-foreground font-black shadow-sm'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+              <input
+                type="number"
+                min="30"
+                max="600"
+                step="10"
+                value={restWorkingSeconds}
+                onChange={(e) => setRestWorkingSeconds(Math.max(30, parseInt(e.target.value) || 120))}
+                className="w-14 rounded border border-primary bg-background px-1 py-0.5 text-center font-mono text-xs font-bold text-primary"
+                title="Editar segundos personalizados para séries de trabalho"
+              />
+              <span className="text-[10px] text-muted-foreground">s</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 4. LISTA DE EXERCÍCIOS DA SESSÃO DIÁRIA */}
       <div className="space-y-6">
         {exercises.map((ex, exIndex) => {
@@ -1186,6 +1321,8 @@ function TreinosPage() {
                         <AdvancedSetRow
                           key={set.id}
                           data={set}
+                          restWarmupSeconds={restWarmupSeconds}
+                          restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
                           onDelete={() => handleDeleteSet(ex.id, set.id)}
                           onTriggerRestTimer={(seconds) =>
@@ -1256,11 +1393,14 @@ function TreinosPage() {
                             targetReps: set.targetReps ?? ex.targetReps,
                           }}
                           workingIndex={wIdx + 1}
+                          restWarmupSeconds={restWarmupSeconds}
+                          restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
                           onDelete={() => handleDeleteSet(ex.id, set.id)}
                           onTriggerRestTimer={(seconds) =>
                             triggerFloatingTimer(seconds, `${ex.name} - Série #${wIdx + 1}`)
                           }
+                          onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
                         />
                       ))}
                     </div>
@@ -1811,6 +1951,54 @@ function TreinosPage() {
               className="w-full bg-primary text-primary-foreground font-black hover:bg-primary/90 text-sm"
             >
               Registrar Check-in & Salvar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 7. ANIMAÇÃO DE PARTÍCULAS DOURADAS & BANNER DE NOVO PR */}
+      <PRConfetti
+        active={!!prCelebration?.show}
+        onFinish={() => setPrCelebration(null)}
+      />
+
+      {prCelebration?.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="panel max-w-sm w-full p-6 text-center space-y-4 border-2 border-primary shadow-2xl bg-gradient-to-b from-card to-background">
+            <div className="inline-flex size-16 items-center justify-center rounded-full bg-primary/20 text-primary animate-bounce">
+              <Trophy size={36} />
+            </div>
+
+            <div>
+              <span className="rounded bg-primary text-primary-foreground text-[10px] font-black px-2 py-0.5 uppercase tracking-wider">
+                Recorde Pessoal Batido
+              </span>
+              <h3 className="text-2xl font-black text-foreground mt-2">
+                🏆 NOVO PR!
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Você superou sua marca histórica em <strong>{prCelebration.exerciseName}</strong>!
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 space-y-1">
+              <div className="text-lg font-black font-mono text-primary">
+                {prCelebration.weight}kg × {prCelebration.reps} reps
+              </div>
+              <div className="text-[11px] text-muted-foreground font-mono">
+                Tonelagem da série: <strong className="text-foreground">{prCelebration.tonnage} kg</strong>
+              </div>
+            </div>
+
+            <div className="text-xs font-bold text-primary flex items-center justify-center gap-1">
+              <Sparkles size={14} /> +50 XP Ganho de Sobrecarga!
+            </div>
+
+            <Button
+              onClick={() => setPrCelebration(null)}
+              className="w-full bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90"
+            >
+              Continuar o Treino 💪
             </Button>
           </div>
         </div>
