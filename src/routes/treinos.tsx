@@ -720,6 +720,20 @@ function TreinosPage() {
     setExercises((prev) => prev.filter((e) => e.id !== exerciseId));
   };
 
+  // Atualizar Meta do Exercício (Carga e Repetições)
+  const handleUpdateExerciseTarget = (exerciseId: string, targetWeightKg: number, targetReps: number) => {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+        return {
+          ...ex,
+          targetWeightKg,
+          targetReps,
+        };
+      })
+    );
+  };
+
   // Carregar Treino Selecionado
   const handleLoadWorkout = (workout: WorkoutTemplateItem) => {
     setSessionTitle(workout.title);
@@ -1446,16 +1460,91 @@ function TreinosPage() {
                   </div>
 
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-black text-foreground">{ex.name}</h3>
                       <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                         {ex.muscle}
                       </span>
-                      {ex.targetWeightKg !== undefined && (
-                        <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-400 flex items-center gap-1">
-                          <Target size={11} /> Meta: {ex.targetWeightKg}kg × {ex.targetReps ?? 10}
-                        </span>
-                      )}
+                      
+                      {/* META DO EXERCÍCIO TOTALMENTE EDITÁVEL */}
+                      <div 
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 px-2 py-1 text-xs font-mono font-bold text-emerald-400 shadow-sm"
+                        title="Meta de Carga e Repetições (Altere diretamente os valores)"
+                      >
+                        <Target size={13} className="text-emerald-400 shrink-0" />
+                        <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Meta:</span>
+
+                        {/* Input de Carga Meta com botões - e + */}
+                        <div className="inline-flex items-center rounded border border-emerald-500/50 bg-background px-1 py-0.5 shadow-inner">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseTarget(ex.id, Math.max(0, (ex.targetWeightKg ?? 40) - 2.5), ex.targetReps ?? 10)}
+                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
+                            title="Diminuir 2.5 kg"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            max="999"
+                            value={ex.targetWeightKg ?? 0}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              handleUpdateExerciseTarget(ex.id, isNaN(val) ? 0 : val, ex.targetReps ?? 10);
+                            }}
+                            className="w-12 text-center font-mono text-xs font-black bg-transparent text-emerald-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            title="Editar Carga Meta em kg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseTarget(ex.id, (ex.targetWeightKg ?? 40) + 2.5, ex.targetReps ?? 10)}
+                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
+                            title="Aumentar 2.5 kg"
+                          >
+                            +
+                          </button>
+                          <span className="text-[10px] text-muted-foreground ml-0.5">kg</span>
+                        </div>
+
+                        <span className="text-emerald-500/80 font-black">×</span>
+
+                        {/* Input de Repetições Meta com botões - e + */}
+                        <div className="inline-flex items-center rounded border border-emerald-500/50 bg-background px-1 py-0.5 shadow-inner">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, Math.max(1, (ex.targetReps ?? 10) - 1))}
+                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
+                            title="Diminuir 1 repetição"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={ex.targetReps ?? 10}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value);
+                              handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, isNaN(val) ? 1 : val);
+                            }}
+                            className="w-9 text-center font-mono text-xs font-black bg-transparent text-emerald-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            title="Editar Repetições Meta"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, (ex.targetReps ?? 10) + 1)}
+                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
+                            title="Aumentar 1 repetição"
+                          >
+                            +
+                          </button>
+                          <span className="text-[10px] text-muted-foreground ml-0.5">reps</span>
+                        </div>
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {ex.equipment} • Padrão: {ex.category}
