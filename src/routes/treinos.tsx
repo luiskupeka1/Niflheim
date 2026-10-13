@@ -363,6 +363,9 @@ function TreinosPage() {
     }
   }, [weeklySchedule, splits]);
 
+  // Modo da Sessão: Execução do Treino (Dia de Treinar) vs Prescrição/Montagem (Pré-definir Séries)
+  const [workoutMode, setWorkoutMode] = useState<'EXECUTE' | 'PLAN'>('EXECUTE');
+
   // Sessão Ativa
   const [sessionTitle, setSessionTitle] = useState('Push A — Hipertrofia & Força');
   const [sessionCategory, setSessionCategory] = useState<BiomechanicalCategory>('Push');
@@ -1048,6 +1051,65 @@ function TreinosPage() {
         </div>
       </div>
 
+      {/* 2.5 SELETOR DE MODO: TREINO DO DIA (EXECUTAR & CONCLUIR) VS MONTAGEM (PRÉ-DEFINIR SÉRIES) */}
+      <div className="panel p-3.5 bg-gradient-to-r from-card via-background to-card border border-primary/40 flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase tracking-wider text-muted-foreground mr-1">
+            Modo:
+          </span>
+          <div className="inline-flex rounded-xl bg-muted/60 p-1 border border-border">
+            <button
+              type="button"
+              onClick={() => setWorkoutMode('EXECUTE')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                workoutMode === 'EXECUTE'
+                  ? 'bg-primary text-primary-foreground shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Zap size={15} /> Treinar Agora (Executar & Concluir)
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkoutMode('PLAN')}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                workoutMode === 'PLAN'
+                  ? 'bg-primary text-primary-foreground shadow-lg'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Layers size={15} /> Pré-definir Séries (Montar Modelo)
+            </button>
+          </div>
+        </div>
+
+        {workoutMode === 'EXECUTE' ? (
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Preencha o que levantou e clique em Concluir Série:
+            </span>
+            <Button
+              onClick={() => setIsFinishingWorkout(true)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs px-4 py-2 shadow-lg flex items-center gap-1.5"
+            >
+              <CheckCircle2 size={16} /> 🏁 Concluir Treino ({completedSetsCount}/{totalSetsCount})
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Configure as séries e metas para salvar na rotina:
+            </span>
+            <Button
+              onClick={handleSaveCurrentWorkoutToSplit}
+              className="bg-primary text-primary-foreground font-black text-xs px-3 py-1.5 shadow-md flex items-center gap-1.5"
+            >
+              <Save size={14} /> Salvar Pré-definições no Modelo
+            </Button>
+          </div>
+        )}
+      </div>
+
       {/* 3. BARRA DE EDIÇÃO DO NOME DO TREINO E STATUS */}
       <div className="panel p-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex-1 min-w-[280px]">
@@ -1431,6 +1493,44 @@ function TreinosPage() {
         })}
       </div>
 
+      {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (LOGO ABAIXO DOS EXERCÍCIOS) */}
+      <div className="rounded-2xl border-2 border-primary/50 bg-gradient-to-br from-card via-card/90 to-primary/10 p-6 flex flex-col md:flex-row items-center justify-between gap-5 shadow-2xl">
+        <div className="space-y-1 text-center md:text-left">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/20 px-3 py-1 text-xs font-black text-primary">
+            <Trophy size={14} /> Fim dos Exercícios
+          </div>
+          <h3 className="text-xl font-black text-foreground">
+            Concluir Treino: {sessionTitle}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {completedSetsCount === totalSetsCount && totalSetsCount > 0
+              ? '🎉 Excelente! Todas as séries programadas foram concluídas. Finalize para salvar seu progresso e ganhar XP!'
+              : `Progresso: ${completedSetsCount} de ${totalSetsCount} séries concluídas (${totalSessionTonnage.toLocaleString()} kg levantados no total).`}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
+          {workoutMode === 'PLAN' && (
+            <Button
+              variant="outline"
+              onClick={handleSaveCurrentWorkoutToSplit}
+              className="border-primary text-primary font-bold text-xs"
+            >
+              <Save size={14} className="mr-1" /> Salvar Modelo de Séries
+            </Button>
+          )}
+
+          <Button
+            size="lg"
+            onClick={() => setIsFinishingWorkout(true)}
+            className="bg-primary text-primary-foreground font-black text-sm px-6 py-6 shadow-xl hover:bg-primary/90 flex items-center gap-2 w-full md:w-auto justify-center cursor-pointer"
+          >
+            <CheckCircle2 size={20} />
+            <span>🏁 CONCLUIR TREINO DO DIA (+150 XP)</span>
+          </Button>
+        </div>
+      </div>
+
       {/* 5. VOLUME TRACKER (MEV, MAV, MRV) */}
       <div className="panel p-6 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
@@ -1500,15 +1600,15 @@ function TreinosPage() {
         </div>
       </div>
 
-      {/* 6. TIMER FLUTUANTE GLOBAL */}
+      {/* 6. TIMER FLUTUANTE GLOBAL (CENTRALIZADO NO MOBILE / FIXO NO DESKTOP) */}
       {restTime > 0 && (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 rounded-2xl border border-primary/50 bg-card/95 p-3.5 shadow-2xl backdrop-blur-md max-w-sm">
+        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 flex flex-col gap-2.5 rounded-2xl border-2 border-primary/60 bg-card/95 p-4 shadow-2xl backdrop-blur-lg ring-1 ring-primary/40">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
-              <Clock size={20} className={timerActive ? 'animate-spin' : ''} />
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary border border-primary/30">
+              <Clock size={22} className={timerActive ? 'animate-spin' : ''} />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground truncate">
+              <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground truncate">
                 {lastRestTriggerSource}
               </div>
               <div className="font-mono text-2xl font-black text-primary flex items-center gap-2">
@@ -1518,22 +1618,24 @@ function TreinosPage() {
                   min="0"
                   max="900"
                   step="5"
-                  value={restTime}
+                  value={restTime === 0 ? '' : restTime}
+                  placeholder="0"
+                  onFocus={(e) => e.target.select()}
                   onChange={(e) => setRestTime(Math.max(0, parseInt(e.target.value) || 0))}
                   title="Editar segundos de descanso"
-                  className="w-14 rounded border border-border/60 bg-background/80 px-1 py-0.5 text-center font-mono text-xs text-foreground focus:border-primary"
+                  className="w-14 rounded border border-primary/40 bg-background/90 px-1 py-0.5 text-center font-mono text-xs font-bold text-foreground focus:border-primary"
                 />
                 <span className="text-[10px] text-muted-foreground font-sans">s</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 pl-1 shrink-0">
+            <div className="flex items-center gap-1 shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-8 text-foreground"
+                className="size-8 text-foreground hover:bg-primary/20"
                 onClick={() => setTimerActive(!timerActive)}
               >
-                {timerActive ? <Pause size={15} /> : <Play size={15} />}
+                {timerActive ? <Pause size={16} /> : <Play size={16} className="text-primary" />}
               </Button>
               <Button
                 variant="ghost"
@@ -1544,49 +1646,46 @@ function TreinosPage() {
                   setTimerActive(false);
                 }}
               >
-                <RotateCcw size={14} />
+                <RotateCcw size={15} />
               </Button>
             </div>
           </div>
 
           {/* Controles Dinâmicos de Ajuste de Tempo */}
-          <div className="flex flex-wrap items-center gap-1 pt-1 border-t border-border/40 text-[10px]">
-            <button
-              onClick={() => setRestTime((prev) => Math.max(5, prev - 30))}
-              className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              -30s
-            </button>
-            <button
-              onClick={() => setRestTime((prev) => prev + 30)}
-              className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              +30s
-            </button>
-            <button
-              onClick={() => { setRestTime(60); setTimerActive(true); }}
-              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 60 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
-            >
-              60s
-            </button>
-            <button
-              onClick={() => { setRestTime(90); setTimerActive(true); }}
-              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 90 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
-            >
-              90s
-            </button>
-            <button
-              onClick={() => { setRestTime(120); setTimerActive(true); }}
-              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 120 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
-            >
-              120s
-            </button>
-            <button
-              onClick={() => { setRestTime(180); setTimerActive(true); }}
-              className={`rounded px-1.5 py-0.5 font-mono ${restTime === 180 ? 'bg-primary text-primary-foreground font-bold' : 'bg-muted/60 text-muted-foreground hover:bg-muted'}`}
-            >
-              180s
-            </button>
+          <div className="flex flex-wrap items-center justify-between gap-1 pt-2 border-t border-border/50 text-[10px]">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setRestTime((prev) => Math.max(5, prev - 30))}
+                className="rounded bg-muted/80 px-2 py-1 font-mono font-bold text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                -30s
+              </button>
+              <button
+                type="button"
+                onClick={() => setRestTime((prev) => prev + 30)}
+                className="rounded bg-muted/80 px-2 py-1 font-mono font-bold text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              >
+                +30s
+              </button>
+            </div>
+
+            <div className="flex items-center gap-1">
+              {[45, 60, 90, 120, 180].map((sec) => (
+                <button
+                  key={sec}
+                  type="button"
+                  onClick={() => { setRestTime(sec); setTimerActive(true); }}
+                  className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold cursor-pointer transition-all ${
+                    restTime === sec 
+                      ? 'bg-primary text-primary-foreground font-black shadow-sm' 
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
