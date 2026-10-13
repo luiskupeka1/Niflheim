@@ -14,7 +14,486 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cardio_logs: {
+        Row: {
+          day: string
+          details: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          details?: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          details?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cardio_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_nutrition: {
+        Row: {
+          day: string
+          details: Json
+          food_id: string | null
+          id: string
+          meal: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          details?: Json
+          food_id?: string | null
+          id?: string
+          meal: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          details?: Json
+          food_id?: string | null
+          id?: string
+          meal?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_nutrition_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_nutrition_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exercises: {
+        Row: {
+          description: string
+          equipment: string
+          id: string
+          muscle: string
+          name: string
+          user_id: string | null
+          video_url: string | null
+        }
+        Insert: {
+          description?: string
+          equipment: string
+          id?: string
+          muscle: string
+          name: string
+          user_id?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          description?: string
+          equipment?: string
+          id?: string
+          muscle?: string
+          name?: string
+          user_id?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exercises_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fatigue_logs: {
+        Row: {
+          day: string
+          details: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          details?: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          details?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fatigue_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      foods: {
+        Row: {
+          carbs: number
+          fat: number
+          fiber: number
+          id: string
+          kcal: number
+          name: string
+          portion: string
+          protein: number
+          user_id: string | null
+          verified: boolean
+        }
+        Insert: {
+          carbs: number
+          fat: number
+          fiber?: number
+          id?: string
+          kcal: number
+          name: string
+          portion?: string
+          protein: number
+          user_id?: string | null
+          verified?: boolean
+        }
+        Update: {
+          carbs?: number
+          fat?: number
+          fiber?: number
+          id?: string
+          kcal?: number
+          name?: string
+          portion?: string
+          protein?: number
+          user_id?: string | null
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "foods_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habit_completions: {
+        Row: {
+          day: string
+          habit_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          habit_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          habit_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_completions_habit_id_user_id_fkey"
+            columns: ["habit_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "habit_completions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          details: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          details?: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          details?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes_blocks: {
+        Row: {
+          details: Json
+          id: string
+          page_id: string
+          user_id: string
+        }
+        Insert: {
+          details?: Json
+          id?: string
+          page_id: string
+          user_id: string
+        }
+        Update: {
+          details?: Json
+          id?: string
+          page_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_blocks_page_id_user_id_fkey"
+            columns: ["page_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "notes_pages"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "notes_blocks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notes_pages: {
+        Row: {
+          details: Json
+          id: string
+          parent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          details?: Json
+          id?: string
+          parent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          details?: Json
+          id?: string
+          parent_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_pages_parent_id_user_id_fkey"
+            columns: ["parent_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "notes_pages"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "notes_pages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          activity: number | null
+          age: number | null
+          body_fat: number | null
+          calorie_target: number | null
+          carb_target: number | null
+          fat_target: number | null
+          goal: string | null
+          height: number | null
+          id: string
+          name: string
+          onboarded: boolean
+          phone: string
+          protein_target: number | null
+          sex: string | null
+          weight: number | null
+        }
+        Insert: {
+          activity?: number | null
+          age?: number | null
+          body_fat?: number | null
+          calorie_target?: number | null
+          carb_target?: number | null
+          fat_target?: number | null
+          goal?: string | null
+          height?: number | null
+          id: string
+          name?: string
+          onboarded?: boolean
+          phone?: string
+          protein_target?: number | null
+          sex?: string | null
+          weight?: number | null
+        }
+        Update: {
+          activity?: number | null
+          age?: number | null
+          body_fat?: number | null
+          calorie_target?: number | null
+          carb_target?: number | null
+          fat_target?: number | null
+          goal?: string | null
+          height?: number | null
+          id?: string
+          name?: string
+          onboarded?: boolean
+          phone?: string
+          protein_target?: number | null
+          sex?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
+      workout_sets: {
+        Row: {
+          details: Json
+          exercise_id: string | null
+          id: string
+          user_id: string
+          workout_id: string
+        }
+        Insert: {
+          details?: Json
+          exercise_id?: string | null
+          id?: string
+          user_id: string
+          workout_id: string
+        }
+        Update: {
+          details?: Json
+          exercise_id?: string | null
+          id?: string
+          user_id?: string
+          workout_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_sets_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: false
+            referencedRelation: "exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workout_sets_workout_id_user_id_fkey"
+            columns: ["workout_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "workouts"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      workouts: {
+        Row: {
+          day: string
+          details: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          details?: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          details?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workouts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xp_events: {
+        Row: {
+          day: string
+          id: string
+          points: number
+          source: string
+          user_id: string
+        }
+        Insert: {
+          day: string
+          id?: string
+          points: number
+          source: string
+          user_id: string
+        }
+        Update: {
+          day?: string
+          id?: string
+          points?: number
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xp_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
