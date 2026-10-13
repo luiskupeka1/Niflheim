@@ -1,0 +1,9 @@
+import type { ReactNode } from 'react';
+import { X,ArrowUpRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog,DialogContent,DialogTitle,DialogDescription } from '@/components/ui/dialog';
+export function PageTitle({eyebrow,title,description,action}:{eyebrow:string;title:string;description:string;action?:ReactNode}){return <div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="mb-3 text-[10px] font-semibold uppercase text-primary">{eyebrow}</p><h1 className="text-3xl font-bold md:text-4xl">{title}</h1><p className="mt-3 text-sm text-muted-foreground">{description}</p></div>{action}</div>;}
+export function SectionHeading({title,action}:{title:string;action?:ReactNode}){return <div className="mb-4 flex items-center justify-between"><h2 className="text-base font-bold">{title}</h2>{action}</div>;}
+export function Modal({open,onClose,title,description,children}:{open:boolean;onClose:()=>void;title:string;description?:string;children:ReactNode}){return <Dialog open={open} onOpenChange={v=>!v&&onClose()}><DialogContent className="max-h-[85vh] overflow-y-auto border-border bg-card sm:max-w-lg"><DialogTitle className="font-display text-xl">{title}</DialogTitle><DialogDescription>{description??'Seus registros, do seu jeito.'}</DialogDescription>{children}</DialogContent></Dialog>;}
+export function Empty({children}:{children:ReactNode}){return <div className="py-10 text-center text-sm text-muted-foreground">{children}</div>;}
+export function ArrowLink({children}:{children:ReactNode}){return <span className="flex items-center gap-1 text-xs text-muted-foreground">{children}<ArrowUpRight size={13}/></span>;}

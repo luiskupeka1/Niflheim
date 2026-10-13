@@ -1,0 +1,6 @@
+export type Profile = { id: string; name: string; phone: string; age: number | null; sex: string | null; height: number | null; weight: number | null; body_fat: number | null; goal: string | null; activity: number | null; calorie_target: number | null; protein_target: number | null; carb_target: number | null; fat_target: number | null; onboarded: boolean };
+export type Food = { id: string; name: string; portion: string; kcal: number; protein: number; carbs: number; fat: number; fiber: number; verified: boolean };
+export type Exercise = { id: string; name: string; muscle: string; equipment: string; description: string; video_url: string | null };
+export type Entry = { id: string; day?: string; meal?: string; food_id?: string | null; workout_id?: string; exercise_id?: string | null; page_id?: string; parent_id?: string | null; habit_id?: string; source?: string; points?: number; details: Record<string, any> };
+export type Snapshot = { profile: Profile | null; nutrition: Entry[]; cardio: Entry[]; workouts: Entry[]; sets: Entry[]; fatigue: Entry[]; habits: Entry[]; completions: Entry[]; pages: Entry[]; blocks: Entry[]; xp: Entry[] };
+export const emptySnapshot: Snapshot = { profile: null, nutrition: [], cardio: [], workouts: [], sets: [], fatigue: [], habits: [], completions: [], pages: [], blocks: [], xp: [] };
