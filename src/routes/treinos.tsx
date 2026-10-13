@@ -26,7 +26,10 @@ import {
   Info,
   Calendar,
   Save,
-  FileText
+  FileText,
+  HelpCircle,
+  FolderPlus,
+  Edit2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLifestyle } from '@/components/lifestyle-provider';
@@ -47,9 +50,9 @@ import { checkMrvDeload, type FatigueLogItem } from '@/lib/checkMrvDeload';
 
 export const Route = createFileRoute('/treinos')({
   head: () => ({
-  meta: [
+    meta: [
       { title: 'NIFLHEIM — Treinos & Hipertrofia Avançada' },
-      { name: 'description', content: 'Montagem de sessões diárias baseadas na ciência, séries avançadas (Myo-Reps, Drop-Sets, Clusters, Supersets) e controle de MEV/MRV.' },
+      { name: 'description', content: 'Montagem de sessões diárias baseadas na ciência, divisões ABC/PPL personalizáveis, séries preparatórias e de trabalho separadas, e controle de MEV/MRV.' },
     ],
   }),
   component: TreinosPage,
@@ -65,6 +68,25 @@ export interface ExerciseItem {
   description?: string;
   isSupersetWithNext?: boolean;
   sets: AdvancedSetRowData[];
+}
+
+export interface WorkoutTemplateItem {
+  id: string;
+  title: string;
+  category: BiomechanicalCategory;
+  description: string;
+  exercises: {
+    exerciseId: string;
+    isSupersetWithNext?: boolean;
+    sets: AdvancedSetRowData[];
+  }[];
+}
+
+export interface WorkoutSplit {
+  id: string;
+  name: string; // Ex: "PPL (Push/Pull/Legs)", "ABC Tradicional", "Upper/Lower"
+  description: string;
+  workouts: WorkoutTemplateItem[];
 }
 
 const EXERCISE_LIBRARY: Omit<ExerciseItem, 'sets'>[] = [
@@ -95,115 +117,265 @@ const EXERCISE_LIBRARY: Omit<ExerciseItem, 'sets'>[] = [
   { id: 'ex-20', name: 'Gêmeos Sentado', muscle: 'Panturrilhas', category: 'Legs', equipment: 'Máquina', video_url: 'https://www.youtube.com/watch?v=JbyjNymZOt0', description: 'Foco no músculo sóleo, pausa de 2 segundos no ponto de máximo alongamento.' },
 ];
 
-// Templates Biomecânicos Científicos PPL / Upper / Lower
-const WORKOUT_TEMPLATES = [
+// Divisões Científicas Pré-configuradas (PPL, ABC, Upper/Lower)
+const DEFAULT_SPLITS: WorkoutSplit[] = [
   {
-    id: 'push-a',
-    title: 'Push A — Hipertrofia & Força',
-    category: 'Push' as BiomechanicalCategory,
-    description: 'Peito, Deltóide Anterior/Medial e Tríceps com Myo-Reps e Drop-Sets',
-    exercises: [
+    id: 'split-ppl',
+    name: 'PPL (Push / Pull / Legs)',
+    description: 'Divisão biomecânica por padrão de movimento (Empurrar, Puxar, Pernas)',
+    workouts: [
       {
-        exerciseId: 'ex-1', // Supino Reto
-        sets: [
-          { id: 's1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 40, reps: 12, rir: 4, previousWeight: 40, previousReps: 12, completed: false },
-          { id: 's2', setNumber: 2, baseType: 'FEEDER', technique: 'NONE', weight: 70, reps: 3, rir: 3, previousWeight: 70, previousReps: 3, completed: false },
-          { id: 's3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 85, reps: 8, rir: 2, previousWeight: 82.5, previousReps: 8, completed: false },
-          { id: 's4', setNumber: 4, baseType: 'BACKOFF', technique: 'NONE', weight: 75, reps: 10, rir: 1, previousWeight: 75, previousReps: 10, completed: false },
-        ] as AdvancedSetRowData[],
+        id: 'ppl-push',
+        title: 'Push A — Hipertrofia & Força',
+        category: 'Push',
+        description: 'Peito, Deltóide Anterior/Medial e Tríceps com Myo-Reps e Drop-Sets',
+        exercises: [
+          {
+            exerciseId: 'ex-1', // Supino Reto
+            sets: [
+              { id: 's1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 40, reps: 12, rir: 4, previousWeight: 40, previousReps: 12, completed: false },
+              { id: 's2', setNumber: 2, baseType: 'FEEDER', technique: 'NONE', weight: 70, reps: 3, rir: 3, previousWeight: 70, previousReps: 3, completed: false },
+              { id: 's3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 85, reps: 8, rir: 2, previousWeight: 82.5, previousReps: 8, completed: false },
+              { id: 's4', setNumber: 4, baseType: 'BACKOFF', technique: 'NONE', weight: 75, reps: 10, rir: 1, previousWeight: 75, previousReps: 10, completed: false },
+            ],
+          },
+          {
+            exerciseId: 'ex-2', // Supino Inclinado
+            sets: [
+              { id: 's5', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 28, reps: 10, rir: 2, previousWeight: 26, previousReps: 10, completed: false },
+              { id: 's6', setNumber: 2, baseType: 'WORKING', technique: 'DROP_SET', weight: 30, reps: 8, rir: 0, previousWeight: 28, previousReps: 8, completed: false, dropSets: [{ id: 'ds1', weight: 22, reps: 6, completed: false }] },
+            ],
+          },
+          {
+            exerciseId: 'ex-5', // Elevação Lateral
+            isSupersetWithNext: true,
+            sets: [
+              { id: 's7', setNumber: 1, baseType: 'WORKING', technique: 'MYO_REPS', weight: 12, reps: 15, rir: 0, previousWeight: 12, previousReps: 14, completed: false, myoMicroSets: [{ id: 'm1', reps: 4, completed: false }, { id: 'm2', reps: 4, completed: false }, { id: 'm3', reps: 3, completed: false }] },
+            ],
+          },
+          {
+            exerciseId: 'ex-6', // Tríceps Polia
+            sets: [
+              { id: 's8', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 35, reps: 12, rir: 1, previousWeight: 35, previousReps: 10, completed: false },
+              { id: 's9', setNumber: 2, baseType: 'WORKING', technique: 'CLUSTER_SET', weight: 40, reps: 6, rir: 0, previousWeight: 37.5, previousReps: 6, completed: false },
+            ],
+          },
+        ],
       },
       {
-        exerciseId: 'ex-2', // Supino Inclinado
-        sets: [
-          { id: 's5', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 28, reps: 10, rir: 2, previousWeight: 26, previousReps: 10, completed: false },
-          { id: 's6', setNumber: 2, baseType: 'WORKING', technique: 'DROP_SET', weight: 30, reps: 8, rir: 0, previousWeight: 28, previousReps: 8, completed: false, dropSets: [{ id: 'ds1', weight: 22, reps: 6, completed: false }] },
-        ] as AdvancedSetRowData[],
+        id: 'ppl-pull',
+        title: 'Pull A — Densidade Dorsal & Bíceps',
+        category: 'Pull',
+        description: 'Costas, Deltóide Posterior e Bíceps com alta intensidade mecânica',
+        exercises: [
+          {
+            exerciseId: 'ex-9', // Remada Curvada
+            sets: [
+              { id: 'p1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 40, reps: 10, rir: 4, previousWeight: 40, previousReps: 10, completed: false },
+              { id: 'p2', setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 75, reps: 8, rir: 2, previousWeight: 72.5, previousReps: 8, completed: false },
+              { id: 'p3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 80, reps: 6, rir: 1, previousWeight: 77.5, previousReps: 6, completed: false },
+            ],
+          },
+          {
+            exerciseId: 'ex-8', // Puxada Frontal
+            sets: [
+              { id: 'p4', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 60, reps: 10, rir: 2, previousWeight: 60, previousReps: 9, completed: false },
+              { id: 'p5', setNumber: 2, baseType: 'WORKING', technique: 'DROP_SET', weight: 65, reps: 8, rir: 0, previousWeight: 62.5, previousReps: 8, completed: false, dropSets: [{ id: 'ds2', weight: 45, reps: 6, completed: false }] },
+            ],
+          },
+          {
+            exerciseId: 'ex-12', // Rosca Direta Barra W
+            sets: [
+              { id: 'p6', setNumber: 1, baseType: 'WORKING', technique: 'MYO_REPS', weight: 15, reps: 14, rir: 0, previousWeight: 14, previousReps: 12, completed: false, myoMicroSets: [{ id: 'mb1', reps: 4, completed: false }, { id: 'mb2', reps: 3, completed: false }] },
+            ],
+          },
+        ],
       },
       {
-        exerciseId: 'ex-5', // Elevação Lateral
-        isSupersetWithNext: true,
-        sets: [
-          { id: 's7', setNumber: 1, baseType: 'WORKING', technique: 'MYO_REPS', weight: 12, reps: 15, rir: 0, previousWeight: 12, previousReps: 14, completed: false, myoMicroSets: [{ id: 'm1', reps: 4, completed: false }, { id: 'm2', reps: 4, completed: false }, { id: 'm3', reps: 3, completed: false }] },
-        ] as AdvancedSetRowData[],
-      },
-      {
-        exerciseId: 'ex-6', // Tríceps Polia (Superset com Elevação)
-        sets: [
-          { id: 's8', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 35, reps: 12, rir: 1, previousWeight: 35, previousReps: 10, completed: false },
-          { id: 's9', setNumber: 2, baseType: 'WORKING', technique: 'CLUSTER_SET', weight: 40, reps: 6, rir: 0, previousWeight: 37.5, previousReps: 6, completed: false },
-        ] as AdvancedSetRowData[],
+        id: 'ppl-legs',
+        title: 'Legs A — Quadríceps & Isquiotibiais',
+        category: 'Legs',
+        description: 'Agachamento, Leg Press e técnicas avançadas para membros inferiores',
+        exercises: [
+          {
+            exerciseId: 'ex-14', // Agachamento Livre
+            sets: [
+              { id: 'l1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 50, reps: 10, rir: 4, previousWeight: 50, previousReps: 10, completed: false },
+              { id: 'l2', setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 95, reps: 8, rir: 2, previousWeight: 90, previousReps: 8, completed: false },
+              { id: 'l3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 100, reps: 6, rir: 1, previousWeight: 95, previousReps: 6, completed: false },
+            ],
+          },
+          {
+            exerciseId: 'ex-16', // Cadeira Extensora
+            sets: [
+              { id: 'l4', setNumber: 1, baseType: 'WORKING', technique: 'MYO_REPS', weight: 50, reps: 15, rir: 0, previousWeight: 45, previousReps: 15, completed: false, myoMicroSets: [{ id: 'lm1', reps: 5, completed: false }, { id: 'lm2', reps: 4, completed: false }] },
+            ],
+          },
+          {
+            exerciseId: 'ex-17', // Mesa Flexora
+            sets: [
+              { id: 'l5', setNumber: 1, baseType: 'WORKING', technique: 'DROP_SET', weight: 45, reps: 10, rir: 0, previousWeight: 42.5, previousReps: 10, completed: false, dropSets: [{ id: 'ld1', weight: 30, reps: 8, completed: false }] },
+            ],
+          },
+        ],
       },
     ],
   },
   {
-    id: 'pull-a',
-    title: 'Pull A — Densidade Dorsal & Bíceps',
-    category: 'Pull' as BiomechanicalCategory,
-    description: 'Costas, Deltóide Posterior e Bíceps com alta intensidade mecânica',
-    exercises: [
+    id: 'split-abc',
+    name: 'ABC Tradicional',
+    description: 'Divisão clássica por grupamentos musculares sinérgicos',
+    workouts: [
       {
-        exerciseId: 'ex-9', // Remada Curvada
-        sets: [
-          { id: 'p1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 40, reps: 10, rir: 4, previousWeight: 40, previousReps: 10, completed: false },
-          { id: 'p2', setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 75, reps: 8, rir: 2, previousWeight: 72.5, previousReps: 8, completed: false },
-          { id: 'p3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 80, reps: 6, rir: 1, previousWeight: 77.5, previousReps: 6, completed: false },
-        ] as AdvancedSetRowData[],
+        id: 'abc-a',
+        title: 'Treino A — Peito & Tríceps',
+        category: 'Push',
+        description: 'Foco em força no peitoral e sobrecarga mecânica de tríceps',
+        exercises: [
+          {
+            exerciseId: 'ex-1',
+            sets: [
+              { id: 'a1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 40, reps: 12, rir: 4, completed: false },
+              { id: 'a2', setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 80, reps: 8, rir: 2, completed: false },
+              { id: 'a3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 80, reps: 8, rir: 1, completed: false },
+            ],
+          },
+          {
+            exerciseId: 'ex-6',
+            sets: [
+              { id: 'a4', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 35, reps: 10, rir: 2, completed: false },
+              { id: 'a5', setNumber: 2, baseType: 'WORKING', technique: 'MYO_REPS', weight: 35, reps: 12, rir: 0, completed: false, myoMicroSets: [{ id: 'am1', reps: 4, completed: false }, { id: 'am2', reps: 3, completed: false }] },
+            ],
+          },
+        ],
       },
       {
-        exerciseId: 'ex-8', // Puxada Frontal
-        sets: [
-          { id: 'p4', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 60, reps: 10, rir: 2, previousWeight: 60, previousReps: 9, completed: false },
-          { id: 'p5', setNumber: 2, baseType: 'WORKING', technique: 'DROP_SET', weight: 65, reps: 8, rir: 0, previousWeight: 62.5, previousReps: 8, completed: false, dropSets: [{ id: 'ds2', weight: 45, reps: 6, completed: false }] },
-        ] as AdvancedSetRowData[],
+        id: 'abc-b',
+        title: 'Treino B — Costas & Bíceps',
+        category: 'Pull',
+        description: 'Desenvolvimento de largura e espessura dorsal com isolamento de bíceps',
+        exercises: [
+          {
+            exerciseId: 'ex-8',
+            sets: [
+              { id: 'b1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 40, reps: 12, rir: 4, completed: false },
+              { id: 'b2', setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 65, reps: 10, rir: 2, completed: false },
+              { id: 'b3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 65, reps: 8, rir: 1, completed: false },
+            ],
+          },
+          {
+            exerciseId: 'ex-12',
+            sets: [
+              { id: 'b4', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 16, reps: 10, rir: 1, completed: false },
+              { id: 'b5', setNumber: 2, baseType: 'WORKING', technique: 'DROP_SET', weight: 16, reps: 8, rir: 0, completed: false, dropSets: [{ id: 'bd1', weight: 10, reps: 6, completed: false }] },
+            ],
+          },
+        ],
       },
       {
-        exerciseId: 'ex-12', // Rosca Direta Barra W
-        sets: [
-          { id: 'p6', setNumber: 1, baseType: 'WORKING', technique: 'MYO_REPS', weight: 15, reps: 14, rir: 0, previousWeight: 14, previousReps: 12, completed: false, myoMicroSets: [{ id: 'mb1', reps: 4, completed: false }, { id: 'mb2', reps: 3, completed: false }] },
-        ] as AdvancedSetRowData[],
+        id: 'abc-c',
+        title: 'Treino C — Pernas & Ombros',
+        category: 'Legs',
+        description: 'Membros inferiores completos e deltoides com ênfase medial/posterior',
+        exercises: [
+          {
+            exerciseId: 'ex-14',
+            sets: [
+              { id: 'c1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 50, reps: 10, rir: 4, completed: false },
+              { id: 'c2', setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 90, reps: 8, rir: 2, completed: false },
+            ],
+          },
+          {
+            exerciseId: 'ex-5',
+            sets: [
+              { id: 'c3', setNumber: 1, baseType: 'WORKING', technique: 'MYO_REPS', weight: 12, reps: 15, rir: 0, completed: false, myoMicroSets: [{ id: 'cm1', reps: 4, completed: false }, { id: 'cm2', reps: 4, completed: false }] },
+            ],
+          },
+        ],
       },
     ],
   },
   {
-    id: 'legs-a',
-    title: 'Legs A — Quadríceps & Isquiotibiais',
-    category: 'Legs' as BiomechanicalCategory,
-    description: 'Agachamento, Leg Press e técnicas avançadas para hipertrofia de membros inferiores',
-    exercises: [
+    id: 'split-upper-lower',
+    name: 'Upper / Lower (Superiores / Inferiores)',
+    description: 'Divisão de alta frequência (4 dias na semana)',
+    workouts: [
       {
-        exerciseId: 'ex-14', // Agachamento Livre
-        sets: [
-          { id: 'l1', setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 50, reps: 10, rir: 4, previousWeight: 50, previousReps: 10, completed: false },
-          { id: 'l2', setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 95, reps: 8, rir: 2, previousWeight: 90, previousReps: 8, completed: false },
-          { id: 'l3', setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 100, reps: 6, rir: 1, previousWeight: 95, previousReps: 6, completed: false },
-        ] as AdvancedSetRowData[],
+        id: 'ul-upper-1',
+        title: 'Upper A — Força Superior',
+        category: 'Upper',
+        description: 'Trabalho pesado de empurrar e puxar na mesma sessão',
+        exercises: [
+          {
+            exerciseId: 'ex-1',
+            sets: [{ id: 'u1', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 85, reps: 6, rir: 2, completed: false }],
+          },
+          {
+            exerciseId: 'ex-9',
+            sets: [{ id: 'u2', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 80, reps: 6, rir: 2, completed: false }],
+          },
+        ],
       },
       {
-        exerciseId: 'ex-16', // Cadeira Extensora
-        sets: [
-          { id: 'l4', setNumber: 1, baseType: 'WORKING', technique: 'MYO_REPS', weight: 50, reps: 15, rir: 0, previousWeight: 45, previousReps: 15, completed: false, myoMicroSets: [{ id: 'lm1', reps: 5, completed: false }, { id: 'lm2', reps: 4, completed: false }] },
-        ] as AdvancedSetRowData[],
-      },
-      {
-        exerciseId: 'ex-17', // Mesa Flexora
-        sets: [
-          { id: 'l5', setNumber: 1, baseType: 'WORKING', technique: 'DROP_SET', weight: 45, reps: 10, rir: 0, previousWeight: 42.5, previousReps: 10, completed: false, dropSets: [{ id: 'ld1', weight: 30, reps: 8, completed: false }] },
-        ] as AdvancedSetRowData[],
+        id: 'ul-lower-1',
+        title: 'Lower A — Força Inferior',
+        category: 'Lower',
+        description: 'Agachamento pesado, stiff e panturrilha',
+        exercises: [
+          {
+            exerciseId: 'ex-14',
+            sets: [{ id: 'l10', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 100, reps: 6, rir: 2, completed: false }],
+          },
+          {
+            exerciseId: 'ex-18',
+            sets: [{ id: 'l11', setNumber: 1, baseType: 'WORKING', technique: 'NONE', weight: 80, reps: 8, rir: 2, completed: false }],
+          },
+        ],
       },
     ],
   },
 ];
 
+const LOCAL_STORAGE_SPLITS_KEY = 'niflheim_workout_splits_v2';
+
 function TreinosPage() {
   const { user, data, save, reward } = useLifestyle();
   const today = localDay();
 
-  // Sessão de Treino Diária
+  // Sistema de Rotinas & Divisões Carregadas (com localStorage)
+  const [splits, setSplits] = useState<WorkoutSplit[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_SPLITS_KEY);
+        if (stored) return JSON.parse(stored);
+      } catch (e) {
+        // fallback to default
+      }
+    }
+    return DEFAULT_SPLITS;
+  });
+
+  const [activeSplitId, setActiveSplitId] = useState<string>('split-ppl');
+  const activeSplit = useMemo(() => {
+    return splits.find((s) => s.id === activeSplitId) ?? splits[0] ?? DEFAULT_SPLITS[0];
+  }, [splits, activeSplitId]);
+
+  // Persistir splits quando alterados
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_SPLITS_KEY, JSON.stringify(splits));
+      } catch (e) {
+        // storage quota
+      }
+    }
+  }, [splits]);
+
+  // Sessão de Treino Diária Ativa
   const [sessionTitle, setSessionTitle] = useState('Push A — Hipertrofia & Força');
   const [sessionCategory, setSessionCategory] = useState<BiomechanicalCategory>('Push');
   const [exercises, setExercises] = useState<ExerciseItem[]>(() => {
-    // Inicializa com o template Push A
-    const tpl = WORKOUT_TEMPLATES[0];
+    const tpl = DEFAULT_SPLITS[0].workouts[0];
     return tpl.exercises.map((item) => {
       const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId)!;
       return {
@@ -213,6 +385,16 @@ function TreinosPage() {
       };
     });
   });
+
+  // Modal para Criar Nova Divisão (ex: ABC, ABCD, Custom)
+  const [isCreateSplitModalOpen, setIsCreateSplitModalOpen] = useState(false);
+  const [newSplitName, setNewSplitName] = useState('');
+  const [newSplitDescription, setNewSplitDescription] = useState('');
+
+  // Modal para Adicionar Novo Treino à Divisão Ativa
+  const [isAddWorkoutToSplitModalOpen, setIsAddWorkoutToSplitModalOpen] = useState(false);
+  const [newWorkoutTitle, setNewWorkoutTitle] = useState('');
+  const [newWorkoutCategory, setNewWorkoutCategory] = useState<BiomechanicalCategory>('Push');
 
   // Modal para Adicionar Exercício da Biblioteca
   const [isAddExerciseModalOpen, setIsAddExerciseModalOpen] = useState(false);
@@ -229,6 +411,9 @@ function TreinosPage() {
   const [restTime, setRestTime] = useState<number>(0);
   const [timerActive, setTimerActive] = useState<boolean>(false);
   const [lastRestTriggerSource, setLastRestTriggerSource] = useState<string>('Série Concluída');
+
+  // Explicação Científica Expandida de Volume
+  const [isVolumeGuideExpanded, setIsVolumeGuideExpanded] = useState(false);
 
   // Modal Pós-Treino (Questionário Imediato: PSE 1-10 + Duração)
   const [isFinishingWorkout, setIsFinishingWorkout] = useState(false);
@@ -292,7 +477,6 @@ function TreinosPage() {
   const mrvStatus = checkMrvDeload(fatigueLogs);
 
   // Volume Tracker Científico em Tempo Real
-  // Converte as séries atuais para SetVolumeData e calcula o MEV / MAV / MRV
   const sessionVolumeData: SetVolumeData[] = useMemo(() => {
     const list: SetVolumeData[] = [];
     exercises.forEach((ex) => {
@@ -328,7 +512,7 @@ function TreinosPage() {
     return weeklyVolumeAssessments.filter((a) => a.status === 'JUNK_VOLUME');
   }, [weeklyVolumeAssessments]);
 
-  // Tonelagem Total da Sessão (Carga x Reps de séries concluídas)
+  // Tonelagem Total da Sessão
   const totalSessionTonnage = useMemo(() => {
     let sum = 0;
     exercises.forEach((ex) => {
@@ -372,7 +556,8 @@ function TreinosPage() {
     );
   };
 
-  const handleAddSet = (exerciseId: string) => {
+  // Adicionar Série de Trabalho Efetiva
+  const handleAddWorkingSet = (exerciseId: string) => {
     setExercises((prev) =>
       prev.map((ex) => {
         if (ex.id !== exerciseId) return ex;
@@ -392,6 +577,32 @@ function TreinosPage() {
         return {
           ...ex,
           sets: [...ex.sets, newSet],
+        };
+      })
+    );
+  };
+
+  // Adicionar Série Preparatória (Aquecimento ou Feeder de Reconhecimento)
+  const handleAddPreparatorySet = (exerciseId: string, type: 'WARMUP' | 'FEEDER' = 'FEEDER') => {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+        const first = ex.sets[0];
+        const baseWeight = first?.weight ?? 40;
+        const newSet: AdvancedSetRowData = {
+          id: crypto.randomUUID(),
+          setNumber: 0,
+          baseType: type,
+          technique: 'NONE',
+          weight: type === 'WARMUP' ? Math.round(baseWeight * 0.5) : Math.round(baseWeight * 0.8),
+          reps: type === 'WARMUP' ? 12 : 3,
+          rir: 4,
+          completed: false,
+        };
+        // Insere as séries preparatórias no início da lista
+        return {
+          ...ex,
+          sets: [newSet, ...ex.sets],
         };
       })
     );
@@ -439,14 +650,19 @@ function TreinosPage() {
     });
   };
 
-  // Carregar Template Pré-configurado
-  const handleLoadTemplate = (tplId: string) => {
-    const tpl = WORKOUT_TEMPLATES.find((t) => t.id === tplId);
-    if (!tpl) return;
-    setSessionTitle(tpl.title);
-    setSessionCategory(tpl.category);
-    const loaded = tpl.exercises.map((item) => {
-      const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId)!;
+  // Carregar Treino Selecionado da Divisão
+  const handleLoadWorkout = (workout: WorkoutTemplateItem) => {
+    setSessionTitle(workout.title);
+    setSessionCategory(workout.category);
+    const loaded = workout.exercises.map((item) => {
+      const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId) ?? {
+        id: item.exerciseId,
+        name: 'Exercício Personalizado',
+        muscle: 'Peito' as MuscleGroup,
+        category: workout.category,
+        equipment: 'Livre',
+        description: '',
+      };
       return {
         ...lib,
         isSupersetWithNext: item.isSupersetWithNext ?? false,
@@ -454,6 +670,105 @@ function TreinosPage() {
       };
     });
     setExercises(loaded);
+  };
+
+  // Salvar a Sessão Atual dentro da Divisão Ativa
+  const handleSaveCurrentWorkoutToSplit = () => {
+    const updatedWorkout: WorkoutTemplateItem = {
+      id: crypto.randomUUID(),
+      title: sessionTitle,
+      category: sessionCategory,
+      description: `${exercises.length} exercícios configurados com séries científicas`,
+      exercises: exercises.map((e) => ({
+        exerciseId: e.id,
+        isSupersetWithNext: e.isSupersetWithNext,
+        sets: e.sets,
+      })),
+    };
+
+    setSplits((prev) =>
+      prev.map((s) => {
+        if (s.id !== activeSplit.id) return s;
+        // Se já existe um treino com o mesmo título, atualiza; senão adiciona
+        const existingIdx = s.workouts.findIndex((w) => w.title === sessionTitle);
+        const newWorkouts = [...s.workouts];
+        if (existingIdx >= 0) {
+          newWorkouts[existingIdx] = updatedWorkout;
+        } else {
+          newWorkouts.push(updatedWorkout);
+        }
+        return { ...s, workouts: newWorkouts };
+      })
+    );
+    reward(30);
+    alert(`Treino "${sessionTitle}" salvo com sucesso na divisão "${activeSplit.name}"!`);
+  };
+
+  // Excluir um Treino da Divisão Ativa
+  const handleDeleteWorkoutFromSplit = (workoutId: string) => {
+    if (activeSplit.workouts.length <= 1) {
+      alert('A divisão deve conter pelo menos um treino.');
+      return;
+    }
+    if (!confirm('Deseja realmente remover este treino da rotina?')) return;
+
+    setSplits((prev) =>
+      prev.map((s) => {
+        if (s.id !== activeSplit.id) return s;
+        return {
+          ...s,
+          workouts: s.workouts.filter((w) => w.id !== workoutId),
+        };
+      })
+    );
+  };
+
+  // Criar Nova Divisão Personalizada (ABC, ABCD, etc.)
+  const handleCreateSplit = () => {
+    if (!newSplitName.trim()) return;
+    const newSplit: WorkoutSplit = {
+      id: `split-${crypto.randomUUID()}`,
+      name: newSplitName.trim(),
+      description: newSplitDescription.trim() || 'Divisão personalizada de treinos',
+      workouts: [
+        {
+          id: crypto.randomUUID(),
+          title: `${newSplitName.trim()} — Treino A`,
+          category: 'Push',
+          description: 'Primeiro treino da sua divisão',
+          exercises: [
+            {
+              exerciseId: 'ex-1',
+              sets: [
+                { id: crypto.randomUUID(), setNumber: 1, baseType: 'WARMUP', technique: 'NONE', weight: 30, reps: 12, rir: 4, completed: false },
+                { id: crypto.randomUUID(), setNumber: 2, baseType: 'WORKING', technique: 'NONE', weight: 60, reps: 10, rir: 2, completed: false },
+                { id: crypto.randomUUID(), setNumber: 3, baseType: 'WORKING', technique: 'NONE', weight: 60, reps: 8, rir: 1, completed: false },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    setSplits((prev) => [...prev, newSplit]);
+    setActiveSplitId(newSplit.id);
+    handleLoadWorkout(newSplit.workouts[0]);
+    setNewSplitName('');
+    setNewSplitDescription('');
+    setIsCreateSplitModalOpen(false);
+  };
+
+  // Excluir Divisão Inteira
+  const handleDeleteSplit = (splitId: string) => {
+    if (splits.length <= 1) {
+      alert('Você não pode excluir a única divisão existente.');
+      return;
+    }
+    if (!confirm('Deseja realmente excluir esta divisão inteira?')) return;
+    const remaining = splits.filter((s) => s.id !== splitId);
+    setSplits(remaining);
+    setActiveSplitId(remaining[0].id);
+    handleLoadWorkout(remaining[0].workouts[0]);
   };
 
   // Adicionar exercício selecionado da biblioteca
@@ -554,7 +869,6 @@ function TreinosPage() {
     if (success) {
       reward(150);
       setIsFinishingWorkout(false);
-      // Marca as séries como completas ou reinicia
     }
   };
 
@@ -589,13 +903,13 @@ function TreinosPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-            Arquitetura Hipertrófica & Divisão Científica
+            Arquitetura Hipertrófica & Divisões Científicas
           </span>
           <h1 className="text-3xl font-extrabold md:text-4xl text-foreground">
             Sessão de Treino Diária<span className="text-primary">.</span>
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Monte exercícios, cargas, séries e técnicas avançadas (Myo-Reps, Drop-Sets, Clusters e Supersets) com controle de MEV/MRV.
+            Crie e alterne entre divisões (ABC, PPL, Upper/Lower), organize séries preparatórias e de trabalho com precisão e controle de MEV/MRV.
           </p>
         </div>
 
@@ -647,47 +961,133 @@ function TreinosPage() {
         </div>
       )}
 
-      {/* Seletor de Templates Biomecânicos Rápidos */}
-      <div className="rounded-xl border border-border bg-card/60 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <Layers size={14} className="text-primary" /> Carregar Divisão Biomecânica Rápida (PPL):
-          </span>
-          <div className="text-[11px] text-muted-foreground">
-            Total Tonelagem Levantada: <strong className="font-mono text-primary">{totalSessionTonnage.toLocaleString()} kg</strong>
+      {/* GESTOR DE ROTINAS & DIVISÕES (PPL, ABC, UPPER/LOWER, ETC.) */}
+      <div className="rounded-2xl border border-border bg-card/70 p-5 space-y-4 shadow-sm">
+        {/* Barra de Abas das Divisões */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mr-2">
+              <Layers size={15} className="text-primary" /> Divisões & Rotinas:
+            </span>
+            {splits.map((s) => (
+              <div key={s.id} className="flex items-center gap-1">
+                <button
+                  onClick={() => setActiveSplitId(s.id)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                    activeSplit.id === s.id
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'bg-muted/60 text-muted-foreground hover:bg-muted text-xs'
+                  }`}
+                >
+                  {s.name}
+                </button>
+                {splits.length > 1 && (
+                  <button
+                    onClick={() => handleDeleteSplit(s.id)}
+                    title="Excluir divisão"
+                    className="p-1 text-muted-foreground/60 hover:text-destructive rounded text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsCreateSplitModalOpen(true)}
+              className="text-xs flex items-center gap-1.5 border-dashed"
+            >
+              <FolderPlus size={13} className="text-primary" /> + Nova Divisão (ABC, ABCD...)
+            </Button>
           </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-3">
-          {WORKOUT_TEMPLATES.map((tpl) => (
-            <button
-              key={tpl.id}
-              onClick={() => handleLoadTemplate(tpl.id)}
-              className={`text-left rounded-lg border p-3 transition-all ${
-                sessionTitle === tpl.title
-                  ? 'border-primary bg-primary/10 shadow-sm'
-                  : 'border-border/60 bg-background/50 hover:border-primary/50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-foreground">{tpl.title}</span>
-                <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-extrabold text-primary uppercase">
-                  {tpl.category}
-                </span>
-              </div>
-              <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">
-                {tpl.description}
-              </p>
-            </button>
-          ))}
+        {/* Treinos da Divisão Ativa */}
+        <div>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <span className="text-[11px] font-bold text-muted-foreground">
+              Treinos programados em <strong>{activeSplit.name}</strong>:
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleSaveCurrentWorkoutToSplit}
+                className="text-[11px] h-7 text-primary hover:bg-primary/10 font-bold flex items-center gap-1"
+                title="Salvar alterações do treino atual nesta rotina"
+              >
+                <Save size={12} /> Salvar Treino na Rotina
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {activeSplit.workouts.map((w) => {
+              const isCurrent = sessionTitle === w.title;
+              return (
+                <div
+                  key={w.id}
+                  className={`relative rounded-xl border p-3.5 transition-all flex flex-col justify-between ${
+                    isCurrent
+                      ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary/40'
+                      : 'border-border/60 bg-background/60 hover:border-primary/40'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-extrabold text-xs text-foreground line-clamp-1">
+                        {w.title}
+                      </span>
+                      <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-black text-primary uppercase shrink-0">
+                        {w.category}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                      {w.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between">
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      {w.exercises.length} exercícios
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        onClick={() => handleLoadWorkout(w)}
+                        className={`text-[11px] h-6 px-2.5 font-bold ${
+                          isCurrent
+                            ? 'bg-primary text-primary-foreground pointer-events-none'
+                            : 'bg-secondary hover:bg-primary hover:text-primary-foreground'
+                        }`}
+                      >
+                        {isCurrent ? 'Em Andamento' : 'Carregar Treino'}
+                      </Button>
+                      <button
+                        onClick={() => handleDeleteWorkoutFromSplit(w.id)}
+                        className="p-1 text-muted-foreground/60 hover:text-destructive rounded"
+                        title="Remover treino desta rotina"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* Barra de Edição do Nome do Treino e Status da Sessão */}
+      {/* BARRA DE EDIÇÃO DO NOME DO TREINO E STATUS DA SESSÃO */}
       <div className="panel p-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex-1 min-w-[280px]">
           <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-            Nome da Sessão de Hoje
+            Nome do Treino de Hoje (Editável)
           </label>
           <input
             type="text"
@@ -704,12 +1104,12 @@ function TreinosPage() {
             <span className="font-bold text-foreground text-sm">{exercises.length}</span>
           </div>
           <div className="text-center">
-            <span className="text-[10px] uppercase text-muted-foreground block">Séries Concluídas</span>
+            <span className="text-[10px] uppercase text-muted-foreground block">Séries Feitas</span>
             <span className="font-bold text-primary text-sm">{completedSetsCount} / {totalSetsCount}</span>
           </div>
           <div className="text-center">
             <span className="text-[10px] uppercase text-muted-foreground block">Tonelagem</span>
-            <span className="font-bold text-primary text-sm">{totalSessionTonnage} kg</span>
+            <span className="font-bold text-primary text-sm">{totalSessionTonnage.toLocaleString()} kg</span>
           </div>
         </div>
 
@@ -724,11 +1124,31 @@ function TreinosPage() {
         </div>
       </div>
 
+      {/* GUIA RÁPIDO DE ESCALA RIR */}
+      <div className="rounded-xl border border-border/60 bg-card/40 p-3.5 flex items-start gap-3">
+        <Info size={18} className="text-primary shrink-0 mt-0.5" />
+        <div className="text-xs leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Como funciona a Escala RIR (Reps in Reserve):</strong>{' '}
+          RIR mede o esforço real por série, indicando quantas repetições você guardou antes de falhar.{' '}
+          <span className="text-primary font-bold">RIR 0</span> = foi até o limite absoluto (0 reps restantes);{' '}
+          <span className="text-foreground font-semibold">RIR 1</span> = parou 1 rep antes da falha;{' '}
+          <span className="text-foreground font-semibold">RIR 2</span> = parou 2 reps antes da falha (faixa recomendada para hipertrofia sem desgaste neural excessivo).
+        </div>
+      </div>
+
       {/* LISTA DE EXERCÍCIOS DA SESSÃO DIÁRIA */}
       <div className="space-y-6">
         {exercises.map((ex, exIndex) => {
           const isNextSuperset = ex.isSupersetWithNext;
           const isPartOfSuperset = (exIndex > 0 && exercises[exIndex - 1]?.isSupersetWithNext) || isNextSuperset;
+
+          // SEPARAÇÃO VISUAL: SÉRIES PREPARATÓRIAS vs SÉRIES DE TRABALHO
+          const preparatorySets = ex.sets.filter(
+            (s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER'
+          );
+          const workingSets = ex.sets.filter(
+            (s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF'
+          );
 
           return (
             <div key={ex.id} className="relative">
@@ -860,35 +1280,107 @@ function TreinosPage() {
                   </div>
                 )}
 
-                {/* Tabela de Séries com AdvancedSetRow */}
-                <div className="space-y-2.5">
-                  {ex.sets.map((set) => (
-                    <AdvancedSetRow
-                      key={set.id}
-                      data={set}
-                      onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
-                      onDelete={() => handleDeleteSet(ex.id, set.id)}
-                      onTriggerRestTimer={(seconds) =>
-                        triggerFloatingTimer(seconds, `${ex.name} - Série #${set.setNumber}`)
-                      }
-                    />
-                  ))}
-                </div>
+                <div className="space-y-4">
+                  {/* SEÇÃO 1: SÉRIES PREPARATÓRIAS (AQUECIMENTO / RECONHECIMENTO DE CARGA) */}
+                  <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                        <Clock size={13} className="text-amber-500" />
+                        Séries Preparatórias (Aquecimento & Feeder de Reconhecimento)
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        Peso 0 no MEV/MAV (não conta como série válida de hipertrofia)
+                      </span>
+                    </div>
 
-                {/* Botão Adicionar Série ao Exercício */}
-                <div className="mt-3.5 flex items-center justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAddSet(ex.id)}
-                    className="text-xs border-dashed flex items-center gap-1.5"
-                  >
-                    <Plus size={13} /> + Adicionar Série
-                  </Button>
+                    {preparatorySets.length > 0 ? (
+                      <div className="space-y-2">
+                        {preparatorySets.map((set) => (
+                          <AdvancedSetRow
+                            key={set.id}
+                            data={set}
+                            onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
+                            onDelete={() => handleDeleteSet(ex.id, set.id)}
+                            onTriggerRestTimer={(seconds) =>
+                              triggerFloatingTimer(seconds, `${ex.name} - Preparação`)
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground italic">
+                        Nenhuma série de aquecimento configurada para este exercício.
+                      </p>
+                    )}
 
-                  <span className="text-[11px] text-muted-foreground font-mono">
-                    {ex.sets.filter((s) => s.completed).length}/{ex.sets.length} concluídas
-                  </span>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleAddPreparatorySet(ex.id, 'WARMUP')}
+                        className="text-[10px] h-6 px-2 text-muted-foreground hover:text-foreground border border-dashed border-border/60"
+                      >
+                        + Aquecimento (W)
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleAddPreparatorySet(ex.id, 'FEEDER')}
+                        className="text-[10px] h-6 px-2 text-amber-500 hover:text-amber-400 border border-dashed border-amber-500/40"
+                      >
+                        + Feeder / Reconhecimento (F)
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* SEÇÃO 2: SÉRIES EFETIVAS DE TRABALHO (#1, #2, #3...) */}
+                  <div className="rounded-xl border border-primary/30 bg-card/60 p-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
+                        <Flame size={14} className="text-primary" />
+                        Séries de Trabalho Efetivas (#1, #2, #3...)
+                      </span>
+                      <span className="text-[10px] font-bold text-primary font-mono">
+                        Alimenta MEV/MAV, PR e Hipertrofia
+                      </span>
+                    </div>
+
+                    {workingSets.length > 0 ? (
+                      <div className="space-y-2">
+                        {workingSets.map((set, wIdx) => (
+                          <AdvancedSetRow
+                            key={set.id}
+                            data={set}
+                            workingIndex={wIdx + 1}
+                            onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
+                            onDelete={() => handleDeleteSet(ex.id, set.id)}
+                            onTriggerRestTimer={(seconds) =>
+                              triggerFloatingTimer(seconds, `${ex.name} - Série #${wIdx + 1}`)
+                            }
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground italic">
+                        Nenhuma série de trabalho adicionada. Adicione uma série abaixo para pontuar hipertrofia.
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddWorkingSet(ex.id)}
+                        className="text-xs border-dashed flex items-center gap-1.5 text-primary border-primary/40 hover:bg-primary/10"
+                      >
+                        <Plus size={13} /> + Adicionar Série de Trabalho (#{workingSets.length + 1})
+                      </Button>
+
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        {workingSets.filter((s) => s.completed).length}/{workingSets.length} séries de trabalho feitas
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -900,7 +1392,7 @@ function TreinosPage() {
             <Dumbbell size={36} className="mx-auto text-muted-foreground/60" />
             <h3 className="text-base font-bold text-foreground">Sua sessão diária está vazia</h3>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Escolha um dos templates pré-carregados acima (Push, Pull, Legs) ou adicione exercícios personalizados para montar seu treino.
+              Escolha um dos treinos na lista acima (PPL, ABC) ou adicione exercícios personalizados para montar seu treino.
             </p>
             <Button
               onClick={() => setIsAddExerciseModalOpen(true)}
@@ -912,20 +1404,71 @@ function TreinosPage() {
         )}
       </div>
 
-      {/* VOLUME TRACKER LANDMARKS (MEV, MAV, MRV) */}
-      <div className="panel p-6 space-y-4">
+      {/* CONTROLE CIENTÍFICO DE VOLUME (MEV, MAV, MRV) COM DESCRIÇÃO COMPLETA */}
+      <div className="panel p-6 space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
           <div>
             <SectionHeading title="Controle Científico de Volume (MEV, MAV, MRV)" />
             <p className="text-xs text-muted-foreground mt-1">
-              Myo-reps e Drop-sets são ponderados matematicamente para proteger sua recuperação semanal contra Junk Volume.
+              Monitore se o seu treino atinge o estímulo mínimo ou se está ultrapassando o limite biológico de recuperação.
             </p>
           </div>
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-            Base: Mike Israetel & Brad Schoenfeld
-          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsVolumeGuideExpanded(!isVolumeGuideExpanded)}
+            className="text-xs flex items-center gap-1.5"
+          >
+            <HelpCircle size={14} className="text-primary" />
+            {isVolumeGuideExpanded ? 'Ocultar Explicação Científica' : 'Como Ler Este Painel? (Explicação)'}
+          </Button>
         </div>
 
+        {/* DESCRIÇÃO DIDÁTICA E CIENTÍFICA (EXPANSÍVEL) */}
+        {isVolumeGuideExpanded && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3 text-xs leading-relaxed text-muted-foreground">
+            <h4 className="font-extrabold text-foreground text-sm flex items-center gap-1.5">
+              <Sparkles size={16} className="text-primary" />
+              Guia Prático dos Marcos de Volume (Dr. Mike Israetel & Brad Schoenfeld)
+            </h4>
+
+            <div className="grid gap-3 sm:grid-cols-3 pt-1">
+              <div className="rounded-lg border border-border bg-background/70 p-3 space-y-1">
+                <span className="font-bold text-foreground block text-[11px] uppercase">
+                  🟢 MEV (Volume Mínimo Efetivo)
+                </span>
+                <p className="text-[11px]">
+                  A menor quantidade de séries semanais que você precisa para sinalizar crescimento muscular. Abaixo do MEV, o músculo apenas se mantém.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-primary/40 bg-background/70 p-3 space-y-1">
+                <span className="font-bold text-primary block text-[11px] uppercase">
+                  🟡 MAV (Volume Máximo Adaptativo)
+                </span>
+                <p className="text-[11px]">
+                  A <strong>"Zona de Ouro"</strong>. O intervalo de séries onde seu corpo atinge a taxa máxima de hipertrofia com plena capacidade de recuperação.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-destructive/40 bg-background/70 p-3 space-y-1">
+                <span className="font-bold text-destructive block text-[11px] uppercase">
+                  🔴 MRV (Volume Máximo Recuperável)
+                </span>
+                <p className="text-[11px]">
+                  O teto biológico de recuperação. Passar do MRV gera <strong>Junk Volume (Volume Lixo)</strong>: fadiga extrema no sistema nervoso sem ganho de massa.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-background/50 p-2.5 text-[11px] mt-2">
+              <strong className="text-foreground">⚖️ Ponderação Matemática de Séries:</strong>{' '}
+              Série de Trabalho = 1.0 série • Myo-Reps = 1.75 séries • Drop-Set = 1.5 séries • Aquecimento / Feeder = 0 séries (para não inflar a conta).
+            </div>
+          </div>
+        )}
+
+        {/* CARDS DOS GRUPOS MUSCULARES */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {activeMusclesInSession.map((assessment) => {
             const { muscle, effectiveWorkingSets, landmarks, status, statusLabel } = assessment;
@@ -1018,6 +1561,59 @@ function TreinosPage() {
               }}
             >
               <RotateCcw size={14} />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CRIAR NOVA DIVISÃO (ABC, ABCD, ETC.) */}
+      {isCreateSplitModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+          <div className="panel max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <FolderPlus size={18} className="text-primary" /> Criar Nova Divisão de Treinos
+              </h3>
+              <button
+                onClick={() => setIsCreateSplitModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Nome da Divisão (Ex: ABCD Hipertrofia, ABC Clássico):
+              </label>
+              <input
+                type="text"
+                value={newSplitName}
+                onChange={(e) => setNewSplitName(e.target.value)}
+                placeholder="Ex: ABC Hipertrofia do Luis"
+                className="w-full rounded border border-border bg-background px-3 py-1.5 text-xs font-bold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Descrição ou Foco:
+              </label>
+              <input
+                type="text"
+                value={newSplitDescription}
+                onChange={(e) => setNewSplitDescription(e.target.value)}
+                placeholder="Ex: Treinos de 45-60 min com foco em braços e costas"
+                className="w-full rounded border border-border bg-background px-3 py-1.5 text-xs"
+              />
+            </div>
+
+            <Button
+              onClick={handleCreateSplit}
+              disabled={!newSplitName.trim()}
+              className="w-full bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs"
+            >
+              Criar Divisão & Começar a Montar
             </Button>
           </div>
         </div>

@@ -10,7 +10,8 @@ import {
   Trash2, 
   MoreVertical,
   Layers,
-  Zap
+  Zap,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -49,6 +50,7 @@ export interface AdvancedSetRowData {
 
 interface AdvancedSetRowProps {
   data: AdvancedSetRowData;
+  workingIndex?: number; // Índice real entre as séries de trabalho (ex: #1, #2...)
   onUpdate: (updated: AdvancedSetRowData) => void;
   onDelete: () => void;
   onTriggerRestTimer: (seconds: number) => void;
@@ -56,6 +58,7 @@ interface AdvancedSetRowProps {
 
 export function AdvancedSetRow({
   data,
+  workingIndex,
   onUpdate,
   onDelete,
   onTriggerRestTimer,
@@ -65,6 +68,8 @@ export function AdvancedSetRow({
   // Micro-temporizador para Myo-reps e Cluster sets (10 a 15 segundos)
   const [microTimer, setMicroTimer] = useState<number>(0);
   const [microTimerActive, setMicroTimerActive] = useState<boolean>(false);
+
+  const isPreparatory = data.baseType === 'WARMUP' || data.baseType === 'FEEDER';
 
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
@@ -95,7 +100,9 @@ export function AdvancedSetRow({
   // Cálculo da Tonelagem Total (Carga x Repetições)
   const currentTonnage = data.weight * data.reps;
   const previousTonnage = (data.previousWeight ?? 0) * (data.previousReps ?? 0);
+  // PR só faz sentido em séries de trabalho efetivas
   const isPrTonnage = 
+    !isPreparatory &&
     data.previousWeight !== undefined && 
     data.previousReps !== undefined && 
     currentTonnage > previousTonnage &&
@@ -109,6 +116,8 @@ export function AdvancedSetRow({
       // Dispara o timer apropriado
       if (data.technique === 'MYO_REPS' || data.technique === 'CLUSTER_SET') {
         startMicroRest(15);
+      } else if (isPreparatory) {
+        onTriggerRestTimer(45); // Descanso mais curto para aquecimento
       } else {
         onTriggerRestTimer(90);
       }
@@ -140,8 +149,8 @@ export function AdvancedSetRow({
       case 'WARMUP':
         return (
           <span 
-            title="Aquecimento (não conta para MEV)"
-            className="flex size-7 items-center justify-center rounded bg-muted font-mono text-xs font-bold text-muted-foreground"
+            title="Aquecimento Articular / Ativação (Não conta no MEV/MAV)"
+            className="flex size-7 items-center justify-center rounded bg-muted/80 border border-muted-foreground/30 font-mono text-[11px] font-black text-muted-foreground"
           >
             W
           </span>
@@ -149,8 +158,8 @@ export function AdvancedSetRow({
       case 'FEEDER':
         return (
           <span 
-            title="Preparatória / Feeder"
-            className="flex size-7 items-center justify-center rounded bg-primary/20 font-mono text-xs font-extrabold text-primary"
+            title="Preparatória / Feeder de Reconhecimento de Carga (1-3 reps de calibração neural)"
+            className="flex size-7 items-center justify-center rounded bg-amber-500/20 border border-amber-500/40 font-mono text-[11px] font-black text-amber-500"
           >
             F
           </span>
@@ -158,8 +167,8 @@ export function AdvancedSetRow({
       case 'BACKOFF':
         return (
           <span 
-            title="Back-off Set (-10% a -15% de carga)"
-            className="flex size-7 items-center justify-center rounded bg-chart-2/20 font-mono text-xs font-extrabold text-chart-2"
+            title="Back-off Set (-10% a -15% de carga para volume)"
+            className="flex size-7 items-center justify-center rounded bg-chart-2/20 border border-chart-2/40 font-mono text-[11px] font-black text-chart-2"
           >
             B
           </span>
@@ -168,10 +177,10 @@ export function AdvancedSetRow({
       default:
         return (
           <span 
-            title="Série de Trabalho Principal"
-            className="flex size-7 items-center justify-center rounded bg-primary font-mono text-xs font-black text-primary-foreground shadow"
+            title={`Série de Trabalho Efetiva #${workingIndex ?? data.setNumber}`}
+            className="flex size-7 items-center justify-center rounded bg-primary font-mono text-xs font-black text-primary-foreground shadow-sm"
           >
-            {data.setNumber}
+            {workingIndex !== undefined ? `#${workingIndex}` : `#${data.setNumber}`}
           </span>
         );
     }
@@ -180,9 +189,13 @@ export function AdvancedSetRow({
   return (
     <div 
       className={`rounded-xl border transition-all p-3 space-y-3 ${
-        data.completed 
-          ? 'border-primary/50 bg-primary/5' 
-          : 'border-border/60 bg-card/60 hover:border-border'
+        isPreparatory
+          ? data.completed
+            ? 'border-border/60 bg-muted/20 opacity-80'
+            : 'border-border/40 bg-card/40'
+          : data.completed 
+            ? 'border-primary/50 bg-primary/5' 
+            : 'border-border/70 bg-card/70 hover:border-border'
       }`}
     >
       {/* Linha Principal da Série */}
@@ -194,12 +207,16 @@ export function AdvancedSetRow({
           <select
             value={data.baseType}
             onChange={(e) => onUpdate({ ...data, baseType: e.target.value as BaseSetType })}
-            className="rounded border border-border bg-background px-2 py-1 text-[11px] font-semibold text-foreground focus:border-primary"
+            className={`rounded border px-2 py-1 text-[11px] font-bold focus:border-primary ${
+              isPreparatory
+                ? 'border-border/60 bg-background/80 text-muted-foreground'
+                : 'border-border bg-background text-foreground'
+            }`}
           >
-            <option value="WORKING">Trabalho</option>
-            <option value="WARMUP">Aquecimento (W)</option>
-            <option value="FEEDER">Feeder (F)</option>
-            <option value="BACKOFF">Back-off (B)</option>
+            <option value="WORKING">Trabalho (Valida p/ MEV)</option>
+            <option value="WARMUP">Aquecimento / Ativação (W)</option>
+            <option value="FEEDER">Feeder / Reconhecimento (F)</option>
+            <option value="BACKOFF">Back-off Set (B)</option>
           </select>
 
           {data.technique !== 'NONE' && (
@@ -220,7 +237,7 @@ export function AdvancedSetRow({
           </div>
 
           {/* Input Carga */}
-          <div className="relative">
+          <div className="relative text-center">
             <input
               type="number"
               step="0.5"
@@ -229,11 +246,11 @@ export function AdvancedSetRow({
               onChange={(e) => onUpdate({ ...data, weight: parseFloat(e.target.value) || 0 })}
               className="w-16 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary"
             />
-            <span className="text-[9px] text-muted-foreground block text-center">kg</span>
+            <span className="text-[9px] text-muted-foreground block">kg</span>
           </div>
 
           {/* Input Repetições */}
-          <div className="relative">
+          <div className="relative text-center">
             <input
               type="number"
               min="1"
@@ -241,24 +258,27 @@ export function AdvancedSetRow({
               onChange={(e) => onUpdate({ ...data, reps: parseInt(e.target.value) || 0 })}
               className="w-14 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary"
             />
-            <span className="text-[9px] text-muted-foreground block text-center">reps</span>
+            <span className="text-[9px] text-muted-foreground block">reps</span>
           </div>
 
-          {/* Input RIR (Reps in Reserve 0 a 5) */}
-          <div className="relative">
+          {/* Input RIR (Reps in Reserve: quantas repetições guardou antes da falha) */}
+          <div className="relative text-center">
             <select
               value={data.rir}
               onChange={(e) => onUpdate({ ...data, rir: parseInt(e.target.value) })}
-              className="rounded border border-border bg-background px-2 py-1 font-mono text-xs font-semibold text-foreground focus:border-primary"
+              className="rounded border border-border bg-background px-2 py-1 font-mono text-xs font-bold text-foreground focus:border-primary"
+              title="RIR (Reps in Reserve): Repetições que você guardou antes de atingir a falha concêntrica"
             >
-              <option value={0}>RIR 0 (Falha)</option>
-              <option value={1}>RIR 1</option>
-              <option value={2}>RIR 2</option>
-              <option value={3}>RIR 3</option>
-              <option value={4}>RIR 4</option>
-              <option value={5}>RIR 5+</option>
+              <option value={0}>0 reps (Falha / Limite)</option>
+              <option value={1}>1 rep antes da falha</option>
+              <option value={2}>2 reps antes da falha</option>
+              <option value={3}>3 reps antes da falha</option>
+              <option value={4}>4 reps antes da falha</option>
+              <option value={5}>5+ reps antes da falha</option>
             </select>
-            <span className="text-[9px] text-muted-foreground block text-center">reserva</span>
+            <span className="text-[9px] text-muted-foreground block" title="Reps in Reserve: reps que faltavam para falhar">
+              RIR (reserva)
+            </span>
           </div>
         </div>
 
@@ -281,7 +301,9 @@ export function AdvancedSetRow({
             onClick={handleToggleComplete}
             className={`inline-flex size-8 items-center justify-center rounded-lg border transition-all ${
               data.completed
-                ? 'border-primary bg-primary text-primary-foreground shadow-md'
+                ? isPreparatory
+                  ? 'border-muted-foreground bg-muted text-foreground'
+                  : 'border-primary bg-primary text-primary-foreground shadow-md'
                 : 'border-border bg-background text-muted-foreground hover:border-primary'
             }`}
           >
@@ -300,15 +322,15 @@ export function AdvancedSetRow({
             </Button>
 
             {showMenu && (
-              <div className="absolute right-0 top-8 z-50 w-44 rounded-lg border border-border bg-popover p-1.5 shadow-xl text-xs">
+              <div className="absolute right-0 top-8 z-50 w-48 rounded-lg border border-border bg-popover p-1.5 shadow-xl text-xs">
                 <span className="block px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase">
-                  Técnica Avançada
+                  Técnica de Intensidade
                 </span>
                 <button
                   onClick={() => handleSelectTechnique('NONE')}
                   className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-foreground"
                 >
-                  Normal
+                  Normal (Sem técnica)
                 </button>
                 <button
                   onClick={() => handleSelectTechnique('MYO_REPS')}
@@ -330,6 +352,13 @@ export function AdvancedSetRow({
                 >
                   Cluster Set
                   <Layers size={12} />
+                </button>
+                <button
+                  onClick={() => handleSelectTechnique('REST_PAUSE')}
+                  className="w-full text-left px-2 py-1.5 rounded hover:bg-muted text-foreground flex items-center justify-between"
+                >
+                  Rest-Pause
+                  <Clock size={12} />
                 </button>
                 <div className="my-1 border-t border-border" />
                 <button
