@@ -30,7 +30,10 @@ import {
   FolderPlus,
   Target,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  Edit3,
+  SlidersHorizontal,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLifestyle } from '@/components/lifestyle-provider';
@@ -395,6 +398,19 @@ function TreinosPage() {
   const [customTargetWeight, setCustomTargetWeight] = useState<number>(40);
   const [customTargetReps, setCustomTargetReps] = useState<number>(10);
 
+  // Agenda Semanal - Modais e Notificações
+  const [isWeeklyScheduleModalOpen, setIsWeeklyScheduleModalOpen] = useState(false);
+  const [scheduleFeedback, setScheduleFeedback] = useState<string | null>(null);
+  const [editingDayModalIndex, setEditingDayModalIndex] = useState<number | null>(null);
+  const [customDayWorkoutText, setCustomDayWorkoutText] = useState('');
+
+  const showScheduleToast = (msg: string) => {
+    setScheduleFeedback(msg);
+    setTimeout(() => {
+      setScheduleFeedback((cur) => (cur === msg ? null : cur));
+    }, 3500);
+  };
+
   // Vídeo retrátil
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
 
@@ -729,22 +745,99 @@ function TreinosPage() {
     setExercises(loaded);
   };
 
-  // Alterar associação da semana
+  // Alterar associação da semana com busca em todos os splits e sincronização imediata
   const handleUpdateScheduleDay = (dayIndex: number, workoutTitle: string) => {
+    let matchedWorkout: WorkoutTemplateItem | undefined;
+    for (const s of splits) {
+      const found = s.workouts.find((w) => w.title === workoutTitle);
+      if (found) {
+        matchedWorkout = found;
+        break;
+      }
+    }
+
     setWeeklySchedule((prev) => {
       const updated = [...prev];
-      updated[dayIndex] = { ...updated[dayIndex], workoutTitle };
+      updated[dayIndex] = {
+        ...updated[dayIndex],
+        workoutTitle,
+        workoutId: matchedWorkout?.id,
+      };
       return updated;
     });
+
+    const dayName = DAYS_OF_WEEK[dayIndex]?.full ?? `Dia ${dayIndex + 1}`;
+    showScheduleToast(`✓ ${dayName} definido para: ${workoutTitle}`);
+
+    // Se o dia alterado for o dia de HOJE ou o dia atualmente carregado na tela, carrega na sessão
+    const isToday = DAYS_OF_WEEK[dayIndex]?.dayIndex === todayDayIndex;
+    const isCurrentSession = sessionTitle === weeklySchedule[dayIndex]?.workoutTitle;
+    if (isToday || isCurrentSession) {
+      if (matchedWorkout) {
+        handleLoadWorkout(matchedWorkout);
+      } else {
+        setSessionTitle(workoutTitle);
+      }
+    }
   };
 
-  // Carregar treino a partir do dia da semana clicado
+  // Preencher toda a semana com base na rotina ativa (distribuição inteligente)
+  const handleApplySplitToWeek = () => {
+    if (!activeSplit.workouts.length) return;
+    const wList = activeSplit.workouts;
+    const newSchedule: WeeklyScheduleDay[] = DAYS_OF_WEEK.map((d, idx) => {
+      if (wList.length === 3) {
+        // PPL ou ABC de 3 treinos: Seg=W0, Ter=W1, Qua=W2, Qui=Descanso, Sex=W0, Sáb=W1, Dom=Descanso
+        const map3 = [wList[0], wList[1], wList[2], null, wList[0], wList[1], null];
+        const item = map3[idx];
+        return {
+          dayOfWeek: d.full,
+          shortDay: d.short,
+          workoutTitle: item ? item.title : 'Descanso / Recuperação',
+          workoutId: item?.id,
+        };
+      } else if (wList.length === 4) {
+        // 4 treinos: Seg=W0, Ter=W1, Qua=Descanso, Qui=W2, Sex=W3, Sáb=Descanso, Dom=Descanso
+        const map4 = [wList[0], wList[1], null, wList[2], wList[3], null, null];
+        const item = map4[idx];
+        return {
+          dayOfWeek: d.full,
+          shortDay: d.short,
+          workoutTitle: item ? item.title : 'Descanso / Recuperação',
+          workoutId: item?.id,
+        };
+      } else {
+        const item = wList[idx % wList.length];
+        return {
+          dayOfWeek: d.full,
+          shortDay: d.short,
+          workoutTitle: item ? item.title : 'Descanso / Recuperação',
+          workoutId: item?.id,
+        };
+      }
+    });
+
+    setWeeklySchedule(newSchedule);
+    showScheduleToast(`✓ Rotina "${activeSplit.name}" distribuída com sucesso nos 7 dias!`);
+  };
+
+  // Carregar treino a partir do dia da semana clicado (pesquisa em todas as rotinas)
   const handleSelectDay = (day: WeeklyScheduleDay) => {
-    const match = activeSplit.workouts.find((w) => w.title === day.workoutTitle);
+    let match: WorkoutTemplateItem | undefined;
+    for (const s of splits) {
+      const found = s.workouts.find((w) => (day.workoutId && w.id === day.workoutId) || w.title === day.workoutTitle);
+      if (found) {
+        match = found;
+        break;
+      }
+    }
+
     if (match) {
       handleLoadWorkout(match);
-    } else if (day.workoutTitle !== 'Descanso / Recuperação' && day.workoutTitle !== 'Descanso / Recuperação Ativa') {
+      showScheduleToast(`Treino "${match.title}" carregado para a sessão!`);
+    } else {
       setSessionTitle(day.workoutTitle);
+      showScheduleToast(`Dia "${day.dayOfWeek}" selecionado (${day.workoutTitle})`);
     }
   };
 
@@ -932,21 +1025,62 @@ function TreinosPage() {
       <div className="rounded-2xl border border-border bg-card/70 p-5 space-y-3 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
-            <Calendar size={16} className="text-primary" />
-            <span className="text-xs font-black uppercase tracking-wider text-foreground">
-              Divisão Semanal de Treinos (Segunda a Domingo):
-            </span>
+            <Calendar size={18} className="text-primary" />
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-foreground">
+                Divisão Semanal de Treinos (Segunda a Domingo)
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Toque no dia para treinar, selecione no menu ou clique em "Configurar Agenda".
+              </p>
+            </div>
           </div>
-          <span className="text-[11px] text-muted-foreground">
-            Clique no dia para carregar o treino ou selecione no dropdown
-          </span>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsWeeklyScheduleModalOpen(true)}
+              className="text-xs font-black gap-1.5 border-primary/50 text-primary hover:bg-primary/15 shadow-sm"
+            >
+              <SlidersHorizontal size={13} /> Configurar Agenda Completa
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleApplySplitToWeek}
+              className="text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              title={`Distribuir treinos da rotina ${activeSplit.name} de Seg a Dom`}
+            >
+              <Zap size={13} className="text-primary" /> Distribuir "{activeSplit.name}"
+            </Button>
+          </div>
         </div>
 
+        {/* Notificação de Atualização dos Dias */}
+        {scheduleFeedback && (
+          <div className="rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2 text-xs font-black text-primary flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <CheckCircle2 size={16} /> {scheduleFeedback}
+            </span>
+            <button 
+              onClick={() => setScheduleFeedback(null)}
+              className="text-muted-foreground hover:text-foreground text-xs font-black px-1"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* 7 Dias da Semana em Grade */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
           {weeklySchedule.map((day, idx) => {
             const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
             const isLoaded = sessionTitle === day.workoutTitle;
+            const isRestDay = day.workoutTitle.toLowerCase().includes('descanso');
+            
+            const isKnownOption = splits.some(s => s.workouts.some(w => w.title === day.workoutTitle)) ||
+              ['Descanso / Recuperação', 'Descanso / Recuperação Ativa', 'Cardio & Mobilidade', 'Treino Livre / Aeróbico'].includes(day.workoutTitle);
 
             return (
               <div
@@ -954,9 +1088,11 @@ function TreinosPage() {
                 onClick={() => handleSelectDay(day)}
                 className={`cursor-pointer rounded-xl border p-2.5 transition-all flex flex-col justify-between ${
                   isToday
-                    ? 'border-primary bg-primary/10 shadow-sm ring-1 ring-primary'
+                    ? 'border-primary bg-primary/15 shadow-sm ring-1 ring-primary'
                     : isLoaded
-                    ? 'border-primary/50 bg-card/90'
+                    ? 'border-primary/60 bg-card/95 shadow-xs'
+                    : isRestDay
+                    ? 'border-border/50 bg-background/30 hover:border-primary/30'
                     : 'border-border/60 bg-background/50 hover:border-primary/40'
                 }`}
               >
@@ -966,28 +1102,65 @@ function TreinosPage() {
                       {day.shortDay}
                     </span>
                     {isToday && (
-                      <span className="rounded bg-primary text-primary-foreground px-1 py-0.2 text-[8px] font-black uppercase animate-pulse">
+                      <span className="rounded bg-primary text-primary-foreground px-1.5 py-0.5 text-[8px] font-black uppercase animate-pulse">
                         HOJE
                       </span>
                     )}
+                    {isLoaded && !isToday && (
+                      <span className="rounded bg-muted text-muted-foreground px-1 py-0.2 text-[8px] font-bold uppercase">
+                        ATIVO
+                      </span>
+                    )}
                   </div>
-                  <h4 className="font-extrabold text-xs text-foreground mt-1 line-clamp-1" title={day.workoutTitle}>
+                  <h4 
+                    className={`font-black text-xs mt-1 line-clamp-1 ${isLoaded ? 'text-primary' : 'text-foreground'}`} 
+                    title={day.workoutTitle}
+                  >
                     {day.workoutTitle}
                   </h4>
                 </div>
 
-                <div className="mt-2 pt-1 border-t border-border/40">
+                <div className="mt-2.5 pt-1.5 border-t border-border/40 space-y-1">
                   <select
                     value={day.workoutTitle}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => handleUpdateScheduleDay(idx, e.target.value)}
-                    className="w-full rounded border border-border/60 bg-background px-1 py-0.5 text-[9px] font-bold text-muted-foreground focus:border-primary"
+                    className="w-full rounded-md border border-border/80 bg-card px-1.5 py-1 text-[10px] font-black text-foreground focus:border-primary focus:ring-1 focus:ring-primary truncate cursor-pointer shadow-inner"
                   >
-                    {activeSplit.workouts.map((w) => (
-                      <option key={w.id} value={w.title}>{w.title}</option>
+                    {!isKnownOption && (
+                      <option value={day.workoutTitle}>
+                        ★ {day.workoutTitle}
+                      </option>
+                    )}
+                    {splits.map((s) => (
+                      <optgroup key={s.id} label={`Rotina: ${s.name}`}>
+                        {s.workouts.map((w) => (
+                          <option key={w.id} value={w.title}>
+                            {w.title}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
-                    <option value="Descanso / Recuperação">Descanso</option>
+                    <optgroup label="Descanso & Outros">
+                      <option value="Descanso / Recuperação">Descanso / Recuperação</option>
+                      <option value="Descanso / Recuperação Ativa">Descanso / Recuperação Ativa</option>
+                      <option value="Cardio & Mobilidade">Cardio & Mobilidade</option>
+                      <option value="Treino Livre / Aeróbico">Treino Livre / Aeróbico</option>
+                    </optgroup>
                   </select>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingDayModalIndex(idx);
+                      setCustomDayWorkoutText(day.workoutTitle);
+                    }}
+                    title="Editar ou escrever nome personalizado para este dia"
+                    className="flex items-center justify-center gap-1 w-full rounded border border-border/50 bg-muted/30 hover:bg-primary/20 hover:text-primary py-0.5 text-[9px] font-bold text-muted-foreground transition-colors"
+                  >
+                    <Edit3 size={10} /> Personalizar
+                  </button>
                 </div>
               </div>
             );
@@ -2103,6 +2276,257 @@ function TreinosPage() {
             >
               Continuar o Treino 💪
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 8. MODAL DE CONFIGURAÇÃO COMPLETA DA AGENDA SEMANAL */}
+      {isWeeklyScheduleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="panel max-w-2xl w-full p-5 sm:p-6 space-y-5 max-h-[90vh] overflow-y-auto border border-primary/40 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <div className="flex items-center gap-2">
+                <Calendar size={20} className="text-primary" />
+                <div>
+                  <h3 className="text-lg font-black text-foreground">
+                    Configurar Agenda Semanal
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Defina qual treino você fará em cada dia da semana (Segunda a Domingo).
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWeeklyScheduleModalOpen(false)}
+                className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground text-sm font-black"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Ação rápida de preenchimento automático */}
+            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs">
+                <span className="font-black text-foreground">Distribuição Automática:</span>
+                <span className="text-muted-foreground ml-1.5">
+                  Preencher os dias usando a rotina ativa <strong>{activeSplit.name}</strong>
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  handleApplySplitToWeek();
+                }}
+                className="text-xs font-black border-primary text-primary hover:bg-primary hover:text-primary-foreground gap-1.5"
+              >
+                <Zap size={14} /> Aplicar "{activeSplit.name}" na Semana
+              </Button>
+            </div>
+
+            {/* Lista dos 7 Dias da Semana */}
+            <div className="space-y-3">
+              {weeklySchedule.map((day, idx) => {
+                const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
+                const isKnown = splits.some(s => s.workouts.some(w => w.title === day.workoutTitle)) ||
+                  ['Descanso / Recuperação', 'Descanso / Recuperação Ativa', 'Cardio & Mobilidade', 'Treino Livre / Aeróbico'].includes(day.workoutTitle);
+
+                return (
+                  <div
+                    key={day.dayOfWeek}
+                    className={`rounded-xl border p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                      isToday
+                        ? 'border-primary bg-primary/10 ring-1 ring-primary'
+                        : 'border-border/70 bg-card/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-[140px]">
+                      <span className="font-mono text-xs font-black uppercase text-primary">
+                        {day.shortDay}
+                      </span>
+                      <span className="font-black text-xs text-foreground">
+                        {day.dayOfWeek}
+                      </span>
+                      {isToday && (
+                        <span className="rounded bg-primary text-primary-foreground px-1.5 py-0.2 text-[8px] font-black uppercase">
+                          HOJE
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <select
+                        value={day.workoutTitle}
+                        onChange={(e) => handleUpdateScheduleDay(idx, e.target.value)}
+                        className="w-full rounded-lg border border-border/80 bg-background px-2.5 py-2 text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                      >
+                        {!isKnown && (
+                          <option value={day.workoutTitle}>
+                            ★ {day.workoutTitle}
+                          </option>
+                        )}
+                        {splits.map((s) => (
+                          <optgroup key={s.id} label={`Rotina: ${s.name}`}>
+                            {s.workouts.map((w) => (
+                              <option key={w.id} value={w.title}>
+                                {w.title}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        <optgroup label="Descanso & Outros">
+                          <option value="Descanso / Recuperação">Descanso / Recuperação</option>
+                          <option value="Descanso / Recuperação Ativa">Descanso / Recuperação Ativa</option>
+                          <option value="Cardio & Mobilidade">Cardio & Mobilidade</option>
+                          <option value="Treino Livre / Aeróbico">Treino Livre / Aeróbico</option>
+                        </optgroup>
+                      </select>
+
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          handleSelectDay(day);
+                          setIsWeeklyScheduleModalOpen(false);
+                        }}
+                        className="text-xs font-bold text-muted-foreground hover:text-primary whitespace-nowrap"
+                        title="Carregar exercícios deste dia para a tela principal"
+                      >
+                        Carregar
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between border-t border-border pt-4">
+              <span className="text-xs text-muted-foreground">
+                As alterações são salvas automaticamente no seu navegador.
+              </span>
+              <Button
+                onClick={() => {
+                  showScheduleToast('✓ Agenda semanal salva com sucesso!');
+                  setIsWeeklyScheduleModalOpen(false);
+                }}
+                className="bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90 px-5"
+              >
+                ✓ Concluir Edição
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. MODAL RÁPIDO PARA EDITAR UM DIA ESPECÍFICO */}
+      {editingDayModalIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="panel max-w-md w-full p-5 space-y-4 border border-primary/40 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-2.5">
+              <h3 className="text-base font-black flex items-center gap-2 text-foreground">
+                <Edit3 size={16} className="text-primary" />
+                Configurar {DAYS_OF_WEEK[editingDayModalIndex]?.full}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingDayModalIndex(null)}
+                className="text-muted-foreground hover:text-foreground text-xs font-black"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sugestões Rápidas de 1 Toque */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                Escolha Rápida (1 Toque):
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {activeSplit.workouts.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    onClick={() => {
+                      handleUpdateScheduleDay(editingDayModalIndex, w.title);
+                      setEditingDayModalIndex(null);
+                    }}
+                    className={`rounded-lg px-2.5 py-1.5 text-xs font-bold border transition-all ${
+                      weeklySchedule[editingDayModalIndex]?.workoutTitle === w.title
+                        ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                        : 'border-border/70 bg-card hover:border-primary/50 text-foreground'
+                    }`}
+                  >
+                    {w.title}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateScheduleDay(editingDayModalIndex, 'Descanso / Recuperação');
+                    setEditingDayModalIndex(null);
+                  }}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-bold border transition-all ${
+                    weeklySchedule[editingDayModalIndex]?.workoutTitle === 'Descanso / Recuperação'
+                      ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                      : 'border-border/70 bg-card hover:border-primary/50 text-foreground'
+                  }`}
+                >
+                  Descanso
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleUpdateScheduleDay(editingDayModalIndex, 'Cardio & Mobilidade');
+                    setEditingDayModalIndex(null);
+                  }}
+                  className={`rounded-lg px-2.5 py-1.5 text-xs font-bold border transition-all ${
+                    weeklySchedule[editingDayModalIndex]?.workoutTitle === 'Cardio & Mobilidade'
+                      ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                      : 'border-border/70 bg-card hover:border-primary/50 text-foreground'
+                  }`}
+                >
+                  Cardio
+                </button>
+              </div>
+            </div>
+
+            {/* Ou Escrever Nome Personalizado Livre */}
+            <div className="space-y-1.5 pt-2 border-t border-border/50">
+              <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                Ou digite um nome personalizado:
+              </span>
+              <input
+                type="text"
+                placeholder="Ex: Treino de Braços, Futebol, Natação..."
+                value={customDayWorkoutText}
+                onChange={(e) => setCustomDayWorkoutText(e.target.value)}
+                className="w-full rounded-lg border border-border/80 bg-background px-3 py-2 text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingDayModalIndex(null)}
+                className="text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (customDayWorkoutText.trim()) {
+                    handleUpdateScheduleDay(editingDayModalIndex, customDayWorkoutText.trim());
+                  }
+                  setEditingDayModalIndex(null);
+                }}
+                className="bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90"
+              >
+                Salvar Dia
+              </Button>
+            </div>
           </div>
         </div>
       )}
