@@ -1649,15 +1649,14 @@ function TreinosPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
-          {workoutMode === 'PLAN' && (
-            <Button
-              variant="outline"
-              onClick={handleSaveCurrentWorkoutToSplit}
-              className="border-primary text-primary font-bold text-xs"
-            >
-              <Save size={14} className="mr-1" /> Salvar Modelo de Séries
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={handleSaveCurrentWorkoutToSplit}
+            className="border-primary/40 text-primary font-bold text-xs hover:bg-primary/10"
+          >
+            <Save size={14} className="mr-1" /> Salvar Modelo na Rotina
+          </Button>
 
           <Button
             size="lg"
