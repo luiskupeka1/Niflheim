@@ -366,9 +366,6 @@ function TreinosPage() {
     }
   }, [weeklySchedule, splits]);
 
-  // Modo da Sessão: Execução do Treino (Dia de Treinar) vs Prescrição/Montagem (Pré-definir Séries)
-  const [workoutMode, setWorkoutMode] = useState<'EXECUTE' | 'PLAN'>('EXECUTE');
-
   // Sessão Ativa
   const [sessionTitle, setSessionTitle] = useState('Push A — Hipertrofia & Força');
   const [sessionCategory, setSessionCategory] = useState<BiomechanicalCategory>('Push');
@@ -1238,66 +1235,7 @@ function TreinosPage() {
         </div>
       </div>
 
-      {/* 2.5 SELETOR DE MODO: TREINO DO DIA (EXECUTAR & CONCLUIR) VS MONTAGEM (PRÉ-DEFINIR SÉRIES) */}
-      <div className="panel p-3.5 bg-gradient-to-r from-card via-background to-card border border-primary/40 flex flex-wrap items-center justify-between gap-3 shadow-md">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black uppercase tracking-wider text-muted-foreground mr-1">
-            Modo:
-          </span>
-          <div className="inline-flex rounded-xl bg-muted/60 p-1 border border-border">
-            <button
-              type="button"
-              onClick={() => setWorkoutMode('EXECUTE')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                workoutMode === 'EXECUTE'
-                  ? 'bg-primary text-primary-foreground shadow-lg'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Zap size={15} /> Treinar Agora (Executar & Concluir)
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkoutMode('PLAN')}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                workoutMode === 'PLAN'
-                  ? 'bg-primary text-primary-foreground shadow-lg'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Layers size={15} /> Pré-definir Séries (Montar Modelo)
-            </button>
-          </div>
-        </div>
-
-        {workoutMode === 'EXECUTE' ? (
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              Preencha o que levantou e clique em Concluir Série:
-            </span>
-            <Button
-              onClick={() => setIsFinishingWorkout(true)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs px-4 py-2 shadow-lg flex items-center gap-1.5"
-            >
-              <CheckCircle2 size={16} /> 🏁 Concluir Treino ({completedSetsCount}/{totalSetsCount})
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              Configure as séries e metas para salvar na rotina:
-            </span>
-            <Button
-              onClick={handleSaveCurrentWorkoutToSplit}
-              className="bg-primary text-primary-foreground font-black text-xs px-3 py-1.5 shadow-md flex items-center gap-1.5"
-            >
-              <Save size={14} /> Salvar Pré-definições no Modelo
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* 3. BARRA DE EDIÇÃO DO NOME DO TREINO E STATUS */}
+      {/* 3. BARRA DE EDIÇÃO DO NOME DO TREINO, STATUS E AÇÕES */}
       <div className="panel p-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex-1 min-w-[280px]">
           <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
@@ -1327,13 +1265,30 @@ function TreinosPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => setIsFinishingWorkout(true)}
+            className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs px-3.5 py-2 shadow-lg flex items-center gap-1.5 cursor-pointer"
+          >
+            <CheckCircle2 size={16} /> 🏁 Concluir Treino
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleSaveCurrentWorkoutToSplit}
+            className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 flex items-center gap-1.5 cursor-pointer"
+          >
+            <Save size={14} /> Salvar na Rotina
+          </Button>
+
           <Button
             size="sm"
             onClick={() => setIsAddExerciseModalOpen(true)}
-            className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs flex items-center gap-1.5"
+            className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <Plus size={14} /> + Adicionar Exercício
+            <Plus size={14} /> + Exercício
           </Button>
         </div>
       </div>
@@ -1460,93 +1415,13 @@ function TreinosPage() {
                   </div>
 
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2">
                       <h3 className="text-lg font-black text-foreground">{ex.name}</h3>
                       <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                         {ex.muscle}
                       </span>
-                      
-                      {/* META DO EXERCÍCIO TOTALMENTE EDITÁVEL */}
-                      <div 
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/40 px-2 py-1 text-xs font-mono font-bold text-emerald-400 shadow-sm"
-                        title="Meta de Carga e Repetições (Altere diretamente os valores)"
-                      >
-                        <Target size={13} className="text-emerald-400 shrink-0" />
-                        <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider">Meta:</span>
-
-                        {/* Input de Carga Meta com botões - e + */}
-                        <div className="inline-flex items-center rounded border border-emerald-500/50 bg-background px-1 py-0.5 shadow-inner">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateExerciseTarget(ex.id, Math.max(0, (ex.targetWeightKg ?? 40) - 2.5), ex.targetReps ?? 10)}
-                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
-                            title="Diminuir 2.5 kg"
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            step="0.5"
-                            min="0"
-                            max="999"
-                            value={ex.targetWeightKg ?? 0}
-                            onFocus={(e) => e.target.select()}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              handleUpdateExerciseTarget(ex.id, isNaN(val) ? 0 : val, ex.targetReps ?? 10);
-                            }}
-                            className="w-12 text-center font-mono text-xs font-black bg-transparent text-emerald-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            title="Editar Carga Meta em kg"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateExerciseTarget(ex.id, (ex.targetWeightKg ?? 40) + 2.5, ex.targetReps ?? 10)}
-                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
-                            title="Aumentar 2.5 kg"
-                          >
-                            +
-                          </button>
-                          <span className="text-[10px] text-muted-foreground ml-0.5">kg</span>
-                        </div>
-
-                        <span className="text-emerald-500/80 font-black">×</span>
-
-                        {/* Input de Repetições Meta com botões - e + */}
-                        <div className="inline-flex items-center rounded border border-emerald-500/50 bg-background px-1 py-0.5 shadow-inner">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, Math.max(1, (ex.targetReps ?? 10) - 1))}
-                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
-                            title="Diminuir 1 repetição"
-                          >
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            value={ex.targetReps ?? 10}
-                            onFocus={(e) => e.target.select()}
-                            onChange={(e) => {
-                              const val = parseInt(e.target.value);
-                              handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, isNaN(val) ? 1 : val);
-                            }}
-                            className="w-9 text-center font-mono text-xs font-black bg-transparent text-emerald-300 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                            title="Editar Repetições Meta"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, (ex.targetReps ?? 10) + 1)}
-                            className="text-[11px] text-muted-foreground hover:text-emerald-400 px-1 font-black leading-none cursor-pointer"
-                            title="Aumentar 1 repetição"
-                          >
-                            +
-                          </button>
-                          <span className="text-[10px] text-muted-foreground ml-0.5">reps</span>
-                        </div>
-                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {ex.equipment} • Padrão: {ex.category}
                     </p>
                   </div>
@@ -1647,7 +1522,6 @@ function TreinosPage() {
                         <AdvancedSetRow
                           key={set.id}
                           data={set}
-                          mode={workoutMode}
                           restWarmupSeconds={restWarmupSeconds}
                           restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
@@ -1720,7 +1594,6 @@ function TreinosPage() {
                             targetReps: set.targetReps ?? ex.targetReps,
                           }}
                           workingIndex={wIdx + 1}
-                          mode={workoutMode}
                           restWarmupSeconds={restWarmupSeconds}
                           restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}

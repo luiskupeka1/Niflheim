@@ -357,224 +357,142 @@ export function AdvancedSetRow({
           )}
         </div>
 
-        {mode === 'PLAN' ? (
-          /* MODO MONTAGEM / PRÉ-DEFINIÇÃO: O FOCO É ESTABELECER METAS E REPS */
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Carga Meta Programada */}
-            <div className="flex items-center gap-1.5 bg-background border border-primary/40 rounded-lg px-2.5 py-1">
-              <span className="text-[10px] font-black uppercase text-primary flex items-center gap-1" title="Carga que você planeja levantar">
-                <Target size={12} /> Carga Meta:
-              </span>
+        <div className="flex flex-wrap items-center justify-between gap-3 flex-1">
+          <div className="flex items-center gap-3">
+            {/* Input Carga */}
+            <div className="relative text-center">
               <input
                 type="number"
                 step="0.5"
                 min="0"
-                value={data.targetWeight ?? (data.weight > 0 ? data.weight : '')}
-                placeholder="kg"
+                value={data.weight === 0 ? '' : data.weight}
+                placeholder="0"
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
-                  const val = parseFloat(e.target.value) || 0;
-                  onUpdate({ ...data, targetWeight: val, weight: val });
+                  const val = e.target.value;
+                  const num = val === '' ? 0 : parseFloat(val) || 0;
+                  onUpdate({ ...data, weight: num, targetWeight: num });
                 }}
-                className="w-16 text-center font-mono text-xs font-black text-foreground bg-transparent border-0 p-0 focus:ring-0"
+                className="w-16 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
               />
-              <span className="text-[10px] text-muted-foreground font-bold">kg</span>
+              <span className="text-[9px] text-muted-foreground block font-bold">kg</span>
             </div>
 
-            {/* Repetições Meta Programadas */}
-            <div className="flex items-center gap-1.5 bg-background border border-primary/40 rounded-lg px-2.5 py-1">
-              <span className="text-[10px] font-black uppercase text-primary">
-                Reps Meta:
-              </span>
+            {/* Input Repetições */}
+            <div className="relative text-center">
               <input
                 type="number"
-                min="1"
-                max="100"
-                value={data.targetReps ?? (data.reps > 0 ? data.reps : '')}
-                placeholder="reps"
+                min="0"
+                value={data.reps === 0 ? '' : data.reps}
+                placeholder="0"
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => {
-                  const val = parseInt(e.target.value) || 0;
-                  onUpdate({ ...data, targetReps: val, reps: val });
+                  const val = e.target.value;
+                  const num = val === '' ? 0 : parseInt(val) || 0;
+                  onUpdate({ ...data, reps: num, targetReps: num });
                 }}
-                className="w-14 text-center font-mono text-xs font-black text-foreground bg-transparent border-0 p-0 focus:ring-0"
+                className="w-14 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
               />
-              <span className="text-[10px] text-muted-foreground font-bold">reps</span>
+              <span className="text-[9px] text-muted-foreground block font-bold">reps</span>
             </div>
 
-            {/* Tempo de Descanso Planejado */}
-            <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+            {/* Input RIR Customizável (0-5 ou escrever livremente) */}
+            <div className="relative text-center flex flex-col items-center">
+              <div className="flex items-center gap-1">
+                <select
+                  value={typeof data.rir === 'number' && data.rir <= 5 ? data.rir : 'custom'}
+                  onChange={(e) => {
+                    if (e.target.value === 'custom') {
+                      onUpdate({ ...data, rir: 6 });
+                    } else {
+                      onUpdate({ ...data, rir: parseInt(e.target.value) });
+                    }
+                  }}
+                  className="rounded border border-border bg-background px-1.5 py-1 font-mono text-[11px] font-bold text-foreground focus:border-primary"
+                  title="RIR (Reps in Reserve): Repetições antes da falha ou selecione digitar livre"
+                >
+                  <option value={0}>0 (Falha)</option>
+                  <option value={1}>1 rep</option>
+                  <option value={2}>2 reps</option>
+                  <option value={3}>3 reps</option>
+                  <option value={4}>4 reps</option>
+                  <option value={5}>5 reps</option>
+                  <option value="custom">5+ (Escrever)</option>
+                </select>
+
+                {(typeof data.rir !== 'number' || data.rir >= 5) && (
+                  <input
+                    type="text"
+                    value={data.rir === 5 ? '5+' : data.rir}
+                    placeholder="ex: 6+"
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const num = parseInt(val);
+                      onUpdate({ ...data, rir: isNaN(num) ? val : num });
+                    }}
+                    className="w-12 rounded border border-primary/50 bg-background px-1 py-1 text-center font-mono text-[11px] font-bold text-primary focus:border-primary"
+                    title="Digite livremente a reserva ou observação (ex: 6+, 7, leve, etc.)"
+                  />
+                )}
+              </div>
+              <span className="text-[9px] text-muted-foreground block mt-0.5" title="Reps in Reserve: reps que faltavam para falhar">
+                RIR
+              </span>
+            </div>
+          </div>
+
+          {/* Lado Direito: Gamificação de PR e Botão Explícito de Concluir Série */}
+          <div className="flex items-center gap-2">
+            {isPrTonnage && (
+              <div 
+                title={`Tonelagem atual (${currentTonnage}kg) superou anterior (${previousTonnage}kg)!`}
+                className="flex items-center gap-1 rounded bg-primary/20 px-2 py-1 text-[10px] font-black text-primary animate-bounce"
+              >
+                <Trophy size={12} />
+                <span>NOVO PR</span>
+              </div>
+            )}
+
+            {/* BOTÃO DIRETO DE CRONÔMETRO DE DESCANSO */}
+            <button
+              type="button"
+              onClick={() => onTriggerRestTimer(isPreparatory ? restWarmupSeconds : restWorkingSeconds)}
+              title={`Iniciar cronômetro de descanso de ${isPreparatory ? restWarmupSeconds : restWorkingSeconds}s`}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/80 bg-background/80 text-[11px] font-mono font-bold text-muted-foreground hover:text-primary hover:border-primary transition-all cursor-pointer"
+            >
               <Clock size={12} className="text-primary" />
-              <span>{isPreparatory ? `${restWarmupSeconds}s descanso` : `${restWorkingSeconds}s descanso`}</span>
-            </div>
+              <span>{isPreparatory ? restWarmupSeconds : restWorkingSeconds}s</span>
+            </button>
 
-            {/* Excluir Linha no Planejamento */}
+            {/* BOTÃO EXPLÍCITO DE CONCLUIR SÉRIE */}
+            <button
+              type="button"
+              onClick={handleToggleComplete}
+              title={data.completed ? 'Clique para reabrir esta série' : 'Clique para concluir esta série e iniciar o descanso'}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-xs font-black transition-all cursor-pointer ${
+                data.completed
+                  ? isPreparatory
+                    ? 'border-muted-foreground bg-muted text-foreground'
+                    : 'border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-sm'
+                  : 'border-primary/60 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:shadow-md'
+              }`}
+            >
+              <Check size={14} strokeWidth={data.completed ? 3 : 2} />
+              <span>{data.completed ? 'Feita' : 'Concluir'}</span>
+            </button>
+
+            {/* Excluir Linha */}
             <button
               type="button"
               onClick={onDelete}
               title="Remover esta série"
               className="p-1.5 text-muted-foreground/60 hover:text-destructive rounded transition-colors"
             >
-              <Trash2 size={14} />
+              <Trash2 size={13} />
             </button>
           </div>
-        ) : (
-          /* MODO EXECUÇÃO: REGISTRAR O QUE FOI FEITO NO DIA E CONCLUIR */
-          <>
-            <div className="flex items-center gap-3">
-              {/* Meta Programada (Referência Visual Clara) */}
-              <div className="text-right flex items-center gap-1 bg-background/60 border border-primary/30 rounded px-2 py-1">
-                <span className="text-[9px] text-primary font-black flex items-center gap-0.5" title="Meta de carga estabelecida">
-                  <Target size={11} /> Meta:
-                </span>
-                <span className="font-mono text-xs font-black text-foreground">
-                  {data.targetWeight ?? data.weight ?? 0}kg × {data.targetReps ?? data.reps ?? 10}
-                </span>
-              </div>
-
-              {/* Input Carga Realmente Levantada */}
-              <div className="relative text-center">
-                <input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  value={data.weight === 0 ? '' : data.weight}
-                  placeholder="0"
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    onUpdate({ ...data, weight: val === '' ? 0 : parseFloat(val) || 0 });
-                  }}
-                  className="w-16 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-                <span className="text-[9px] text-muted-foreground block">kg feito</span>
-              </div>
-
-              {/* Input Repetições Realmente Feitas */}
-              <div className="relative text-center">
-                <input
-                  type="number"
-                  min="0"
-                  value={data.reps === 0 ? '' : data.reps}
-                  placeholder="0"
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    onUpdate({ ...data, reps: val === '' ? 0 : parseInt(val) || 0 });
-                  }}
-                  className="w-14 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
-                />
-                <span className="text-[9px] text-muted-foreground block">reps feitas</span>
-              </div>
-
-              {/* Input RIR Customizável (0-5 ou escrever livremente) */}
-              <div className="relative text-center flex flex-col items-center">
-                <div className="flex items-center gap-1">
-                  <select
-                    value={typeof data.rir === 'number' && data.rir <= 5 ? data.rir : 'custom'}
-                    onChange={(e) => {
-                      if (e.target.value === 'custom') {
-                        onUpdate({ ...data, rir: 6 });
-                      } else {
-                        onUpdate({ ...data, rir: parseInt(e.target.value) });
-                      }
-                    }}
-                    className="rounded border border-border bg-background px-1.5 py-1 font-mono text-[11px] font-bold text-foreground focus:border-primary"
-                    title="RIR (Reps in Reserve): Repetições antes da falha ou selecione digitar livre"
-                  >
-                    <option value={0}>0 (Falha)</option>
-                    <option value={1}>1 rep</option>
-                    <option value={2}>2 reps</option>
-                    <option value={3}>3 reps</option>
-                    <option value={4}>4 reps</option>
-                    <option value={5}>5 reps</option>
-                    <option value="custom">5+ (Escrever)</option>
-                  </select>
-
-                  {(typeof data.rir !== 'number' || data.rir >= 5) && (
-                    <input
-                      type="text"
-                      value={data.rir === 5 ? '5+' : data.rir}
-                      placeholder="ex: 6+"
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const num = parseInt(val);
-                        onUpdate({ ...data, rir: isNaN(num) ? val : num });
-                      }}
-                      className="w-12 rounded border border-primary/50 bg-background px-1 py-1 text-center font-mono text-[11px] font-bold text-primary focus:border-primary"
-                      title="Digite livremente a reserva ou observação (ex: 6+, 7, leve, etc.)"
-                    />
-                  )}
-                </div>
-                <span className="text-[9px] text-muted-foreground block mt-0.5" title="Reps in Reserve: reps que faltavam para falhar">
-                  RIR (reserva)
-                </span>
-              </div>
-            </div>
-
-            {/* Lado Direito: Gamificação de Meta / PR e Botão Explícito de Concluir Série */}
-            <div className="flex items-center gap-2">
-              {isTargetAchieved && data.completed && (
-                <div 
-                  title="Você bateu ou superou a meta de carga programada!"
-                  className="flex items-center gap-1 rounded bg-emerald-500/20 px-2 py-1 text-[10px] font-black text-emerald-400"
-                >
-                  <Target size={11} />
-                  <span>META OK</span>
-                </div>
-              )}
-
-              {isPrTonnage && (
-                <div 
-                  title={`Tonelagem atual (${currentTonnage}kg) superou anterior (${previousTonnage}kg)!`}
-                  className="flex items-center gap-1 rounded bg-primary/20 px-2 py-1 text-[10px] font-black text-primary animate-bounce"
-                >
-                  <Trophy size={12} />
-                  <span>NOVO PR</span>
-                </div>
-              )}
-
-              {/* BOTÃO DIRETO DE CRONÔMETRO DE DESCANSO */}
-              <button
-                type="button"
-                onClick={() => onTriggerRestTimer(isPreparatory ? restWarmupSeconds : restWorkingSeconds)}
-                title={`Iniciar cronômetro de descanso de ${isPreparatory ? restWarmupSeconds : restWorkingSeconds}s`}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/80 bg-background/80 text-[11px] font-mono font-bold text-muted-foreground hover:text-primary hover:border-primary transition-all cursor-pointer"
-              >
-                <Clock size={12} className="text-primary" />
-                <span>{isPreparatory ? restWarmupSeconds : restWorkingSeconds}s</span>
-              </button>
-
-              {/* BOTÃO EXPLÍCITO DE CONCLUIR SÉRIE */}
-              <button
-                type="button"
-                onClick={handleToggleComplete}
-                title={data.completed ? 'Clique para reabrir esta série' : 'Clique para concluir esta série e iniciar o descanso'}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-xs font-black transition-all cursor-pointer ${
-                  data.completed
-                    ? isPreparatory
-                      ? 'border-muted-foreground bg-muted text-foreground'
-                      : 'border-emerald-500 bg-emerald-500/20 text-emerald-400 shadow-sm'
-                    : 'border-primary/60 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:shadow-md'
-                }`}
-              >
-                <Check size={14} strokeWidth={data.completed ? 3 : 2} />
-                <span>{data.completed ? 'Feita' : 'Concluir'}</span>
-              </button>
-
-              {/* Excluir Linha */}
-              <button
-                type="button"
-                onClick={onDelete}
-                title="Remover esta série"
-                className="p-1.5 text-muted-foreground/60 hover:text-destructive rounded transition-colors"
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
-          </>
-        )}
+        </div>
       </div>
 
       {/* SUB-LINHAS DINÂMICAS: 1. CLUSTER SET (BLOCOS INTRA-SÉRIE COM MICRO-DESCANSO) */}
