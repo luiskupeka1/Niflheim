@@ -1740,7 +1740,7 @@ function TreinosPage() {
 
       {/* 6. TIMER FLUTUANTE GLOBAL (CENTRALIZADO NO MOBILE / FIXO NO DESKTOP) */}
       {restTime > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:w-96 z-50 flex flex-col gap-2.5 rounded-2xl border-2 border-primary/60 bg-card/95 p-4 shadow-2xl backdrop-blur-lg ring-1 ring-primary/40">
+        <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-96 z-50 flex flex-col gap-2.5 rounded-2xl border-2 border-primary/60 bg-card/95 p-3.5 sm:p-4 shadow-2xl backdrop-blur-lg ring-1 ring-primary/40">
           <div className="flex items-center gap-3">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary border border-primary/30">
               <Clock size={22} className={timerActive ? 'animate-spin' : ''} />

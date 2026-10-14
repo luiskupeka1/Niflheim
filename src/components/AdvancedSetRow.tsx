@@ -318,47 +318,71 @@ export function AdvancedSetRow({
             : 'border-border/70 bg-card/70 hover:border-border'
       }`}
     >
-      {/* Linha Principal da Série */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* Lado Esquerdo: Badge e Seletor EXCLUSIVO para o contexto */}
-        <div className="flex items-center gap-2">
-          {renderBaseBadge()}
+      {/* Linha Principal da Série: Mobile 2 Linhas / Desktop Linha Única */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        {/* Linha 1 (Mobile) / Esquerda (Desktop): Badge + Seletor de Tipo + Ações Secundárias no Mobile */}
+        <div className="flex items-center justify-between gap-2 sm:justify-start">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            {renderBaseBadge()}
 
-          {/* SELETOR: SE PREPARATÓRIA, APENAS OPÇÕES PREPARATÓRIAS. SE TRABALHO, APENAS TÉCNICAS DE TRABALHO! */}
-          {isPreparatory ? (
-            <select
-              value={data.baseType}
-              onChange={(e) => handleSelectSetMode(e.target.value)}
-              className="rounded border border-border/60 bg-background/80 px-2 py-1 text-[11px] font-bold text-muted-foreground focus:border-primary"
-            >
-              <option value="WARMUP">Aquecimento / Ativação (W)</option>
-              <option value="FEEDER">Feeder / Calibração (F)</option>
-              <option value="PAP">PAP (Potenciação Pós-Ativação)</option>
-            </select>
-          ) : (
-            <select
-              value={currentSelectValue()}
-              onChange={(e) => handleSelectSetMode(e.target.value)}
-              className="rounded border border-primary/40 bg-background px-2.5 py-1 text-[11px] font-black text-foreground focus:border-primary"
-            >
-              <option value="WORKING_NORMAL">Série Normal de Trabalho</option>
-              <option value="BACKOFF">Back-off Set (B)</option>
-              <option value="CLUSTER_SET">Cluster Set (Blocos Intra-série)</option>
-              <option value="MYO_REPS">Myo-Reps (Ativação + Micros)</option>
-              <option value="DROP_SET">Drop Set (Redução)</option>
-              <option value="REST_PAUSE">Rest-Pause (Pausa 15s)</option>
-            </select>
-          )}
+            {/* SELETOR: SE PREPARATÓRIA, APENAS OPÇÕES PREPARATÓRIAS. SE TRABALHO, APENAS TÉCNICAS DE TRABALHO! */}
+            {isPreparatory ? (
+              <select
+                value={data.baseType}
+                onChange={(e) => handleSelectSetMode(e.target.value)}
+                className="rounded border border-border/60 bg-background/90 px-2 py-1 text-[11px] font-bold text-muted-foreground focus:border-primary max-w-[170px] sm:max-w-none truncate"
+              >
+                <option value="WARMUP">Aquecimento (W)</option>
+                <option value="FEEDER">Feeder / Calibração (F)</option>
+                <option value="PAP">PAP (Potenciação Pós-Ativação)</option>
+              </select>
+            ) : (
+              <select
+                value={currentSelectValue()}
+                onChange={(e) => handleSelectSetMode(e.target.value)}
+                className="rounded border border-primary/40 bg-background px-2 py-1 text-[11px] font-black text-foreground focus:border-primary max-w-[170px] sm:max-w-none truncate"
+              >
+                <option value="WORKING_NORMAL">Série Normal</option>
+                <option value="BACKOFF">Back-off Set (B)</option>
+                <option value="CLUSTER_SET">Cluster Set (Blocos)</option>
+                <option value="MYO_REPS">Myo-Reps (Ativação)</option>
+                <option value="DROP_SET">Drop Set (Redução)</option>
+                <option value="REST_PAUSE">Rest-Pause (Pausa 15s)</option>
+              </select>
+            )}
 
-          {data.technique !== 'NONE' && (
-            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-black text-primary uppercase">
-              {data.technique.replace('_', ' ')}
-            </span>
-          )}
+            {data.technique !== 'NONE' && (
+              <span className="hidden xs:inline-block rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-black text-primary uppercase">
+                {data.technique.replace('_', ' ')}
+              </span>
+            )}
+          </div>
+
+          {/* Controles de descanso rápido e lixeira no cabeçalho da linha no mobile */}
+          <div className="flex items-center gap-1.5 sm:hidden">
+            <button
+              type="button"
+              onClick={() => onTriggerRestTimer(isPreparatory ? restWarmupSeconds : restWorkingSeconds)}
+              title={`Iniciar descanso de ${isPreparatory ? restWarmupSeconds : restWorkingSeconds}s`}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/80 bg-background text-[11px] font-mono font-bold text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Clock size={11} className="text-primary" />
+              <span>{isPreparatory ? restWarmupSeconds : restWorkingSeconds}s</span>
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              title="Remover série"
+              className="p-1 text-muted-foreground/60 hover:text-destructive transition-colors"
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 flex-1">
-          <div className="flex items-center gap-3">
+        {/* Linha 2 (Mobile) / Direita (Desktop): Inputs de Carga, Reps, RIR + Botão Concluir */}
+        <div className="flex items-center justify-between gap-2 border-t border-border/30 pt-2 sm:border-t-0 sm:pt-0 sm:justify-end sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Input Carga */}
             <div className="relative text-center">
               <input
@@ -373,7 +397,7 @@ export function AdvancedSetRow({
                   const num = val === '' ? 0 : parseFloat(val) || 0;
                   onUpdate({ ...data, weight: num, targetWeight: num });
                 }}
-                className="w-16 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-14 sm:w-16 rounded border border-border bg-background px-1 sm:px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span className="text-[9px] text-muted-foreground block font-bold">kg</span>
             </div>
@@ -391,12 +415,12 @@ export function AdvancedSetRow({
                   const num = val === '' ? 0 : parseInt(val) || 0;
                   onUpdate({ ...data, reps: num, targetReps: num });
                 }}
-                className="w-14 rounded border border-border bg-background px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary"
+                className="w-12 sm:w-14 rounded border border-border bg-background px-1 sm:px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span className="text-[9px] text-muted-foreground block font-bold">reps</span>
             </div>
 
-            {/* Input RIR Customizável (0-5 ou escrever livremente) */}
+            {/* Input RIR */}
             <div className="relative text-center flex flex-col items-center">
               <div className="flex items-center gap-1">
                 <select
@@ -408,8 +432,8 @@ export function AdvancedSetRow({
                       onUpdate({ ...data, rir: parseInt(e.target.value) });
                     }
                   }}
-                  className="rounded border border-border bg-background px-1.5 py-1 font-mono text-[11px] font-bold text-foreground focus:border-primary"
-                  title="RIR (Reps in Reserve): Repetições antes da falha ou selecione digitar livre"
+                  className="rounded border border-border bg-background px-1 py-1 font-mono text-[11px] font-bold text-foreground focus:border-primary"
+                  title="RIR (Reps in Reserve)"
                 >
                   <option value={0}>0 (Falha)</option>
                   <option value={1}>1 rep</option>
@@ -417,60 +441,58 @@ export function AdvancedSetRow({
                   <option value={3}>3 reps</option>
                   <option value={4}>4 reps</option>
                   <option value={5}>5 reps</option>
-                  <option value="custom">5+ (Escrever)</option>
+                  <option value="custom">5+</option>
                 </select>
 
                 {(typeof data.rir !== 'number' || data.rir >= 5) && (
                   <input
                     type="text"
                     value={data.rir === 5 ? '5+' : data.rir}
-                    placeholder="ex: 6+"
+                    placeholder="6+"
                     onFocus={(e) => e.target.select()}
                     onChange={(e) => {
                       const val = e.target.value;
                       const num = parseInt(val);
                       onUpdate({ ...data, rir: isNaN(num) ? val : num });
                     }}
-                    className="w-12 rounded border border-primary/50 bg-background px-1 py-1 text-center font-mono text-[11px] font-bold text-primary focus:border-primary"
-                    title="Digite livremente a reserva ou observação (ex: 6+, 7, leve, etc.)"
+                    className="w-10 sm:w-12 rounded border border-primary/50 bg-background px-1 py-1 text-center font-mono text-[11px] font-bold text-primary focus:border-primary"
                   />
                 )}
               </div>
-              <span className="text-[9px] text-muted-foreground block mt-0.5" title="Reps in Reserve: reps que faltavam para falhar">
+              <span className="text-[9px] text-muted-foreground block mt-0.5 font-bold">
                 RIR
               </span>
             </div>
           </div>
 
-          {/* Lado Direito: Gamificação de PR e Botão Explícito de Concluir Série */}
-          <div className="flex items-center gap-2">
+          {/* Gamificação PR e Ações Desktop */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {isPrTonnage && (
               <div 
-                title={`Tonelagem atual (${currentTonnage}kg) superou anterior (${previousTonnage}kg)!`}
-                className="flex items-center gap-1 rounded bg-primary/20 px-2 py-1 text-[10px] font-black text-primary animate-bounce"
+                title={`Novo recorde pessoal de tonelagem!`}
+                className="flex items-center gap-1 rounded bg-primary/20 px-1.5 sm:px-2 py-1 text-[9px] sm:text-[10px] font-black text-primary animate-bounce shrink-0"
               >
-                <Trophy size={12} />
-                <span>NOVO PR</span>
+                <Trophy size={11} />
+                <span className="hidden xs:inline">NOVO</span> PR
               </div>
             )}
 
-            {/* BOTÃO DIRETO DE CRONÔMETRO DE DESCANSO */}
+            {/* Descanso rápido visível apenas no desktop aqui */}
             <button
               type="button"
               onClick={() => onTriggerRestTimer(isPreparatory ? restWarmupSeconds : restWorkingSeconds)}
-              title={`Iniciar cronômetro de descanso de ${isPreparatory ? restWarmupSeconds : restWorkingSeconds}s`}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/80 bg-background/80 text-[11px] font-mono font-bold text-muted-foreground hover:text-primary hover:border-primary transition-all cursor-pointer"
+              title={`Iniciar descanso de ${isPreparatory ? restWarmupSeconds : restWorkingSeconds}s`}
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/80 bg-background/80 text-[11px] font-mono font-bold text-muted-foreground hover:text-primary hover:border-primary transition-all cursor-pointer"
             >
               <Clock size={12} className="text-primary" />
               <span>{isPreparatory ? restWarmupSeconds : restWorkingSeconds}s</span>
             </button>
 
-            {/* BOTÃO EXPLÍCITO DE CONCLUIR SÉRIE */}
+            {/* BOTÃO CONCLUIR SÉRIE TOUCH FRIENDLY */}
             <button
               type="button"
               onClick={handleToggleComplete}
-              title={data.completed ? 'Clique para reabrir esta série' : 'Clique para concluir esta série e iniciar o descanso'}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-xs font-black transition-all cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-1 px-3 sm:px-3.5 py-1.5 h-8 sm:h-8 rounded-lg border text-xs font-black transition-all cursor-pointer select-none active:scale-95 ${
                 data.completed
                   ? isPreparatory
                     ? 'border-muted-foreground bg-muted text-foreground'
@@ -482,12 +504,12 @@ export function AdvancedSetRow({
               <span>{data.completed ? 'Feita' : 'Concluir'}</span>
             </button>
 
-            {/* Excluir Linha */}
+            {/* Lixeira no desktop */}
             <button
               type="button"
               onClick={onDelete}
-              title="Remover esta série"
-              className="p-1.5 text-muted-foreground/60 hover:text-destructive rounded transition-colors"
+              title="Remover série"
+              className="hidden sm:inline-flex p-1.5 text-muted-foreground/60 hover:text-destructive rounded transition-colors"
             >
               <Trash2 size={13} />
             </button>
@@ -497,7 +519,7 @@ export function AdvancedSetRow({
 
       {/* SUB-LINHAS DINÂMICAS: 1. CLUSTER SET (BLOCOS INTRA-SÉRIE COM MICRO-DESCANSO) */}
       {data.technique === 'CLUSTER_SET' && data.clusterBlocks && (
-        <div className="ml-8 rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+        <div className="ml-2 sm:ml-8 rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-primary">
             <span>Cluster Set com {data.weight}kg (Quebra em mini-blocos com 15s de descanso intra-série):</span>
             {microTimer > 0 && (
@@ -567,7 +589,7 @@ export function AdvancedSetRow({
 
       {/* SUB-LINHAS DINÂMICAS: 2. MYO-REPS (ATIVAÇÃO + MICRO-SÉRIES) */}
       {data.technique === 'MYO_REPS' && data.myoMicroSets && (
-        <div className="ml-8 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+        <div className="ml-2 sm:ml-8 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-primary">
             <span>Série de Ativação ({data.reps} reps) + Micro-séries (15s descanso):</span>
             {microTimer > 0 && (
@@ -636,7 +658,7 @@ export function AdvancedSetRow({
 
       {/* SUB-LINHAS DINÂMICAS: 3. DROP-SET (REDUÇÃO IMEDIATA SEM DESCANSO) */}
       {data.technique === 'DROP_SET' && data.dropSets && (
-        <div className="ml-8 rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+        <div className="ml-2 sm:ml-8 rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-destructive">
             <span className="flex items-center gap-1">
               <ArrowDown size={13} /> Drops Acoplados (Redução imediata de -25% sem descanso):
@@ -721,7 +743,7 @@ export function AdvancedSetRow({
 
       {/* SUB-LINHAS DINÂMICAS: 4. REST-PAUSE (PAUSA 15-20S ATÉ NOVA FALHA) */}
       {data.technique === 'REST_PAUSE' && data.restPauseSubSets && (
-        <div className="ml-8 rounded-lg border border-chart-3/40 bg-chart-3/5 p-3 space-y-2">
+        <div className="ml-2 sm:ml-8 rounded-lg border border-chart-3/40 bg-chart-3/5 p-3 space-y-2">
           <div className="flex items-center justify-between text-[11px] font-bold text-chart-3">
             <span className="flex items-center gap-1">
               <CornerDownRight size={13} /> Rest-Pause (Descansa 15s e segue com a mesma carga de {data.weight}kg):

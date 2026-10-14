@@ -361,9 +361,9 @@ function NutricaoPage() {
       </div>
 
       {/* DASHBOARD DE METAS & SALDO CALÓRICO REATIVO */}
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.2fr_1fr]">
         {/* Painel do Macro Ring com Recálculo Dinâmico */}
-        <div className="panel p-6 space-y-4">
+        <div className="panel p-3.5 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <SectionHeading title="Equilíbrio Diário & Saldo Real" />
             <div className="flex items-center gap-2">
@@ -419,47 +419,47 @@ function NutricaoPage() {
           </div>
 
           {/* Cards de Saldo Calórico Dinâmico */}
-          <div className="grid grid-cols-3 gap-2 border-t border-border/60 pt-4 text-center">
-            <div className="rounded-xl bg-muted/20 p-2.5">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold block">Teto Calórico</span>
-              <span className="text-sm md:text-base font-black font-mono text-foreground">
-                {effectiveCalorieGoal} <span className="text-[10px] text-muted-foreground font-sans">kcal</span>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2 border-t border-border/60 pt-3 sm:pt-4 text-center">
+            <div className="rounded-lg sm:rounded-xl bg-muted/20 p-2 sm:p-2.5">
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold block truncate">Teto Calórico</span>
+              <span className="text-xs sm:text-base font-black font-mono text-foreground block">
+                {effectiveCalorieGoal} <span className="text-[9px] text-muted-foreground font-sans">kcal</span>
               </span>
-              <span className="text-[9px] text-emerald-400 block">
-                {cardioCreditCalories > 0 ? `+${cardioCreditCalories} do cardio` : 'Base programada'}
+              <span className="text-[8px] sm:text-[9px] text-emerald-400 block truncate">
+                {cardioCreditCalories > 0 ? `+${cardioCreditCalories} cardio` : 'Base diária'}
               </span>
             </div>
 
-            <div className="rounded-xl bg-muted/20 p-2.5">
-              <span className="text-[10px] text-muted-foreground uppercase font-bold block">Consumido</span>
-              <span className="text-sm md:text-base font-black font-mono text-primary">
-                {Math.round(ingestedTotals.kcal)} <span className="text-[10px] text-muted-foreground font-sans">kcal</span>
+            <div className="rounded-lg sm:rounded-xl bg-muted/20 p-2 sm:p-2.5">
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground uppercase font-bold block truncate">Consumido</span>
+              <span className="text-xs sm:text-base font-black font-mono text-primary block">
+                {Math.round(ingestedTotals.kcal)} <span className="text-[9px] text-muted-foreground font-sans">kcal</span>
               </span>
-              <span className="text-[9px] text-muted-foreground block">
+              <span className="text-[8px] sm:text-[9px] text-muted-foreground block truncate">
                 {todayNutritionEntries.length} alimentos
               </span>
             </div>
 
-            <div className={`rounded-xl p-2.5 border ${
+            <div className={`rounded-lg sm:rounded-xl p-2 sm:p-2.5 border ${
               remainingCalories >= 0
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
             }`}>
-              <span className="text-[10px] uppercase font-bold block">
+              <span className="text-[9px] sm:text-[10px] uppercase font-bold block truncate">
                 {remainingCalories >= 0 ? 'Restante' : 'Superávit'}
               </span>
-              <span className="text-sm md:text-base font-black font-mono">
-                {Math.abs(Math.round(remainingCalories))} <span className="text-[10px] font-sans">kcal</span>
+              <span className="text-xs sm:text-base font-black font-mono block">
+                {Math.abs(Math.round(remainingCalories))} <span className="text-[9px] font-sans">kcal</span>
               </span>
-              <span className="text-[9px] block">
-                {remainingCalories >= 0 ? 'Disponível p/ comer' : 'Acima da meta'}
+              <span className="text-[8px] sm:text-[9px] block truncate">
+                {remainingCalories >= 0 ? 'Disponível' : 'Acima meta'}
               </span>
             </div>
           </div>
         </div>
 
         {/* PAINEL DE CARDIO MULTIETAPAS (NÃO-LINEAR) */}
-        <div className="panel p-6 space-y-4">
+        <div className="panel p-3.5 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <span className="text-[10px] font-bold uppercase text-primary tracking-wider">Cálculo Composto</span>
