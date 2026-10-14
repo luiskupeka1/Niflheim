@@ -1323,35 +1323,50 @@ function TreinosPage() {
           </div>
 
           {/* Mockup Visual da Tela do Treino (Dark Minimalist) */}
+          {/* Visual da Tela do Treino (Modern Minimalist & Rounded) */}
           {/* ⚡ CABEÇALHO DO PROGRAMA & BARRA DE MRV */}
-          <div className="rounded-xl border border-[#222222] bg-[#121212] p-4 space-y-3 font-mono shadow-sm">
+          <div className="rounded-2xl border border-border/70 bg-card/60 backdrop-blur-md p-4 sm:p-5 space-y-3.5 shadow-sm">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="text-sm sm:text-base font-black text-white tracking-wider uppercase">
-                {sessionTitle.split('—')[0].trim()}  •  {programMuscleGroups ? programMuscleGroups.toUpperCase() : 'PEITORAL & TRÍCEPS'}
+              <div className="flex items-center gap-2">
+                <span className="text-primary text-base sm:text-lg font-black">⚡</span>
+                <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight">
+                  {sessionTitle.split('—')[0].trim()} {programMuscleGroups ? `• ${programMuscleGroups}` : ''}
+                </h2>
               </div>
-              <span className="text-[10px] text-[#8F9BBA]">
-                {completedSetsCount}/{totalSetsCount} SÉRIES
+              <span className="text-xs font-bold text-muted-foreground bg-muted/50 px-2.5 py-1 rounded-full border border-border/60">
+                {completedSetsCount}/{totalSetsCount} séries
               </span>
             </div>
 
-            <div className="pt-2 border-t border-[#222222] space-y-1">
-              <div className="text-[10px] font-black uppercase tracking-wider text-[#8F9BBA]">
-                RECOVERY / MRV
-              </div>
-              <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-black">{primaryMuscle.toUpperCase()}</span>
-                  <span className="text-[#FFCC00] tracking-widest text-xs font-bold">[ {mrvBarString} ]</span>
-                  <span className="text-white text-xs">{primaryMuscleAssessment.effectiveWorkingSets}/{primaryMuscleAssessment.landmarks.mrv} SÉRIES</span>
-                </div>
-                <span className="text-[9px] bg-[#FFCC00]/15 text-[#FFCC00] border border-[#FFCC00]/30 px-2 py-0.5 rounded font-black uppercase">
+            <div className="pt-2.5 border-t border-border/50 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                  Recovery / MRV Semanal ({primaryMuscle})
+                </span>
+                <span className="text-[10px] bg-primary/15 text-primary border border-primary/30 px-2.5 py-0.5 rounded-full font-black uppercase">
                   {primaryMuscleAssessment.statusLabel || 'Zona Ideal'}
                 </span>
+              </div>
+
+              {/* Barra de Progresso Arredondada com Glow e Efeito Minimalista */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+                  <span>{primaryMuscleAssessment.effectiveWorkingSets} de {primaryMuscleAssessment.landmarks.mrv} Working Sets</span>
+                  <span className="text-primary font-bold">{Math.min(100, Math.round((primaryMuscleAssessment.effectiveWorkingSets / (primaryMuscleAssessment.landmarks.mrv || 16)) * 100))}%</span>
+                </div>
+                <div className="h-2 w-full bg-muted/60 rounded-full overflow-hidden border border-border/40">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-300 rounded-full shadow-xs shadow-primary/30"
+                    style={{
+                      width: `${Math.min(100, Math.round((primaryMuscleAssessment.effectiveWorkingSets / (primaryMuscleAssessment.landmarks.mrv || 16)) * 100))}%`
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* LISTA DE EXERCÍCIOS ESTILO DARK MINIMALIST */}
+          {/* LISTA DE EXERCÍCIOS ESTILO MODERN MINIMALIST */}
           <div className="space-y-4">
             {exercises.map((ex, exIndex) => {
               const allSetsDone = ex.sets.length > 0 && ex.sets.every((s) => s.completed);
@@ -1361,118 +1376,109 @@ function TreinosPage() {
               return (
                 <div 
                   key={ex.id}
-                  className={`rounded-xl border transition-all p-3.5 sm:p-4 space-y-3 font-mono ${
+                  className={`rounded-2xl border transition-all p-4 sm:p-5 space-y-3.5 backdrop-blur-md ${
                     allSetsDone 
-                      ? 'border-[#FFCC00]/40 bg-[#121212] shadow-sm' 
-                      : 'border-[#222222] bg-[#121212]'
+                      ? 'border-emerald-500/40 bg-card/80 shadow-md shadow-emerald-500/5' 
+                      : 'border-border/70 bg-card/60 shadow-xs'
                   }`}
                 >
-                  {/* Linha Superior do Exercício: 1. SUPINO RETO COM BARRA e botão [ ▶ ] */}
-                  <div className="border-b border-[#222222] pb-3 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm sm:text-base font-black text-white truncate tracking-wide">
-                          {exIndex + 1}. {ex.name.toUpperCase()}
+                  {/* Linha Superior do Exercício */}
+                  <div className="flex items-center justify-between gap-3 border-b border-border/50 pb-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base sm:text-lg font-black text-foreground truncate tracking-tight">
+                        {exIndex + 1}. {ex.name}
+                      </span>
+                      {allSetsDone && (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-black uppercase flex items-center gap-1 shrink-0">
+                          <Check size={11} strokeWidth={3} /> Feito
                         </span>
-                        {allSetsDone && (
-                          <span className="rounded bg-[#FFCC00]/20 text-[#FFCC00] border border-[#FFCC00]/40 px-1.5 py-0.5 text-[9px] font-black uppercase">
-                            ✓ Concluído
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Botão [ ▶ ] Minimalista de Vídeo do YouTube e Ações */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedVideoId(expandedVideoId === ex.id ? null : ex.id)}
-                          className={`px-2.5 py-1 rounded text-xs font-black transition-all cursor-pointer ${
-                            expandedVideoId === ex.id
-                              ? 'bg-[#FFCC00] text-[#0B0B0B] border border-[#FFCC00]'
-                              : 'bg-[#181818] border border-[#333333] text-[#FFCC00] hover:border-[#FFCC00]'
-                          }`}
-                          title="Demonstração em Vídeo (YouTube)"
-                        >
-                          [ ▶ ]
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
-                          className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
-                            expandedTipsId === ex.id
-                              ? 'bg-white text-black border-white'
-                              : 'bg-[#181818] border border-[#333333] text-[#8F9BBA] hover:text-white'
-                          }`}
-                          title="Dicas de execução biomecânica"
-                        >
-                          Dicas
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)}
-                          className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
-                            selectedExerciseForChart === ex.name
-                              ? 'bg-[#FFCC00] text-[#0B0B0B] border-[#FFCC00]'
-                              : 'bg-[#181818] border border-[#333333] text-[#8F9BBA] hover:text-white'
-                          }`}
-                          title="Gráfico de sobrecarga progressiva"
-                        >
-                          Progresso
-                        </button>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Link rápido de execução */}
-                    {ex.video_url && (
-                      <div className="text-[11px] text-[#8F9BBA] truncate">
-                        <a
-                          href={ex.video_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:text-[#FFCC00] transition-colors inline-flex items-center gap-1 truncate"
-                        >
-                          <span>🔗 {ex.video_url}</span>
-                          <ExternalLink size={10} />
-                        </a>
-                      </div>
-                    )}
+                    {/* Ações Minimalistas: Play de Vídeo Redondinho, Dicas e Progresso */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Botão Play do Vídeo Retrátil */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedVideoId(expandedVideoId === ex.id ? null : ex.id)}
+                        className={`size-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                          expandedVideoId === ex.id
+                            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30'
+                            : 'bg-primary/10 border border-primary/25 text-primary hover:bg-primary/20 hover:scale-105'
+                        }`}
+                        title="Ver vídeo de execução (YouTube)"
+                      >
+                        <Play size={13} className={expandedVideoId === ex.id ? 'fill-current' : 'fill-primary'} />
+                      </button>
+
+                      {/* Dicas */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
+                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          expandedTipsId === ex.id
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'bg-muted/50 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                        title="Dicas de execução biomecânica"
+                      >
+                        <Info size={12} className="inline mr-1" />
+                        Dicas
+                      </button>
+
+                      {/* Gráfico Progresso */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)}
+                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                          selectedExerciseForChart === ex.name
+                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                            : 'bg-muted/50 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                        title="Histórico de Sobrecarga"
+                      >
+                        <TrendingUp size={12} className="inline mr-1" />
+                        Evolução
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Player de Vídeo Embutido (se expandido) */}
+                  {/* Vídeo do YouTube Embutido Elegante */}
                   {expandedVideoId === ex.id && (
-                    <div className="rounded-lg overflow-hidden border border-[#222222] bg-black p-2 space-y-2">
+                    <div className="rounded-xl overflow-hidden border border-border/80 bg-background/90 p-2 space-y-2 animate-in fade-in duration-200">
                       {embedUrl ? (
-                        <div className="relative w-full aspect-video rounded overflow-hidden">
+                        <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-md">
                           <iframe
                             src={`${embedUrl}?autoplay=1&mute=1`}
-                            title={`Demonstração ${ex.name}`}
+                            title={`Execução ${ex.name}`}
                             className="w-full h-full border-0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
                           />
                         </div>
                       ) : (
-                        <div className="p-3 text-xs text-[#8F9BBA] flex items-center justify-between">
+                        <div className="p-3 text-xs text-muted-foreground flex items-center justify-between">
                           <span>Link de demonstração do exercício:</span>
                           <a
                             href={ex.video_url || 'https://youtu.be/rT7DgCr-3pg'}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-[#FFCC00] hover:underline font-bold"
+                            className="text-primary hover:underline font-bold inline-flex items-center gap-1"
                           >
-                            Abrir no YouTube ↗
+                            <span>Abrir no YouTube</span>
+                            <ExternalLink size={12} />
                           </a>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Dicas e Orientações (se expandidas) */}
+                  {/* Dicas de Execução */}
                   {expandedTipsId === ex.id && (
-                    <div className="rounded-lg border border-[#333333] bg-[#181818] p-3 text-xs text-[#8F9BBA] leading-relaxed">
-                      <span className="font-bold text-white block mb-1">Orientação Biomecânica:</span>
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground leading-relaxed animate-in fade-in duration-150">
+                      <span className="font-bold text-foreground block mb-0.5 flex items-center gap-1">
+                        <Sparkles size={12} className="text-primary" /> Orientação Biomecânica
+                      </span>
                       {ex.description || 'Controle a fase excêntrica de 2 a 3 segundos, amplitude segura e estabilidade articular.'}
                     </div>
                   )}
@@ -1489,14 +1495,14 @@ function TreinosPage() {
                     />
                   )}
 
-                  {/* SÉRIES EMPILHADAS COM SEPARADOR HORIZONTAL (divide-y divide-[#222222]) */}
-                  <div className="divide-y divide-[#222222]">
+                  {/* SÉRIES EMPILHADAS COM SEPARADOR SUTIL */}
+                  <div className="divide-y divide-border/30">
                     {ex.sets.map((set, sIdx) => {
                       const isPrep = set.baseType === 'WARMUP' || set.baseType === 'FEEDER' || set.baseType === 'PAP';
                       const workingIdx = isPrep ? undefined : ex.sets.slice(0, sIdx + 1).filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
 
                       return (
-                        <div key={set.id} className="pt-2 pb-2 first:pt-0 last:pb-0">
+                        <div key={set.id} className="pt-1.5 pb-1.5 first:pt-0 last:pb-0">
                           <HevySetRow
                             data={set}
                             workingIndex={workingIdx}
@@ -1518,16 +1524,16 @@ function TreinosPage() {
                   </div>
 
                   {/* Rodapé do Exercício: Adicionar Série Rápida */}
-                  <div className="flex items-center justify-between pt-2 border-t border-[#222222] text-xs">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
                     <button
                       type="button"
                       onClick={() => handleAddWorkingSet(ex.id)}
-                      className="text-xs font-bold text-[#FFCC00] hover:text-[#FFCC00]/80 flex items-center gap-1 py-1 px-2 rounded hover:bg-[#FFCC00]/10 transition-colors cursor-pointer"
+                      className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 py-1 px-2.5 rounded-xl hover:bg-primary/10 transition-colors cursor-pointer"
                     >
                       <Plus size={13} /> + Adicionar Série
                     </button>
-                    <span className="text-[10px] font-mono text-[#8F9BBA]">
-                      {completedCount}/{ex.sets.length} CONCLUÍDAS
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      {completedCount} de {ex.sets.length} concluídas
                     </span>
                   </div>
                 </div>
@@ -1535,42 +1541,49 @@ function TreinosPage() {
             })}
           </div>
 
-          {/* ⏱️ CRONÔMETRO DE DESCANSO DOCKED */}
+          {/* ⏱️ CRONÔMETRO DE DESCANSO DOCKED (ARREDONDADO & COM BLUR) */}
           {restTime > 0 && (
-            <div className="rounded-xl border border-[#222222] bg-[#121212] p-3 flex items-center justify-between font-mono text-xs shadow-lg">
-              <div className="flex items-center gap-2 font-black text-white">
-                <span>⏱️</span>
-                <span className="text-[#FFCC00] text-sm tracking-wider">{formatTimer(restTime)}</span>
-                <span className="text-[#8F9BBA] text-[11px] hidden sm:inline">│ DESCANSO</span>
+            <div className="rounded-2xl border border-primary/30 bg-card/90 backdrop-blur-md p-3.5 flex items-center justify-between gap-3 shadow-xl">
+              <div className="flex items-center gap-2.5">
+                <Clock size={18} className={`text-primary ${timerActive ? 'animate-spin' : ''}`} />
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
+                    Descanso Ativo
+                  </span>
+                  <span className="font-mono text-base font-black text-primary tracking-wider">
+                    {formatTimer(restTime)}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[#8F9BBA] mr-1">│</span>
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setRestTime((prev) => Math.max(0, prev - 10))}
-                  className="rounded bg-[#181818] border border-[#333333] hover:border-[#FFCC00] text-white px-2 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  className="rounded-xl bg-muted/60 hover:bg-muted border border-border/70 text-foreground px-2.5 py-1.5 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  title="Reduzir 10 segundos"
                 >
-                  [ -10s ]
+                  -10s
                 </button>
                 <button
                   type="button"
                   onClick={() => setTimerActive(!timerActive)}
-                  className="rounded bg-[#FFCC00] text-[#0B0B0B] hover:bg-[#FFCC00]/90 px-2.5 py-1 text-xs font-black transition-all active:scale-95 cursor-pointer"
+                  className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 px-3.5 py-1.5 text-xs font-black transition-all active:scale-95 shadow-sm shadow-primary/25 cursor-pointer"
                 >
-                  {timerActive ? '[ ⏸ ]' : '[ ▶ ]'}
+                  {timerActive ? 'Pausar' : 'Retomar'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setRestTime((prev) => prev + 10)}
-                  className="rounded bg-[#181818] border border-[#333333] hover:border-[#FFCC00] text-white px-2 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  className="rounded-xl bg-muted/60 hover:bg-muted border border-border/70 text-foreground px-2.5 py-1.5 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  title="Adicionar 10 segundos"
                 >
-                  [ +10s ]
+                  +10s
                 </button>
                 <button
                   type="button"
                   onClick={() => { setRestTime(0); setTimerActive(false); }}
-                  className="text-[#8F9BBA] hover:text-white px-1 text-xs transition-all cursor-pointer ml-1"
-                  title="Zerar cronômetro"
+                  className="size-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                  title="Fechar cronômetro"
                 >
                   ✕
                 </button>
@@ -1578,13 +1591,14 @@ function TreinosPage() {
             </div>
           )}
 
-          {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (AMARELO NEON #FFCC00 CONFORME MOCKUP) */}
+          {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (ARREDONDADO COM GRADIENTE E GLOW) */}
           <button
             type="button"
             onClick={() => setIsFinishingWorkout(true)}
-            className="w-full rounded-xl bg-[#FFCC00] text-[#0B0B0B] hover:bg-[#FFCC00]/90 font-mono font-black text-sm sm:text-base py-3.5 sm:py-4 shadow-xl shadow-[#FFCC00]/15 flex items-center justify-center gap-2 tracking-widest uppercase transition-all active:scale-[0.99] cursor-pointer"
+            className="w-full rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-black font-black text-sm sm:text-base py-4 shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2 uppercase tracking-wide transition-all active:scale-[0.99] cursor-pointer"
           >
-            [  CONCLUIR TREINO  ]
+            <CheckCircle2 size={20} strokeWidth={2.5} />
+            <span>Concluir Treino</span>
           </button>
 
           {/* VOLUME CIENTÍFICO (MEV / MAV / MRV) ESCONDIDO EM ACORDEÃO PARA NÃO POLUIR */}

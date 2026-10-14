@@ -86,45 +86,45 @@ export function HevySetRow({
     return null;
   };
 
-  // Label do Cabeçalho da Série: • S1 | Aquecimento, • S2 | Aclimatação, • S3 | Working Set [ Rest-Pause ], etc.
+  // Label do Cabeçalho da Série com badges arredondadas e modernas
   const renderSetLabel = () => {
     const sNum = workingIndex !== undefined ? `S${workingIndex}` : `S${data.setNumber}`;
 
     if (isWarmup) {
       return (
-        <span className="font-mono text-xs font-bold text-[#8F9BBA]">
-          • {sNum} | Aquecimento
+        <span className="inline-flex items-center text-[11px] font-bold text-muted-foreground bg-muted/60 border border-border/50 px-2 py-0.5 rounded-full">
+          {sNum} • Aquecimento
         </span>
       );
     }
     if (isFeeder) {
       return (
-        <span className="font-mono text-xs font-bold text-[#8F9BBA]">
-          • {sNum} | Aclimatação
+        <span className="inline-flex items-center text-[11px] font-bold text-muted-foreground bg-muted/60 border border-border/50 px-2 py-0.5 rounded-full">
+          {sNum} • Aclimatação
         </span>
       );
     }
     if (isPAP) {
       return (
-        <span className="font-mono text-xs font-bold text-[#8F9BBA]">
-          • {sNum} | PAP (Potenciação)
+        <span className="inline-flex items-center text-[11px] font-bold text-sky-400 bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 rounded-full">
+          {sNum} • PAP
         </span>
       );
     }
     if (isBackoff) {
       return (
-        <span className="font-mono text-xs font-bold text-[#FFCC00]">
-          • {sNum} | Back-off Set
+        <span className="inline-flex items-center text-[11px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+          {sNum} • Back-off
         </span>
       );
     }
     const tech = techniqueLabel();
     return (
-      <span className="font-mono text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
-        <span className="text-white">• {sNum} | Working Set</span>
+      <span className="inline-flex items-center gap-1.5 flex-wrap">
+        <span className="text-xs font-black text-foreground">{sNum}</span>
         {tech && (
-          <span className="text-[11px] font-bold text-[#FFCC00]">
-            [ {tech} ]
+          <span className="text-[10px] font-bold text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full">
+            {tech}
           </span>
         )}
       </span>
@@ -140,7 +140,7 @@ export function HevySetRow({
     } else if (tech === 'Rest-Pause') {
       repsDisplay = '(4+3+2 reps)';
     } else if (tech === 'Myo-Reps') {
-      repsDisplay = '(12 + 4+3+3 reps)';
+      repsDisplay = '(12+4+3+3 reps)';
     } else if (tech === 'Muscle Rounds') {
       repsDisplay = '(6×2 reps)';
     }
@@ -148,12 +148,10 @@ export function HevySetRow({
     const weightDisplay = effectiveTargetWeight > 0 ? `${effectiveTargetWeight} kg` : 'Carga livre';
 
     return (
-      <div className="text-[11px] font-mono text-[#8F9BBA] mt-0.5 flex flex-wrap items-center gap-x-2">
-        <span>
-          <strong className="text-white font-normal">{repsDisplay}</strong> × <strong className="text-white font-normal">{weightDisplay}</strong>  •  {effectiveRest}s
-          {tech && <span className="text-[#FFCC00] ml-1.5">({effectiveIntraRest}s intra)</span>}
-        </span>
-      </div>
+      <span className="text-[11px] font-mono text-muted-foreground">
+        {repsDisplay} × {weightDisplay} • {effectiveRest}s
+        {tech && <span className="text-primary font-bold ml-1">({effectiveIntraRest}s intra)</span>}
+      </span>
     );
   };
 
@@ -203,85 +201,99 @@ export function HevySetRow({
 
   return (
     <div 
-      className={`py-3 px-1 transition-all duration-200 select-none ${
-        data.completed ? 'opacity-95' : 'opacity-100'
+      className={`py-2 px-2.5 rounded-2xl transition-all duration-200 select-none flex items-center justify-between gap-2.5 ${
+        data.completed 
+          ? 'bg-emerald-500/[0.08] border border-emerald-500/25 shadow-xs' 
+          : 'hover:bg-muted/30 border border-transparent'
       }`}
     >
-      {/* 1. LINHA DA SÉRIE E TARGET */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <div className="space-y-0.5">
+      {/* 1. ESQUERDA: IDENTIFICADOR DA SÉRIE E META */}
+      <div className="flex-1 min-w-0 pr-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
           {renderSetLabel()}
+        </div>
+        <div className="mt-0.5 truncate">
           {targetDescription()}
         </div>
+      </div>
 
-        {/* Inputs Compactos para o Aluno Ajustar o Peso e Reps Levantados */}
-        <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
-          <div className="flex items-center gap-1 bg-[#0B0B0B] border border-[#222222] px-2 py-0.5 rounded-lg">
-            <span className="text-[10px] text-[#8F9BBA]">KG:</span>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              value={data.weight === 0 ? '' : data.weight}
-              placeholder={String(effectiveTargetWeight || 0)}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => {
-                const val = e.target.value;
-                const num = val === '' ? 0 : parseFloat(val) || 0;
-                onUpdate({ ...data, weight: num });
-              }}
-              className="w-12 bg-transparent text-white font-bold text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
+      {/* 2. DIREITA: INPUTS COMPACTOS ARREDONDADOS E BOTÃO CHECK */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex flex-col items-center">
+          <input
+            type="number"
+            step="0.5"
+            min="0"
+            value={data.weight === 0 ? '' : data.weight}
+            placeholder={String(effectiveTargetWeight || 0)}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const val = e.target.value;
+              const num = val === '' ? 0 : parseFloat(val) || 0;
+              onUpdate({ ...data, weight: num });
+            }}
+            className={`w-13 sm:w-16 h-8.5 rounded-xl border text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+              data.completed
+                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400'
+                : 'bg-background/80 border-border/80 text-foreground'
+            }`}
+            title="Carga Levantada (kg)"
+          />
+          <span className="text-[9px] font-black text-muted-foreground uppercase mt-0.5">KG</span>
+        </div>
 
-          <div className="flex items-center gap-1 bg-[#0B0B0B] border border-[#222222] px-2 py-0.5 rounded-lg">
-            <span className="text-[10px] text-[#8F9BBA]">REPS:</span>
-            <input
-              type="number"
-              min="0"
-              value={data.reps === 0 ? '' : data.reps}
-              placeholder={String(effectiveTargetReps || 0)}
-              onFocus={(e) => e.target.select()}
-              onChange={(e) => {
-                const val = e.target.value;
-                const num = val === '' ? 0 : parseInt(val) || 0;
-                onUpdate({ ...data, reps: num });
-              }}
-              className="w-10 bg-transparent text-white font-bold text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-          </div>
+        <div className="flex flex-col items-center">
+          <input
+            type="number"
+            min="0"
+            value={data.reps === 0 ? '' : data.reps}
+            placeholder={String(effectiveTargetReps || 0)}
+            onFocus={(e) => e.target.select()}
+            onChange={(e) => {
+              const val = e.target.value;
+              const num = val === '' ? 0 : parseInt(val) || 0;
+              onUpdate({ ...data, reps: num });
+            }}
+            className={`w-11 sm:w-13 h-8.5 rounded-xl border text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+              data.completed
+                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400'
+                : 'bg-background/80 border-border/80 text-foreground'
+            }`}
+            title="Repetições Realizadas"
+          />
+          <span className="text-[9px] font-black text-muted-foreground uppercase mt-0.5">REPS</span>
+        </div>
+
+        {/* Botão de Conclusão Moderno e Arredondado (Hevy Style) */}
+        <div className="flex flex-col items-center">
+          <button
+            type="button"
+            onClick={handleToggle}
+            className={`h-8.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-90 cursor-pointer select-none ${
+              data.completed
+                ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30 font-black border border-emerald-400'
+                : 'bg-muted/60 border border-border/80 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/10'
+            }`}
+            title={data.completed ? 'Série concluída! Toque para reabrir' : 'Toque para concluir série e computar XP'}
+          >
+            <Check size={16} strokeWidth={data.completed ? 3.5 : 2} />
+            {data.completed && !isPreparatory && calculatedXP > 0 && (
+              <span className="text-[10px] font-black tracking-tight">+{calculatedXP}</span>
+            )}
+          </button>
+          <span className="text-[9px] font-black text-muted-foreground uppercase mt-0.5">OK</span>
         </div>
       </div>
 
-      {/* 2. BOTÃO DE AÇÃO MINIMALISTA CONFORME O MOCKUP */}
-      <div className="mt-2.5 flex items-center justify-between gap-2">
-        <button
-          type="button"
-          onClick={handleToggle}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono font-black transition-all cursor-pointer active:scale-95 ${
-            data.completed
-              ? 'bg-[#FFCC00] text-[#0B0B0B] shadow-md shadow-[#FFCC00]/20'
-              : 'bg-[#181818] border border-[#282828] text-white hover:border-[#FFCC00] hover:text-[#FFCC00]'
-          }`}
-        >
-          <span>{data.completed ? '[✓]' : '[ ]'}</span>
-          <span>
-            {data.completed 
-              ? (isPreparatory ? 'Concluído' : `FINALIZAR SÉRIE  ➔  +${calculatedXP} XP`) 
-              : 'FINALIZAR SÉRIE'}
-          </span>
-        </button>
-
-        {/* Pop-up flutuante de XP imediato */}
-        {justCompleted && !isPreparatory && calculatedXP > 0 && (
-          <div className="fixed top-20 right-6 z-50 pointer-events-none animate-in fade-in zoom-in slide-in-from-top-4 duration-300">
-            <div className="rounded-xl bg-[#FFCC00] text-[#0B0B0B] px-3.5 py-2 font-black text-xs shadow-2xl flex items-center gap-1.5 font-mono">
-              <Sparkles size={15} />
-              <span>+{calculatedXP} XP • {xpReason}</span>
-            </div>
+      {/* Pop-up flutuante de XP imediato com animação e efeito glow */}
+      {justCompleted && !isPreparatory && calculatedXP > 0 && (
+        <div className="fixed top-20 right-6 z-50 pointer-events-none animate-in fade-in zoom-in slide-in-from-top-4 duration-300">
+          <div className="rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-400 text-black px-3.5 py-2 font-black text-xs shadow-2xl shadow-emerald-500/40 flex items-center gap-1.5 border border-emerald-300">
+            <Sparkles size={15} />
+            <span>+{calculatedXP} XP • {xpReason}</span>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
