@@ -28,7 +28,7 @@ export type BiomechanicalCategory = 'Push' | 'Pull' | 'Legs' | 'Upper' | 'Lower'
 
 export type BaseSetType = 'WARMUP' | 'FEEDER' | 'PAP' | 'WORKING' | 'BACKOFF';
 
-export type IntensityTechnique = 'NONE' | 'MYO_REPS' | 'CLUSTER_SET' | 'REST_PAUSE' | 'DROP_SET';
+export type IntensityTechnique = 'NONE' | 'MYO_REPS' | 'CLUSTER_SET' | 'REST_PAUSE' | 'MUSCLE_ROUNDS' | 'DROP_SET';
 
 export interface SetVolumeData {
   id: string;

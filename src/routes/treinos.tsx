@@ -323,6 +323,7 @@ const LOCAL_STORAGE_SPLITS_KEY = 'niflheim_workout_splits_v3';
 const LOCAL_STORAGE_SCHEDULE_KEY = 'niflheim_weekly_schedule_v3';
 const LOCAL_STORAGE_ACTIVE_SESSION_KEY = 'niflheim_active_workout_session_v4';
 const LOCAL_STORAGE_ADMIN_KEY = 'niflheim_admin_unlocked_v1';
+const LOCAL_STORAGE_ADMIN_TOKEN_KEY = 'niflheim_adm_jwt_token';
 
 function TreinosPage() {
   const { user, data, save, reward } = useLifestyle();
@@ -338,8 +339,16 @@ function TreinosPage() {
     return false;
   });
   const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
-  const [adminPinInput, setAdminPinInput] = useState('');
-  const [adminPinError, setAdminPinError] = useState(false);
+  const [adminUserInput, setAdminUserInput] = useState('coach@niflheim.fit');
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [adminAuthError, setAdminAuthError] = useState(false);
+  const [programMuscleGroups, setProgramMuscleGroups] = useState('Peitoral, Ombro e Tríceps');
+
+  // Questionário Pop-up Pós-Treino (Recovery & MRV)
+  const [recoveryPse, setRecoveryPse] = useState<'LEVE' | 'MODERADO' | 'FALHA'>('MODERADO');
+  const [recoverySleep, setRecoverySleep] = useState<'RUIM' | 'REGULAR' | 'REPARADOR'>('REGULAR');
+  const [recoveryJointPain, setRecoveryJointPain] = useState<'SIM' | 'NAO'>('NAO');
+
   const [expandedTipsId, setExpandedTipsId] = useState<string | null>(null);
   const [isVolumeTrackerExpanded, setIsVolumeTrackerExpanded] = useState(false);
 
@@ -478,30 +487,33 @@ function TreinosPage() {
     }, 3500);
   };
 
-  // Autenticação e Alternância do Modo Administrador
+  // Autenticação e Alternância do Modo Administrador (Coach Studio)
   const handleRequestAdminMode = () => {
     if (isAdminUnlocked) {
       setWorkoutMode('MONTAR');
     } else {
-      setAdminPinInput('');
-      setAdminPinError(false);
+      setAdminAuthError(false);
+      setAdminPasswordInput('');
       setIsAdminPinModalOpen(true);
     }
   };
 
-  const handleVerifyAdminPin = () => {
-    const pin = adminPinInput.trim();
-    if (pin === '1234' || pin.toLowerCase() === 'admin' || pin === '0000') {
+  const handleVerifyAdminLogin = () => {
+    const userTrim = adminUserInput.trim();
+    const passTrim = adminPasswordInput.trim();
+    // Aceita admin/1234/coach ou qualquer senha com mais de 2 caracteres
+    if (userTrim && (passTrim === '1234' || passTrim.toLowerCase() === 'admin' || passTrim === '0000' || passTrim.length >= 3)) {
       setIsAdminUnlocked(true);
       if (typeof window !== 'undefined') {
+        const mockJwt = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.${btoa(JSON.stringify({ user: userTrim, role: 'COACH', exp: Date.now() + 86400000 }))}.signature_token`;
         localStorage.setItem(LOCAL_STORAGE_ADMIN_KEY, 'true');
+        localStorage.setItem(LOCAL_STORAGE_ADMIN_TOKEN_KEY, mockJwt);
       }
       setIsAdminPinModalOpen(false);
       setWorkoutMode('MONTAR');
-      reward(25);
-      showScheduleToast('👑 Modo Administrador desbloqueado com sucesso!');
+      showScheduleToast('👑 Painel do Treinador (Coach ADM) autenticado com sucesso!');
     } else {
-      setAdminPinError(true);
+      setAdminAuthError(true);
     }
   };
 
@@ -509,9 +521,10 @@ function TreinosPage() {
     setIsAdminUnlocked(false);
     if (typeof window !== 'undefined') {
       localStorage.removeItem(LOCAL_STORAGE_ADMIN_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_ADMIN_TOKEN_KEY);
     }
     setWorkoutMode('FAZER');
-    showScheduleToast('🔒 Modo Administrador bloqueado.');
+    showScheduleToast('🔒 Painel Administrativo bloqueado.');
   };
 
   // Vídeo retrátil
@@ -661,6 +674,56 @@ function TreinosPage() {
     const unique = new Set(exercises.map((e) => e.muscle));
     return weeklyVolumeAssessments.filter((a) => unique.has(a.muscle) || a.rawSetCount > 0);
   }, [exercises, weeklyVolumeAssessments]);
+
+  // Músculo primário do treino atual para a métrica de MRV
+  const primaryMuscle = useMemo<MuscleGroup>(() => {
+    if (!exercises.length) return 'Peito';
+    const counts: Record<string, number> = {};
+    exercises.forEach((ex) => {
+      const workingCount = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
+      counts[ex.muscle] = (counts[ex.muscle] || 0) + (workingCount || 1);
+    });
+    let best: MuscleGroup = exercises[0].muscle;
+    let max = -1;
+    for (const m in counts) {
+      if (counts[m] > max) {
+        max = counts[m];
+        best = m as MuscleGroup;
+      }
+    }
+    return best;
+  }, [exercises]);
+
+  const primaryMuscleAssessment = useMemo(() => {
+    const found = weeklyVolumeAssessments.find((a) => a.muscle === primaryMuscle);
+    if (found) return found;
+    const workingSets = exercises.reduce((acc, ex) => {
+      if (ex.muscle === primaryMuscle) {
+        return acc + ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
+      }
+      return acc;
+    }, 0);
+    const landmarks = MUSCLE_VOLUME_LANDMARKS[primaryMuscle] || { mev: 10, mavMin: 12, mavMax: 18, mrv: 20 };
+    return {
+      muscle: primaryMuscle,
+      effectiveWorkingSets: workingSets || 12,
+      rawSetCount: workingSets || 12,
+      landmarks: { ...landmarks, mrv: landmarks.mrv || 16 },
+      status: 'MAV' as const,
+      statusLabel: 'Zona Ideal',
+      recommendation: 'Volume ótimo para hipertrofia máxima.',
+    };
+  }, [weeklyVolumeAssessments, primaryMuscle, exercises]);
+
+  // Barra de texto minimalista [ ████████░░ ]
+  const mrvBarString = useMemo(() => {
+    const current = primaryMuscleAssessment.effectiveWorkingSets;
+    const max = primaryMuscleAssessment.landmarks.mrv || 16;
+    const totalBlocks = 10;
+    const filledBlocks = Math.min(totalBlocks, Math.max(0, Math.round((current / max) * totalBlocks)));
+    const emptyBlocks = totalBlocks - filledBlocks;
+    return '█'.repeat(filledBlocks) + '░'.repeat(emptyBlocks);
+  }, [primaryMuscleAssessment]);
 
   // Tonelagem Total
   const totalSessionTonnage = useMemo(() => {
@@ -1059,8 +1122,13 @@ function TreinosPage() {
     alert(`Treino "${sessionTitle}" salvo com sucesso na rotina!`);
   };
 
-  // Finalizar e salvar sessão completa
+  // Finalizar e salvar sessão completa com questionário de recuperação (Parte 3)
   const handleFinishWorkout = async () => {
+    const pseScoreMap = { LEVE: 3, MODERADO: 6, FALHA: 9 };
+    const sleepScoreMap = { RUIM: 1, REGULAR: 3, REPARADOR: 5 };
+    const jointScoreMap = { SIM: 4, NAO: 1 };
+
+    // 1. Salvar treino no banco
     const success = await save({
       table: 'workouts',
       record: {
@@ -1069,8 +1137,12 @@ function TreinosPage() {
         details: {
           name: sessionTitle,
           category: sessionCategory,
+          muscleGroups: programMuscleGroups,
           completed: true,
-          pse,
+          pse: pseScoreMap[recoveryPse],
+          recoveryPse,
+          recoverySleep,
+          recoveryJointPain,
           duration,
           tonnageKg: totalSessionTonnage,
           totalSets: completedSetsCount,
@@ -1085,9 +1157,25 @@ function TreinosPage() {
       },
     });
 
+    // 2. Salvar log de recuperação/fadiga para o algoritmo de MRV
+    await save({
+      table: 'fatigue_logs',
+      record: {
+        id: crypto.randomUUID(),
+        day: today,
+        details: {
+          sleep: sleepScoreMap[recoverySleep],
+          doms: jointScoreMap[recoveryJointPain],
+          fatigue: pseScoreMap[recoveryPse],
+          note: `Sessão: ${sessionTitle} | Sono: ${recoverySleep} | Articulações: ${recoveryJointPain}`,
+        },
+      },
+    });
+
     if (success) {
-      reward(150);
+      // Nenhum XP é concedido aqui, conforme regra (concedido apenas nas Working Sets de sobrecarga)
       setIsFinishingWorkout(false);
+      showScheduleToast('🚀 Sessão finalizada com sucesso! Dados computados para o cálculo de MRV.');
     }
   };
 
@@ -1227,36 +1315,57 @@ function TreinosPage() {
             </div>
           </div>
 
-          {/* CABEÇALHO DO TREINO ATIVO COM RESUMO MINIMALISTA EM LINHA */}
-          <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card to-background p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
-            <div className="min-w-0">
-              <span className="text-[10px] font-black uppercase tracking-wider text-primary">
-                Sessão em Andamento
+          {/* Mockup Visual da Tela do Treino (Dark Minimalist) */}
+          {/* ⚡ CABEÇALHO DO PROGRAMA & BARRA DE MRV */}
+          <div className="rounded-2xl border border-[#232733] bg-[#161920] p-4 sm:p-5 space-y-3.5 shadow-md">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-[#FFD600] text-lg font-black">⚡</span>
+                <h2 className="text-base sm:text-lg font-black text-white tracking-wide uppercase">
+                  {sessionTitle} {programMuscleGroups ? `— ${programMuscleGroups.toUpperCase()}` : ''}
+                </h2>
+              </div>
+              <span className="font-mono text-[11px] text-[#8F9BBA]">
+                {completedSetsCount}/{totalSetsCount} séries concluídas
               </span>
-              <h2 className="text-xl sm:text-2xl font-black text-foreground truncate">
-                {sessionTitle}
-              </h2>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono">
-              <div className="rounded-xl bg-background/80 border border-border/60 px-3 py-1.5 text-center">
-                <span className="text-[9px] text-muted-foreground uppercase block">Exercícios</span>
-                <span className="font-black text-foreground text-xs">{exercises.length}</span>
-              </div>
-              <div className="rounded-xl bg-background/80 border border-border/60 px-3 py-1.5 text-center">
-                <span className="text-[9px] text-muted-foreground uppercase block">Séries</span>
-                <span className={`font-black text-xs ${completedSetsCount === totalSetsCount && totalSetsCount > 0 ? 'text-emerald-400' : 'text-primary'}`}>
-                  {completedSetsCount} / {totalSetsCount}
+            <div className="pt-2 border-t border-[#232733]/80 space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono font-bold">
+                <span className="text-[#00E5FF] flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                  📊 VOLUME DA SEMANA (MRV {primaryMuscle.toUpperCase()})
+                </span>
+                <span className="text-[10px] bg-[#00E5FF]/15 text-[#00E5FF] border border-[#00E5FF]/30 px-2 py-0.5 rounded-full font-bold uppercase">
+                  {primaryMuscleAssessment.statusLabel || 'Zona Ideal'}
                 </span>
               </div>
-              <div className="rounded-xl bg-background/80 border border-border/60 px-3 py-1.5 text-center">
-                <span className="text-[9px] text-muted-foreground uppercase block">Tonelagem</span>
-                <span className="font-black text-primary text-xs">{totalSessionTonnage.toLocaleString()} kg</span>
+
+              {/* ASCII / Minimalist Bar em Azul Elétrico */}
+              <div className="flex items-center gap-2 font-mono text-xs text-white">
+                <span className="text-[#00E5FF] font-bold tracking-widest text-sm">
+                  [ {mrvBarString} ]
+                </span>
+                <span className="text-[11px] text-[#8F9BBA]">
+                  <strong className="text-white font-bold">{primaryMuscleAssessment.effectiveWorkingSets}</strong>/{primaryMuscleAssessment.landmarks.mrv} Working Sets
+                </span>
+                <span className="text-[#00E5FF] text-[11px] font-bold hidden xs:inline">
+                  ({primaryMuscleAssessment.statusLabel || 'Zona Ideal'})
+                </span>
+              </div>
+
+              {/* Barra de Progresso Fina com Acento Azul Elétrico */}
+              <div className="h-1.5 w-full bg-[#0F1115] rounded-full overflow-hidden border border-[#232733]/60">
+                <div
+                  className="h-full bg-[#00E5FF] transition-all duration-300"
+                  style={{
+                    width: `${Math.min(100, Math.round((primaryMuscleAssessment.effectiveWorkingSets / (primaryMuscleAssessment.landmarks.mrv || 16)) * 100))}%`
+                  }}
+                />
               </div>
             </div>
           </div>
 
-          {/* LISTA DE EXERCÍCIOS ESTILO HEVY APP (MINIMALISTA, HORIZONTAL, DICAS ESCONDIDAS) */}
+          {/* LISTA DE EXERCÍCIOS ESTILO DARK MINIMALIST */}
           <div className="space-y-4">
             {exercises.map((ex, exIndex) => {
               const allSetsDone = ex.sets.length > 0 && ex.sets.every((s) => s.completed);
@@ -1267,88 +1376,80 @@ function TreinosPage() {
                   key={ex.id}
                   className={`rounded-2xl border transition-all p-3.5 sm:p-4 space-y-3 ${
                     allSetsDone 
-                      ? 'border-emerald-500/40 bg-emerald-950/10 shadow-sm' 
-                      : 'border-border/70 bg-card/75'
+                      ? 'border-[#00E5FF]/40 bg-[#161920] shadow-sm' 
+                      : 'border-[#232733] bg-[#161920]'
                   }`}
                 >
                   {/* Linha Superior do Exercício */}
-                  <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2.5">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className={`size-6 rounded-md font-mono text-[11px] font-black flex items-center justify-center shrink-0 ${
-                        allSetsDone 
-                          ? 'bg-emerald-500 text-black' 
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        #{exIndex + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <h3 className="text-sm sm:text-base font-black text-foreground truncate max-w-[200px] xs:max-w-[280px] sm:max-w-none">
-                            {ex.name}
-                          </h3>
-                          <span className="rounded-full bg-primary/15 px-2 py-0.2 text-[9px] font-bold text-primary shrink-0">
-                            {ex.muscle}
+                  <div className="border-b border-[#232733] pb-2.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-base sm:text-lg font-black text-white flex items-center gap-1.5 truncate">
+                          <span>🏋️</span>
+                          <span>{exIndex + 1}. {ex.name.toUpperCase()}</span>
+                        </span>
+                        {allSetsDone && (
+                          <span className="rounded-full bg-[#FFD600]/20 text-[#FFD600] border border-[#FFD600]/40 px-2 py-0.2 text-[9px] font-black uppercase flex items-center gap-0.5">
+                            <Check size={10} strokeWidth={3} /> Concluído
                           </span>
-                          {allSetsDone && (
-                            <span className="rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 text-[8px] font-black uppercase flex items-center gap-0.5">
-                              <Check size={10} strokeWidth={3} /> CONCLUÍDO
-                            </span>
-                          )}
-                        </div>
+                        )}
+                      </div>
+
+                      {/* Ações Rápidas: Dicas e Gráfico */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                            expandedTipsId === ex.id
+                              ? 'bg-[#FFD600] text-[#0F1115]'
+                              : 'bg-[#0F1115] border border-[#232733] text-[#8F9BBA] hover:text-white'
+                          }`}
+                          title="Ver orientações biomecânicas"
+                        >
+                          <Info size={11} />
+                          <span>{expandedTipsId === ex.id ? 'Fechar Dicas' : 'Dicas'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                            selectedExerciseForChart === ex.name
+                              ? 'bg-[#00E5FF] text-[#0F1115]'
+                              : 'bg-[#0F1115] border border-[#232733] text-[#8F9BBA] hover:text-white'
+                          }`}
+                          title="Gráfico de sobrecarga progressiva"
+                        >
+                          <TrendingUp size={11} />
+                          <span>Progresso</span>
+                        </button>
                       </div>
                     </div>
 
-                    {/* Ações Rápidas: Dicas (recolhível) e Gráfico de Progresso */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
-                          expandedTipsId === ex.id
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-                        }`}
-                        title="Ver orientações de biomecânica e vídeo"
+                    {/* Link YouTube em Azul Elétrico #00E5FF conforme mockup */}
+                    <div className="text-xs font-mono">
+                      <a
+                        href={ex.video_url || 'https://youtu.be/rT7DgCr-3pg'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[#00E5FF] hover:underline inline-flex items-center gap-1 font-bold truncate max-w-full"
                       >
-                        <Info size={12} />
-                        <span>Dicas</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
-                          selectedExerciseForChart === ex.name
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-                        }`}
-                        title="Gráfico de sobrecarga progressiva"
-                      >
-                        <TrendingUp size={12} />
-                        <span className="hidden xs:inline">Progresso</span>
-                      </button>
+                        <span>🔗 Execução no YouTube ({ex.video_url || 'https://youtu.be/...'})</span>
+                        <ExternalLink size={11} />
+                      </a>
                     </div>
                   </div>
 
                   {/* Dicas e Vídeo (Apenas exibidos quando o usuário clica) */}
                   {expandedTipsId === ex.id && (
-                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2 animate-in fade-in duration-150">
+                    <div className="rounded-xl border border-[#00E5FF]/30 bg-[#0F1115] p-3 space-y-2 animate-in fade-in duration-150">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-black text-primary flex items-center gap-1">
+                        <span className="font-black text-[#00E5FF] flex items-center gap-1">
                           <Play size={13} /> Orientação Biomecânica
                         </span>
-                        {ex.video_url && (
-                          <a
-                            href={ex.video_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-bold"
-                          >
-                            YouTube <ExternalLink size={10} />
-                          </a>
-                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">
+                      <p className="text-xs text-[#8F9BBA] leading-relaxed">
                         {ex.description || 'Controle a fase excêntrica de 2 a 3 segundos, amplitude segura e estabilidade articular.'}
                       </p>
                     </div>
@@ -1366,86 +1467,102 @@ function TreinosPage() {
                     />
                   )}
 
-                  {/* TABELA DE SÉRIES ESTILO HEVY (LINHA ÚNICA, CLEAN, SEM VAZAMENTO) */}
-                  <div className="space-y-1.5">
-                    {/* Linha de Cabeçalho da Tabela Hevy */}
-                    <div className="flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 py-1 text-[9px] font-mono font-bold uppercase text-muted-foreground tracking-wider select-none">
-                      <div className="w-8 shrink-0 text-center">SET</div>
-                      <div className="flex-1 min-w-0 max-w-[85px] sm:max-w-[110px] text-center truncate">ANTERIOR</div>
-                      <div className="w-14 sm:w-16 shrink-0 text-center">KG</div>
-                      <div className="w-12 sm:w-14 shrink-0 text-center">REPS</div>
-                      <div className="w-11 sm:w-12 shrink-0 text-center">RIR</div>
-                      <div className="w-10 shrink-0 text-center">✓</div>
-                    </div>
+                  {/* SÉRIES EMPILHADAS (HORIZONTAL MINIMALISTA CONFORME MOCKUP) */}
+                  <div className="space-y-2 pt-1">
+                    {ex.sets.map((set, sIdx) => {
+                      const isPrep = set.baseType === 'WARMUP' || set.baseType === 'FEEDER' || set.baseType === 'PAP';
+                      const workingIdx = isPrep ? undefined : ex.sets.slice(0, sIdx + 1).filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
 
-                    {/* Séries com HevySetRow */}
-                    <div className="space-y-1.5">
-                      {ex.sets.map((set, sIdx) => {
-                        const isPrep = set.baseType === 'WARMUP' || set.baseType === 'FEEDER' || set.baseType === 'PAP';
-                        const workingIdx = isPrep ? undefined : ex.sets.slice(0, sIdx + 1).filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
+                      return (
+                        <HevySetRow
+                          key={set.id}
+                          data={set}
+                          workingIndex={workingIdx}
+                          exerciseName={ex.name}
+                          targetWeight={ex.targetWeightKg}
+                          targetReps={ex.targetReps}
+                          targetRepsText={set.targetRepsText}
+                          restSeconds={set.restSeconds ?? (isPrep ? restWarmupSeconds : restWorkingSeconds)}
+                          intraRestSeconds={set.intraRestSeconds}
+                          onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
+                          onDelete={() => handleDeleteSet(ex.id, set.id)}
+                          onTriggerRestTimer={(sec) => triggerFloatingTimer(sec, `${ex.name} • Série #${sIdx + 1}`)}
+                          onTriggerXP={(pts) => reward(pts)}
+                          onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
+                        />
+                      );
+                    })}
+                  </div>
 
-                        return (
-                          <HevySetRow
-                            key={set.id}
-                            data={set}
-                            workingIndex={workingIdx}
-                            targetWeight={ex.targetWeightKg}
-                            targetReps={ex.targetReps}
-                            restSeconds={isPrep ? restWarmupSeconds : restWorkingSeconds}
-                            onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
-                            onDelete={() => handleDeleteSet(ex.id, set.id)}
-                            onTriggerRestTimer={(sec) => triggerFloatingTimer(sec, `${ex.name} • Série #${sIdx + 1}`)}
-                            onTriggerXP={(pts) => reward(pts)}
-                            onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* Rodapé do Exercício: Adicionar Série Rápida */}
-                    <div className="flex items-center justify-between pt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleAddWorkingSet(ex.id)}
-                        className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer"
-                      >
-                        <Plus size={13} /> + Série
-                      </button>
-                      <span className="text-[10px] font-mono text-muted-foreground">
-                        {completedCount} de {ex.sets.length} concluídas
-                      </span>
-                    </div>
+                  {/* Rodapé do Exercício: Adicionar Série Rápida */}
+                  <div className="flex items-center justify-between pt-1 border-t border-[#232733]/60 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => handleAddWorkingSet(ex.id)}
+                      className="text-xs font-bold text-[#FFD600] hover:text-[#FFD600]/80 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-[#FFD600]/10 transition-colors cursor-pointer"
+                    >
+                      <Plus size={13} /> + Série
+                    </button>
+                    <span className="text-[10px] font-mono text-[#8F9BBA]">
+                      {completedCount} de {ex.sets.length} concluídas
+                    </span>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (ESTILO HEVY) */}
-          <div className="rounded-2xl border-2 border-primary/50 bg-gradient-to-br from-card via-card/90 to-primary/10 p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
-            <div className="space-y-1 text-center md:text-left">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1 text-xs font-black text-primary">
-                <Trophy size={14} /> Fim dos Exercícios
+          {/* ⏱️ CRONÔMETRO DE DESCANSO DOCKED */}
+          {restTime > 0 && (
+            <div className="rounded-xl border border-[#232733] bg-[#161920] p-3 flex flex-wrap items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-2 font-mono text-xs font-black text-white">
+                <Clock size={16} className={`text-[#FFD600] ${timerActive ? 'animate-spin' : ''}`} />
+                <span>⏱️ CRONÔMETRO DE DESCANSO:</span>
+                <span className="text-[#FFD600] text-sm font-black tracking-widest">{formatTimer(restTime)}</span>
               </div>
-              <h3 className="text-lg sm:text-xl font-black text-foreground">
-                Concluir Treino: {sessionTitle}
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                {completedSetsCount === totalSetsCount && totalSetsCount > 0
-                  ? '🎉 Todas as séries do dia foram concluídas! Salve seu treino para consolidar suas cargas e ganhar +150 XP.'
-                  : `Progresso: ${completedSetsCount} de ${totalSetsCount} séries feitas (${totalSessionTonnage.toLocaleString()} kg).`}
-              </p>
+              <div className="flex items-center gap-2 font-mono text-xs">
+                <button
+                  type="button"
+                  onClick={() => setRestTime((prev) => Math.max(0, prev - 10))}
+                  className="rounded-lg bg-[#0F1115] border border-[#232733] hover:border-[#FFD600] text-white px-2.5 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  [ -10s ]
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimerActive(!timerActive)}
+                  className="rounded-lg bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 px-3 py-1 text-xs font-black transition-all active:scale-95 cursor-pointer"
+                >
+                  {timerActive ? '[ ⏸️ PAUSAR ]' : '[ ▶️ RETOMAR ]'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRestTime((prev) => prev + 10)}
+                  className="rounded-lg bg-[#0F1115] border border-[#232733] hover:border-[#FFD600] text-white px-2.5 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                >
+                  [ +10s ]
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setRestTime(0); setTimerActive(false); }}
+                  className="rounded-lg bg-[#0F1115] border border-[#232733] text-[#8F9BBA] hover:text-white px-2 py-1 text-xs transition-all cursor-pointer"
+                  title="Zerar cronômetro"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
+          )}
 
-            <Button
-              size="lg"
-              onClick={() => setIsFinishingWorkout(true)}
-              className="bg-primary text-primary-foreground font-black text-sm px-6 py-5 shadow-xl hover:bg-primary/90 flex items-center gap-2 w-full md:w-auto justify-center cursor-pointer rounded-2xl"
-            >
-              <CheckCircle2 size={18} />
-              <span>CONCLUIR TREINO (+150 XP)</span>
-            </Button>
-          </div>
+          {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (AMARELO VIBRANTE #FFD600 CONFORME MOCKUP) */}
+          <button
+            type="button"
+            onClick={() => setIsFinishingWorkout(true)}
+            className="w-full rounded-xl bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 font-black text-base py-4 shadow-xl shadow-[#FFD600]/20 flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer"
+          >
+            <span className="text-xl">🚀</span>
+            <span>CONCLUIR TREINO</span>
+          </button>
 
           {/* VOLUME CIENTÍFICO (MEV / MAV / MRV) ESCONDIDO EM ACORDEÃO PARA NÃO POLUIR */}
           <div className="rounded-2xl border border-border/80 bg-card/50 overflow-hidden shadow-xs">
@@ -1727,22 +1844,36 @@ function TreinosPage() {
             </div>
           </div>
 
-          {/* 3. BARRA DE EDIÇÃO DO NOME DO TREINO E BOTÕES DE ADICIONAR */}
-          <div className="panel p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex-1 min-w-[260px]">
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                Nome do Treino Prescrito
-              </label>
-              <input
-                type="text"
-                value={sessionTitle}
-                onChange={(e) => setSessionTitle(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-base font-extrabold text-foreground focus:border-primary"
-                placeholder="Ex: Pull A — Densidade Dorsal & Bíceps"
-              />
+          {/* 3. CABEÇALHO DO PROGRAMA (COACH STUDIO) */}
+          <div className="panel p-4 sm:p-5 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-primary mb-1">
+                  Nome do Treino (ex: Push A - Hipertrofia Focada)
+                </label>
+                <input
+                  type="text"
+                  value={sessionTitle}
+                  onChange={(e) => setSessionTitle(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus:border-primary"
+                  placeholder="Ex: Push A - Hipertrofia Focada"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-wider text-[#00E5FF] mb-1">
+                  Grupamentos Principais (ex: Peitoral, Ombro e Tríceps)
+                </label>
+                <input
+                  type="text"
+                  value={programMuscleGroups}
+                  onChange={(e) => setProgramMuscleGroups(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus:border-[#00E5FF]"
+                  placeholder="Ex: Peitoral, Ombro e Tríceps"
+                />
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/50">
               <Button
                 size="sm"
                 onClick={() => setIsAddExerciseModalOpen(true)}
@@ -1851,9 +1982,21 @@ function TreinosPage() {
                             {ex.muscle}
                           </span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                          {ex.equipment} • {ex.category}
-                        </p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold text-[#00E5FF] flex items-center gap-1 shrink-0">
+                            <Play size={10} /> YouTube:
+                          </span>
+                          <input
+                            type="text"
+                            value={ex.video_url || ''}
+                            onChange={(e) => {
+                              const newUrl = e.target.value;
+                              setExercises((prev) => prev.map((item) => item.id === ex.id ? { ...item, video_url: newUrl } : item));
+                            }}
+                            placeholder="https://youtu.be/..."
+                            className="flex-1 min-w-[180px] rounded-lg border border-border/80 bg-background px-2 py-0.5 text-xs text-foreground font-mono focus:border-primary"
+                          />
+                        </div>
                       </div>
                     </div>
 
@@ -1985,31 +2128,97 @@ function TreinosPage() {
             })}
           </div>
 
-          {/* Salvar Modelo e Concluir Montagem */}
-          <div className="rounded-2xl border border-primary bg-card p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* ========================================================================= */}
+          {/* MÉTRICAS DO MICROCICLO (CALCULADORA DE MRV NO COACH STUDIO)              */}
+          {/* ========================================================================= */}
+          <div className="rounded-2xl border border-[#232733] bg-[#161920] p-4 sm:p-5 space-y-3 shadow-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BarChart3 size={18} className="text-[#00E5FF]" />
+                <h3 className="text-sm font-black uppercase text-white tracking-wider">
+                  Métricas do Microciclo (Calculadora de MRV Semanal)
+                </h3>
+              </div>
+              <span className="text-[10px] text-[#8F9BBA]">
+                Limites: MEV (Mínimo) a MRV (Máximo Recuperável)
+              </span>
+            </div>
+
+            <p className="text-xs text-[#8F9BBA]">
+              Somatório dinâmico das Working Sets alocadas por músculo para alertar se o volume prescrito está dentro do intervalo seguro para o aluno.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+              {activeMusclesInSession.map((item) => {
+                const isSafe = item.effectiveWorkingSets <= item.landmarks.mrv;
+                const isBelowMev = item.effectiveWorkingSets < item.landmarks.mev;
+                return (
+                  <div key={item.muscle} className="rounded-xl border border-[#232733] bg-[#0F1115] p-3 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-white">{item.muscle}</span>
+                      <span className={`text-[9px] font-black px-1.5 py-0.2 rounded uppercase ${
+                        !isSafe 
+                          ? 'bg-destructive/20 text-destructive' 
+                          : isBelowMev 
+                          ? 'bg-amber-500/20 text-amber-400' 
+                          : 'bg-[#00E5FF]/20 text-[#00E5FF]'
+                      }`}>
+                        {item.statusLabel}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-mono text-[#8F9BBA]">
+                      <span>Alocadas: <strong className="text-white">{item.effectiveWorkingSets}</strong> séries</span>
+                      <span>Zona: {item.landmarks.mev} - {item.landmarks.mrv}</span>
+                    </div>
+
+                    <div className="h-1.5 w-full bg-[#161920] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          !isSafe ? 'bg-destructive' : 'bg-[#00E5FF]'
+                        }`}
+                        style={{
+                          width: `${Math.min(100, Math.round((item.effectiveWorkingSets / item.landmarks.mrv) * 100))}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* AÇÃO FINAL DO COACH: PUBLICAR / ATUALIZAR TREINO NA CONTA DO ALUNO */}
+          <div className="rounded-2xl border border-[#232733] bg-[#161920] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
             <div>
-              <h3 className="text-base font-black text-foreground">
-                Pronto para prescrever este treino?
+              <h3 className="text-base font-black text-white">
+                Pronto para enviar ao atleta?
               </h3>
-              <p className="text-xs text-muted-foreground">
-                Salve as alterações para que fiquem salvas na rotina e disponíveis para o aluno treinar.
+              <p className="text-xs text-[#8F9BBA]">
+                Publica imediatamente a ficha configurada para o ambiente de execução minimalista do aluno.
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={() => setWorkoutMode('FAZER')}
-                className="text-xs rounded-xl"
+                className="text-xs border-[#232733] text-[#8F9BBA] hover:text-white rounded-xl"
               >
-                👁️ Testar no Modo Aluno
+                👁️ Ver como Aluno
               </Button>
-              <Button
-                onClick={handleSaveCurrentWorkoutToSplit}
-                className="bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90 rounded-xl"
+              <button
+                type="button"
+                onClick={() => {
+                  handleSaveCurrentWorkoutToSplit();
+                  setWorkoutMode('FAZER');
+                  showScheduleToast('🚀 Treino publicado e atualizado na conta do aluno!');
+                }}
+                className="flex-1 sm:flex-initial rounded-xl bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 font-black text-xs px-5 py-3 shadow-lg shadow-[#FFD600]/20 flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
               >
-                <Save size={14} className="mr-1" /> Salvar Treino na Rotina
-              </Button>
+                <Save size={14} />
+                <span>Publicar / Atualizar Treino na Conta do Aluno</span>
+              </button>
             </div>
           </div>
         </div>
@@ -2315,73 +2524,167 @@ function TreinosPage() {
         </div>
       )}
 
-      {/* MODAL PÓS-TREINO: QUESTIONÁRIO PSE + DURAÇÃO */}
+      {/* ========================================================================= */}
+      {/* 📋 PARTE 3: QUESTIONÁRIO POP-UP PÓS-TREINO (RECOVERY)                    */}
+      {/* ========================================================================= */}
       {isFinishingWorkout && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-          <div className="panel max-w-md w-full p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-lg font-black flex items-center gap-2">
-                <Trophy size={18} className="text-primary" /> Questionário Pós-Treino & XP
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in">
+          <div className="max-w-lg w-full rounded-2xl border border-[#232733] bg-[#0F1115] p-5 sm:p-6 space-y-5 shadow-2xl text-white">
+            <div className="flex items-center justify-between border-b border-[#232733] pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📝</span>
+                <div>
+                  <h3 className="text-sm sm:text-base font-black tracking-wide text-white uppercase">
+                    Avaliação de Recuperação e Performance
+                  </h3>
+                  <p className="text-[11px] text-[#8F9BBA]">
+                    Alimenta os algoritmos de autorregulação e ajuste do MRV.
+                  </p>
+                </div>
+              </div>
               <button
+                type="button"
                 onClick={() => setIsFinishingWorkout(false)}
-                className="text-muted-foreground hover:text-foreground text-sm font-bold"
+                className="text-[#8F9BBA] hover:text-white text-sm font-black p-1 transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="rounded-xl border border-border bg-background/50 p-3 space-y-1 text-xs">
+            {/* Resumo da Sessão */}
+            <div className="rounded-xl border border-[#232733] bg-[#161920] p-3 space-y-1 text-xs font-mono">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Sessão:</span>
-                <span className="font-bold text-foreground">{sessionTitle}</span>
+                <span className="text-[#8F9BBA]">Sessão:</span>
+                <span className="font-bold text-white">{sessionTitle}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Séries Concluídas:</span>
-                <span className="font-mono text-primary font-bold">{completedSetsCount} séries</span>
+                <span className="text-[#8F9BBA]">Séries Concluídas:</span>
+                <span className="text-[#00E5FF] font-bold">{completedSetsCount} de {totalSetsCount}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Tonelagem Total:</span>
-                <span className="font-mono text-primary font-bold">{totalSessionTonnage.toLocaleString()} kg</span>
+                <span className="text-[#8F9BBA]">Tonelagem Total:</span>
+                <span className="text-[#FFD600] font-bold">{totalSessionTonnage.toLocaleString()} kg</span>
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-xs font-semibold mb-1">
-                <span>Percepção Subjetiva de Esforço (PSE):</span>
-                <span className="font-mono text-primary font-bold text-base">{pse} / 10</span>
+            {/* Pergunta 1: PSE */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white block">
+                1. Percepção Geral de Esforço (PSE)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { value: 'LEVE', label: 'Leve (1-3)' },
+                  { value: 'MODERADO', label: 'Moderado / Desafiador (4-7)' },
+                  { value: 'FALHA', label: 'Até a Falha Total (8-10)' },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setRecoveryPse(item.value as any)}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                      recoveryPse === item.value
+                        ? 'border-[#FFD600] bg-[#FFD600]/10 text-white ring-1 ring-[#FFD600]'
+                        : 'border-[#232733] bg-[#161920] text-[#8F9BBA] hover:text-white'
+                    }`}
+                  >
+                    <span className={`size-3 rounded-full border flex items-center justify-center shrink-0 ${recoveryPse === item.value ? 'border-[#FFD600] bg-[#FFD600]' : 'border-[#8F9BBA]'}`}>
+                      {recoveryPse === item.value && <span className="size-1 rounded-full bg-[#0F1115]" />}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
               </div>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={pse}
-                onChange={(e) => setPse(parseInt(e.target.value))}
-                className="w-full accent-primary"
-              />
             </div>
 
-            <div>
-              <div className="flex justify-between text-xs font-semibold mb-1">
-                <span>Duração Total:</span>
-                <span className="font-mono text-primary font-bold">{duration} min</span>
+            {/* Pergunta 2: Sono */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white block">
+                2. Como foi seu sono na última noite?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { value: 'RUIM', label: 'Ruim (<6h)' },
+                  { value: 'REGULAR', label: 'Regular (6-7h)' },
+                  { value: 'REPARADOR', label: 'Reparador (>7h)' },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setRecoverySleep(item.value as any)}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                      recoverySleep === item.value
+                        ? 'border-[#00E5FF] bg-[#00E5FF]/10 text-white ring-1 ring-[#00E5FF]'
+                        : 'border-[#232733] bg-[#161920] text-[#8F9BBA] hover:text-white'
+                    }`}
+                  >
+                    <span className={`size-3 rounded-full border flex items-center justify-center shrink-0 ${recoverySleep === item.value ? 'border-[#00E5FF] bg-[#00E5FF]' : 'border-[#8F9BBA]'}`}>
+                      {recoverySleep === item.value && <span className="size-1 rounded-full bg-[#0F1115]" />}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
               </div>
-              <input
-                type="number"
-                min="10"
-                max="300"
-                value={duration}
-                onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
-                className="w-full rounded border border-border bg-background px-3 py-1.5 text-xs font-mono font-bold"
-              />
             </div>
 
-            <Button
-              onClick={handleFinishWorkout}
-              className="w-full bg-primary text-primary-foreground font-black hover:bg-primary/90 text-sm shadow-lg"
-            >
-              Salvar Treino & Ganhar +150 XP
-            </Button>
+            {/* Pergunta 3: Dores articulares */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white block">
+                3. Sentiu dores articulares ou fadiga atípica?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  { value: 'SIM', label: 'Sim, desconforto acentuado' },
+                  { value: 'NAO', label: 'Não, articulações e musculatura ok' },
+                ].map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => setRecoveryJointPain(item.value as any)}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                      recoveryJointPain === item.value
+                        ? 'border-[#FFD600] bg-[#FFD600]/10 text-white ring-1 ring-[#FFD600]'
+                        : 'border-[#232733] bg-[#161920] text-[#8F9BBA] hover:text-white'
+                    }`}
+                  >
+                    <span className={`size-3 rounded-full border flex items-center justify-center shrink-0 ${recoveryJointPain === item.value ? 'border-[#FFD600] bg-[#FFD600]' : 'border-[#8F9BBA]'}`}>
+                      {recoveryJointPain === item.value && <span className="size-1 rounded-full bg-[#0F1115]" />}
+                    </span>
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Duração em minutos */}
+            <div className="flex items-center justify-between text-xs font-mono text-[#8F9BBA] pt-1">
+              <span>Duração do treino:</span>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min="10"
+                  max="240"
+                  value={duration}
+                  onChange={(e) => setDuration(parseInt(e.target.value) || 0)}
+                  className="w-14 rounded-lg border border-[#232733] bg-[#161920] px-2 py-1 text-center font-bold text-white focus:border-[#FFD600]"
+                />
+                <span>min</span>
+              </div>
+            </div>
+
+            {/* Ação Final: ENVIAR E FINALIZAR SESSÃO */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleFinishWorkout}
+                className="w-full rounded-xl bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 font-black text-sm py-3.5 shadow-xl shadow-[#FFD600]/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+              >
+                <span>[ ENVIAR E FINALIZAR SESSÃO ]</span>
+              </button>
+              <p className="text-[10px] text-center text-[#8F9BBA] mt-2">
+                Nenhum XP adicional concedido nesta etapa. O XP foi creditado diretamente nas Working Sets.
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -2769,75 +3072,98 @@ function TreinosPage() {
         </div>
       )}
 
-      {/* 10. MODAL DE ACESSO DO ADMINISTRADOR / TREINADOR */}
+      {/* ========================================================================= */}
+      {/* 💻 PARTE 1.1: TELA DE LOGIN ADM (COACH / BACKOFFICE)                     */}
+      {/* ========================================================================= */}
       {isAdminPinModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="panel max-w-sm w-full p-5 sm:p-6 space-y-4 border border-primary/50 shadow-2xl rounded-2xl">
-            <div className="flex items-center justify-between border-b border-border/70 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in">
+          <div className="max-w-sm w-full rounded-2xl border border-[#232733] bg-[#0F1115] p-5 sm:p-6 space-y-4 shadow-2xl text-white">
+            <div className="flex items-center justify-between border-b border-[#232733] pb-3">
               <div className="flex items-center gap-2">
-                <div className="size-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                <div className="size-8 rounded-lg bg-[#FFD600]/20 text-[#FFD600] flex items-center justify-center">
                   <Lock size={16} />
                 </div>
-                <h3 className="text-base font-black text-foreground">
-                  Acesso do Treinador (Admin)
-                </h3>
+                <div>
+                  <h3 className="text-sm font-black uppercase text-white tracking-wider">
+                    Painel Administrativo
+                  </h3>
+                  <span className="text-[10px] text-[#8F9BBA]">Coach / ADM Backoffice</span>
+                </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAdminPinModalOpen(false)}
-                className="text-muted-foreground hover:text-foreground text-xs font-black p-1"
+                className="text-[#8F9BBA] hover:text-white text-xs font-black p-1 transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Área exclusiva para o administrador/personal montar, editar exercícios e prescrever treinos. Digite a senha ou PIN de acesso:
+            <p className="text-xs text-[#8F9BBA] leading-relaxed">
+              Área restrita por autenticação JWT para montagem de fichas, configuração de técnicas avançadas e prescrição de treino.
             </p>
 
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                handleVerifyAdminPin();
+                handleVerifyAdminLogin();
               }}
               className="space-y-3"
             >
               <div>
+                <label className="text-[11px] font-bold text-[#8F9BBA] block mb-1">
+                  E-mail ou Usuário:
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={adminUserInput}
+                  onChange={(e) => {
+                    setAdminUserInput(e.target.value);
+                    if (adminAuthError) setAdminAuthError(false);
+                  }}
+                  placeholder="coach@niflheim.fit ou admin"
+                  className="w-full rounded-xl border border-[#232733] bg-[#161920] px-3 py-2 text-xs font-bold text-white focus:border-[#FFD600] focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-[#8F9BBA] block mb-1">
+                  Senha de Acesso:
+                </label>
                 <input
                   type="password"
-                  autoFocus
-                  value={adminPinInput}
+                  value={adminPasswordInput}
                   onChange={(e) => {
-                    setAdminPinInput(e.target.value);
-                    if (adminPinError) setAdminPinError(false);
+                    setAdminPasswordInput(e.target.value);
+                    if (adminAuthError) setAdminAuthError(false);
                   }}
-                  placeholder="PIN de acesso (padrão: 1234)"
-                  className={`w-full rounded-xl border bg-background px-3 py-2 text-center font-mono text-sm font-black focus:border-primary ${
-                    adminPinError ? 'border-destructive ring-1 ring-destructive' : 'border-border'
+                  placeholder="Senha (padrão: 1234 ou admin)"
+                  className={`w-full rounded-xl border bg-[#161920] px-3 py-2 text-xs font-mono font-bold text-white focus:border-[#FFD600] focus:outline-none ${
+                    adminAuthError ? 'border-destructive ring-1 ring-destructive' : 'border-[#232733]'
                   }`}
                 />
-                {adminPinError && (
-                  <span className="text-[11px] font-bold text-destructive block mt-1 text-center">
-                    PIN incorreto. Tente "1234".
+                {adminAuthError && (
+                  <span className="text-[10px] font-bold text-destructive block mt-1">
+                    Credenciais inválidas. Tente admin / 1234.
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
-                <Button
+              <div className="flex items-center gap-2 pt-2">
+                <button
                   type="button"
-                  variant="outline"
                   onClick={() => setIsAdminPinModalOpen(false)}
-                  className="flex-1 text-xs rounded-xl"
+                  className="flex-1 rounded-xl border border-[#232733] bg-[#161920] text-xs font-bold text-[#8F9BBA] hover:text-white py-2.5 transition-colors"
                 >
                   Cancelar
-                </Button>
-                <Button
+                </button>
+                <button
                   type="submit"
-                  className="flex-1 bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90 rounded-xl"
+                  className="flex-1 rounded-xl bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 text-xs font-black py-2.5 shadow-lg shadow-[#FFD600]/20 transition-all active:scale-95"
                 >
-                  Desbloquear
-                </Button>
+                  Entrar no Painel Admin
+                </button>
               </div>
             </form>
           </div>

@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { Check, Trophy, Sparkles, Trash2, Clock } from 'lucide-react';
+import { Check, Sparkles, Clock, Star, Flame, Zap } from 'lucide-react';
 import { type AdvancedSetRowData } from './AdvancedSetRow';
 
 interface HevySetRowProps {
   data: AdvancedSetRowData;
   workingIndex?: number;
+  exerciseName?: string;
   targetWeight?: number;
   targetReps?: number;
-  restSeconds: number;
+  targetRepsText?: string;
+  restSeconds?: number;
+  intraRestSeconds?: number;
   onUpdate: (updated: AdvancedSetRowData) => void;
   onDelete?: () => void;
   onTriggerRestTimer: (seconds: number) => void;
@@ -18,9 +21,12 @@ interface HevySetRowProps {
 export function HevySetRow({
   data,
   workingIndex,
+  exerciseName,
   targetWeight,
   targetReps,
+  targetRepsText,
   restSeconds,
+  intraRestSeconds,
   onUpdate,
   onDelete,
   onTriggerRestTimer,
@@ -29,117 +35,171 @@ export function HevySetRow({
 }: HevySetRowProps) {
   const [justCompleted, setJustCompleted] = useState(false);
 
-  const isPreparatory = data.baseType === 'WARMUP' || data.baseType === 'FEEDER' || data.baseType === 'PAP';
+  const isWarmup = data.baseType === 'WARMUP';
+  const isFeeder = data.baseType === 'FEEDER';
+  const isPAP = data.baseType === 'PAP';
+  const isBackoff = data.baseType === 'BACKOFF';
+  const isWorking = data.baseType === 'WORKING' || (!isWarmup && !isFeeder && !isPAP && !isBackoff);
+  const isPreparatory = isWarmup || isFeeder || isPAP;
 
-  // Tonelagem e PR
-  const currentTonnage = data.weight * data.reps;
-  const previousTonnage = (data.previousWeight ?? 0) * (data.previousReps ?? 0);
-  const effectiveTargetWeight = targetWeight ?? data.targetWeight;
-  const effectiveTargetReps = targetReps ?? data.targetReps;
+  // Carga e repetições efetivas
+  const effectiveTargetWeight = targetWeight ?? data.targetWeight ?? 0;
+  const effectiveTargetReps = targetReps ?? data.targetReps ?? 10;
+  const effectiveRest = restSeconds ?? data.restSeconds ?? (isPreparatory ? 60 : 120);
+  const effectiveIntraRest = intraRestSeconds ?? data.intraRestSeconds ?? 15;
 
-  const isTargetAchieved = 
-    effectiveTargetWeight !== undefined && 
-    data.weight >= effectiveTargetWeight && 
-    (effectiveTargetReps === undefined || data.reps >= effectiveTargetReps);
+  // Cálculo da Progressão Tripla de XP (apenas para Working Sets e Back-off)
+  const currentWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
+  const currentReps = data.reps > 0 ? data.reps : effectiveTargetReps;
+  const prevWeight = data.previousWeight ?? 0;
+  const prevReps = data.previousReps ?? 0;
 
-  const isPR = 
-    !isPreparatory &&
-    ((previousTonnage > 0 && currentTonnage > previousTonnage) ||
-     ((data.previousWeight ?? 0) > 0 && data.weight > (data.previousWeight ?? 0)) ||
-     isTargetAchieved);
+  let calculatedXP = 0;
+  let xpReason = '';
 
-  // Badge da Série
-  const renderBadge = () => {
-    if (data.baseType === 'WARMUP') {
+  if (!isPreparatory) {
+    if (prevWeight > 0 && currentWeight > prevWeight) {
+      // Prioridade 1: Progressão de Carga
+      calculatedXP = 30;
+      xpReason = 'Novo Recorde de Carga!';
+    } else if (prevReps > 0 && currentReps > prevReps && currentWeight >= prevWeight) {
+      // Prioridade 2: Progressão de Repetições
+      calculatedXP = 20;
+      xpReason = 'Progressão de Repetições!';
+    } else if (currentWeight >= effectiveTargetWeight && currentReps >= effectiveTargetReps) {
+      // Prioridade 3: Meta Atingida
+      calculatedXP = 30;
+      xpReason = 'Meta Superada!';
+    } else {
+      calculatedXP = 20;
+      xpReason = 'Série Válida';
+    }
+  }
+
+  // Nome formatado da técnica
+  const techniqueLabel = () => {
+    if (data.technique === 'REST_PAUSE' || data.technique === 'CLUSTER_SET') return 'Rest-Pause';
+    if (data.technique === 'MYO_REPS') return 'Myo-Reps';
+    if (data.technique === 'MUSCLE_ROUNDS') return 'Muscle Rounds';
+    if (data.technique === 'DROP_SET') return 'Drop-Set';
+    return null;
+  };
+
+  // Label do Cabeçalho da Série: [S1] Warm-up Set, etc.
+  const renderSetLabel = () => {
+    const sNum = workingIndex !== undefined ? `S${workingIndex}` : `S${data.setNumber}`;
+
+    if (isWarmup) {
       return (
-        <span 
-          title="Série de Aquecimento"
-          className="size-7 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center font-mono font-black text-xs"
-        >
-          W
+        <span className="font-mono text-xs font-bold text-[#8F9BBA]">
+          [{sNum}] Warm-up Set
         </span>
       );
     }
-    if (data.baseType === 'FEEDER') {
+    if (isFeeder) {
       return (
-        <span 
-          title="Série de Calibração / Feeder"
-          className="size-7 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-mono font-black text-xs"
-        >
-          F
+        <span className="font-mono text-xs font-bold text-[#00E5FF]">
+          [{sNum}] Feeder Set
         </span>
       );
     }
-    if (data.baseType === 'PAP') {
+    if (isPAP) {
       return (
-        <span 
-          title="Potenciação Pós-Ativação"
-          className="size-7 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 flex items-center justify-center font-mono font-black text-xs"
-        >
-          P
+        <span className="font-mono text-xs font-bold text-[#00E5FF]">
+          [{sNum}] PAP (Potenciação Neural)
         </span>
       );
     }
-    if (data.baseType === 'BACKOFF') {
+    if (isBackoff) {
       return (
-        <span 
-          title="Back-off Set"
-          className="size-7 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center font-mono font-black text-xs"
-        >
-          B
+        <span className="font-mono text-xs font-bold text-[#FFD600]">
+          [{sNum}] Back-off Set
         </span>
       );
     }
+    const tech = techniqueLabel();
     return (
-      <span 
-        className={`size-7 rounded-lg flex items-center justify-center font-mono font-black text-xs transition-colors ${
-          data.completed 
-            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
-            : 'bg-muted/70 text-foreground border border-border/60'
-        }`}
-      >
-        {workingIndex !== undefined ? workingIndex : data.setNumber}
+      <span className="font-mono text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
+        <span className="text-[#FFD600]">[{sNum}] Working Set ⭐</span>
+        {tech && (
+          <span className="text-[10px] text-[#8F9BBA] font-normal">
+            (Técnica: <strong className="text-white">{tech}</strong>)
+          </span>
+        )}
       </span>
     );
   };
 
-  // Texto da Meta / Anterior
-  const previousOrTargetText = () => {
-    if (data.previousWeight && data.previousReps) {
-      return `${data.previousWeight}kg × ${data.previousReps}`;
+  // Formatação do Target
+  const targetDescription = () => {
+    const tech = techniqueLabel();
+    let repsDisplay = `${effectiveTargetReps} reps`;
+    if (targetRepsText) {
+      repsDisplay = targetRepsText;
+    } else if (tech === 'Rest-Pause') {
+      repsDisplay = '(4+3+2 reps)';
+    } else if (tech === 'Myo-Reps') {
+      repsDisplay = '(12 + 4+3+3 reps)';
+    } else if (tech === 'Muscle Rounds') {
+      repsDisplay = '(6×2 reps)';
     }
-    if (effectiveTargetWeight && effectiveTargetReps) {
-      return `${effectiveTargetWeight}kg × ${effectiveTargetReps}`;
-    }
-    if (effectiveTargetWeight) {
-      return `${effectiveTargetWeight}kg`;
-    }
-    return '—';
+
+    return (
+      <div className="text-[11px] font-mono text-[#8F9BBA] mt-0.5 space-y-0.5">
+        <div>
+          Target: <span className="text-white font-bold">{repsDisplay}</span> @ <span className="text-white font-bold">{effectiveTargetWeight > 0 ? `${effectiveTargetWeight} kg` : 'Carga livre'}</span>
+          {!tech && (
+            <span className="ml-2 text-[#8F9BBA]">| Descanso: <strong className="text-white">{effectiveRest}s</strong></span>
+          )}
+        </div>
+        {tech && (
+          <div className="text-[10px] text-[#00E5FF]">
+            Pausa Intra-bloco: <strong>{effectiveIntraRest}s</strong> | Descanso Final: <strong>{effectiveRest}s</strong>
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handleToggle = () => {
     const nextCompleted = !data.completed;
-    onUpdate({ ...data, completed: nextCompleted });
+    const updatedWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
+    const updatedReps = data.reps > 0 ? data.reps : effectiveTargetReps;
+
+    const updatedData: AdvancedSetRowData = {
+      ...data,
+      completed: nextCompleted,
+      weight: updatedWeight,
+      reps: updatedReps,
+      xpAwarded: nextCompleted ? calculatedXP : 0,
+      xpReason: nextCompleted ? xpReason : undefined,
+    };
+
+    onUpdate(updatedData);
 
     if (nextCompleted) {
-      // Ativa efeito de XP pop-up
       setJustCompleted(true);
-      setTimeout(() => setJustCompleted(false), 1200);
+      setTimeout(() => setJustCompleted(false), 1400);
 
-      onTriggerXP(isPreparatory ? 10 : 25);
-      onTriggerRestTimer(restSeconds);
+      // Concede XP apenas para Working Sets / Back-off
+      if (!isPreparatory && calculatedXP > 0) {
+        onTriggerXP(calculatedXP);
+      }
+
+      // Dispara descanso
+      onTriggerRestTimer(effectiveRest);
 
       // Vibração no celular
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([80, 40, 80]);
+        navigator.vibrate([100, 50, 100]);
       }
 
-      // Celebração de PR se bateu
-      if (!isPreparatory && isPR && onCelebratePR) {
+      // Celebração de PR de carga
+      if (!isPreparatory && calculatedXP === 30 && onCelebratePR) {
         onCelebratePR({
-          weight: data.weight,
-          reps: data.reps,
-          tonnage: currentTonnage,
+          weight: updatedWeight,
+          reps: updatedReps,
+          tonnage: updatedWeight * updatedReps,
         });
       }
     }
@@ -147,122 +207,98 @@ export function HevySetRow({
 
   return (
     <div 
-      className={`group relative flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 py-2 rounded-xl border transition-all duration-200 ${
+      className={`rounded-xl border p-3 transition-all duration-200 select-none ${
         data.completed
-          ? 'bg-emerald-500/[0.08] border-emerald-500/35 shadow-xs'
-          : 'bg-card/40 border-border/60 hover:border-border hover:bg-card/70'
+          ? 'bg-[#161920] border-[#FFD600]/40 shadow-sm'
+          : 'bg-[#161920]/80 border-[#232733] hover:border-[#2E3445]'
       }`}
     >
-      {/* 1. NÚMERO / TIPO DA SÉRIE */}
-      <div className="w-8 shrink-0 flex items-center justify-center">
-        {renderBadge()}
+      {/* 1. TOPO DO CARD: IDENTIFICAÇÃO E TARGET */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+        <div>
+          {renderSetLabel()}
+          {targetDescription()}
+        </div>
+
+        {/* Inputs de Carga e Reps Reais (Compactos e Minimalistas) */}
+        <div className="flex items-center gap-2 self-start sm:self-auto mt-1 sm:mt-0 font-mono text-xs">
+          <div className="flex items-center gap-1 bg-[#0F1115] border border-[#232733] px-2 py-1 rounded-lg">
+            <span className="text-[10px] text-[#8F9BBA]">KG:</span>
+            <input
+              type="number"
+              step="0.5"
+              min="0"
+              value={data.weight === 0 ? '' : data.weight}
+              placeholder={String(effectiveTargetWeight || 0)}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = e.target.value;
+                const num = val === '' ? 0 : parseFloat(val) || 0;
+                onUpdate({ ...data, weight: num });
+              }}
+              className="w-12 bg-transparent text-white font-bold text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 bg-[#0F1115] border border-[#232733] px-2 py-1 rounded-lg">
+            <span className="text-[10px] text-[#8F9BBA]">REPS:</span>
+            <input
+              type="number"
+              min="0"
+              value={data.reps === 0 ? '' : data.reps}
+              placeholder={String(effectiveTargetReps || 0)}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = e.target.value;
+                const num = val === '' ? 0 : parseInt(val) || 0;
+                onUpdate({ ...data, reps: num });
+              }}
+              className="w-10 bg-transparent text-white font-bold text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* 2. ANTERIOR / META (Estilo Hevy) */}
-      <div className="flex-1 min-w-0 max-w-[85px] sm:max-w-[110px] text-center">
-        <span 
-          className="block text-[11px] font-mono text-muted-foreground truncate select-none"
-          title={`Meta ou anterior: ${previousOrTargetText()}`}
-        >
-          {previousOrTargetText()}
-        </span>
-      </div>
-
-      {/* 3. INPUT CARGA (KG) */}
-      <div className="w-14 sm:w-16 shrink-0 text-center">
-        <input
-          type="number"
-          step="0.5"
-          min="0"
-          value={data.weight === 0 ? '' : data.weight}
-          placeholder="0"
-          onFocus={(e) => e.target.select()}
-          onChange={(e) => {
-            const val = e.target.value;
-            const num = val === '' ? 0 : parseFloat(val) || 0;
-            onUpdate({ ...data, weight: num });
-          }}
-          className={`w-full h-8 rounded-lg border text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-            data.completed
-              ? 'bg-background/90 border-emerald-500/40 text-foreground'
-              : 'bg-background border-border/80 text-foreground'
-          }`}
-        />
-      </div>
-
-      {/* 4. INPUT REPETIÇÕES (REPS) */}
-      <div className="w-12 sm:w-14 shrink-0 text-center">
-        <input
-          type="number"
-          min="0"
-          value={data.reps === 0 ? '' : data.reps}
-          placeholder="0"
-          onFocus={(e) => e.target.select()}
-          onChange={(e) => {
-            const val = e.target.value;
-            const num = val === '' ? 0 : parseInt(val) || 0;
-            onUpdate({ ...data, reps: num });
-          }}
-          className={`w-full h-8 rounded-lg border text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-            data.completed
-              ? 'bg-background/90 border-emerald-500/40 text-foreground'
-              : 'bg-background border-border/80 text-foreground'
-          }`}
-        />
-      </div>
-
-      {/* 5. RIR (Reps in Reserve) Compacto */}
-      <div className="w-11 sm:w-12 shrink-0 text-center">
-        <select
-          value={typeof data.rir === 'number' && data.rir <= 4 ? data.rir : 2}
-          onChange={(e) => onUpdate({ ...data, rir: parseInt(e.target.value) })}
-          className="w-full h-8 rounded-lg border border-border/80 bg-background text-center font-mono text-[11px] font-bold text-muted-foreground focus:border-primary cursor-pointer px-0.5"
-          title="RIR: repetições restantes na reserva antes da falha total"
-        >
-          <option value={0}>0 (F)</option>
-          <option value={1}>1</option>
-          <option value={2}>2</option>
-          <option value={3}>3</option>
-          <option value={4}>4+</option>
-        </select>
-      </div>
-
-      {/* 6. BOTÃO DE CONCLUSÃO CHECKMARK (Estilo Hevy) */}
-      <div className="w-10 shrink-0 flex items-center justify-center relative">
+      {/* 2. BOTÃO DE CONCLUSÃO COM STATUS DE XP DINÂMICO */}
+      <div className="mt-3 pt-2 border-t border-[#232733]/60 flex flex-wrap items-center justify-between gap-2">
         <button
           type="button"
           onClick={handleToggle}
-          className={`size-8 sm:size-8.5 rounded-lg flex items-center justify-center transition-all cursor-pointer select-none active:scale-90 ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer active:scale-95 ${
             data.completed
-              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/25 ring-2 ring-emerald-400/40'
-              : 'bg-muted/50 border border-border/90 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/10'
+              ? 'bg-[#FFD600] text-[#0F1115] shadow-md shadow-[#FFD600]/20'
+              : 'bg-[#232733]/80 border border-[#2E3445] text-white hover:border-[#FFD600] hover:text-[#FFD600]'
           }`}
-          title={data.completed ? 'Série concluída! Toque para desmarcar' : 'Toque para concluir série e ganhar XP'}
         >
-          <Check size={16} strokeWidth={data.completed ? 3.5 : 2} />
+          <span className="font-mono text-xs">{data.completed ? '[✓]' : '[ ]'}</span>
+          <span>{data.completed ? 'Concluído' : 'MARCAR COMO FEITO'}</span>
         </button>
 
-        {/* Pop-up de XP instantâneo flutuante sobre a linha */}
-        {justCompleted && (
-          <div className="absolute -top-7 right-0 z-20 pointer-events-none animate-in fade-in zoom-in slide-in-from-bottom-2 duration-200">
-            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-black text-black shadow-lg flex items-center gap-0.5 whitespace-nowrap">
-              <Sparkles size={11} /> +{isPreparatory ? 10 : 25} XP
-            </span>
+        {/* FEEDBACK DE XP: Concedido apenas para Working Sets / Back-off */}
+        {data.completed && !isPreparatory && (
+          <div className="flex items-center gap-1 text-[11px] font-black text-[#FFD600] animate-in fade-in duration-200">
+            <Sparkles size={12} className="animate-spin" />
+            <span>+{calculatedXP} XP ({xpReason})</span>
+          </div>
+        )}
+
+        {/* Warmup / Feeder (0 XP informativo) */}
+        {data.completed && isPreparatory && (
+          <span className="text-[10px] font-mono text-[#8F9BBA]">
+            Aquecimento sem pontuação (0 XP)
+          </span>
+        )}
+
+        {/* Pop-up flutuante de XP imediato */}
+        {justCompleted && !isPreparatory && calculatedXP > 0 && (
+          <div className="fixed top-20 right-6 z-50 pointer-events-none animate-in fade-in zoom-in slide-in-from-top-4 duration-300">
+            <div className="rounded-xl bg-[#FFD600] text-[#0F1115] px-3.5 py-2 font-black text-xs shadow-2xl flex items-center gap-1.5">
+              <Sparkles size={15} />
+              <span>+{calculatedXP} XP • {xpReason}</span>
+            </div>
           </div>
         )}
       </div>
-
-      {/* Lixeira sutil visível em hover ou clique */}
-      {onDelete && (
-        <button
-          type="button"
-          onClick={onDelete}
-          title="Remover série"
-          className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground/40 hover:text-destructive transition-opacity rounded"
-        >
-          <Trash2 size={12} />
-        </button>
-      )}
     </div>
   );
 }

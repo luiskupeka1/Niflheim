@@ -53,6 +53,9 @@ export interface AdvancedSetRowData {
   technique: IntensityTechnique;
   targetWeight?: number; // Carga programada/meta
   targetReps?: number;   // Repetições programadas/meta
+  targetRepsText?: string; // ex: "8-12", "(4+3+2 reps)"
+  restSeconds?: number;  // Descanso pós-série em segundos (ex: 60s, 90s, 120s, 180s)
+  intraRestSeconds?: number; // Pausa intra-bloco para Cluster/Rest-Pause/Muscle Rounds (ex: 15s)
   weight: number;        // Carga realmente levantada
   reps: number;          // Repetições realmente levantadas
   rir: number;           // 0 a 5 (reps guardadas antes de falhar)
@@ -60,6 +63,8 @@ export interface AdvancedSetRowData {
   previousReps?: number;
   previousRir?: number;
   completed: boolean;
+  xpAwarded?: number;
+  xpReason?: string;
   dropSets?: DropSubSet[];
   myoMicroSets?: MyoMicroSet[];
   clusterBlocks?: ClusterBlock[];
