@@ -33,7 +33,12 @@ import {
   BarChart3,
   Edit3,
   SlidersHorizontal,
-  Check
+  Check,
+  Lock,
+  Unlock,
+  ShieldCheck,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLifestyle } from '@/components/lifestyle-provider';
@@ -43,6 +48,7 @@ import {
   AdvancedSetRow, 
   type AdvancedSetRowData 
 } from '@/components/AdvancedSetRow';
+import { HevySetRow } from '@/components/HevySetRow';
 import { 
   WorkoutProgressionChart, 
   type ExerciseProgressionPoint 
@@ -315,11 +321,27 @@ const DEFAULT_SPLITS: WorkoutSplit[] = [
 
 const LOCAL_STORAGE_SPLITS_KEY = 'niflheim_workout_splits_v3';
 const LOCAL_STORAGE_SCHEDULE_KEY = 'niflheim_weekly_schedule_v3';
+const LOCAL_STORAGE_ACTIVE_SESSION_KEY = 'niflheim_active_workout_session_v4';
+const LOCAL_STORAGE_ADMIN_KEY = 'niflheim_admin_unlocked_v1';
 
 function TreinosPage() {
   const { user, data, save, reward } = useLifestyle();
   const today = localDay();
   const todayDayIndex = new Date().getDay(); // 0 = Domingo, 1 = Segunda...
+
+  // Modo de visualização: 'FAZER' (Visão do Usuário / Estilo Hevy) vs 'MONTAR' (Painel do Administrador)
+  const [workoutMode, setWorkoutMode] = useState<'FAZER' | 'MONTAR'>('FAZER');
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(LOCAL_STORAGE_ADMIN_KEY) === 'true';
+    }
+    return false;
+  });
+  const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
+  const [adminPinInput, setAdminPinInput] = useState('');
+  const [adminPinError, setAdminPinError] = useState(false);
+  const [expandedTipsId, setExpandedTipsId] = useState<string | null>(null);
+  const [isVolumeTrackerExpanded, setIsVolumeTrackerExpanded] = useState(false);
 
   // Rotinas e Divisões
   const [splits, setSplits] = useState<WorkoutSplit[]>(() => {
@@ -366,10 +388,45 @@ function TreinosPage() {
     }
   }, [weeklySchedule, splits]);
 
-  // Sessão Ativa
-  const [sessionTitle, setSessionTitle] = useState('Push A — Hipertrofia & Força');
-  const [sessionCategory, setSessionCategory] = useState<BiomechanicalCategory>('Push');
+  // Sessão Ativa com Persistência Segura (Não perde séries feitas nem altera status ao recarregar)
+  const [sessionTitle, setSessionTitle] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_ACTIVE_SESSION_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.sessionTitle) return parsed.sessionTitle;
+        }
+      } catch (e) {}
+    }
+    return 'Push A — Hipertrofia & Força';
+  });
+
+  const [sessionCategory, setSessionCategory] = useState<BiomechanicalCategory>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_ACTIVE_SESSION_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.sessionCategory) return parsed.sessionCategory;
+        }
+      } catch (e) {}
+    }
+    return 'Push';
+  });
+
   const [exercises, setExercises] = useState<ExerciseItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_ACTIVE_SESSION_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed?.exercises) && parsed.exercises.length > 0) {
+            return parsed.exercises;
+          }
+        }
+      } catch (e) {}
+    }
     const tpl = DEFAULT_SPLITS[0].workouts[0];
     return tpl.exercises.map((item) => {
       const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId)!;
@@ -381,6 +438,19 @@ function TreinosPage() {
       };
     });
   });
+
+  // Sincronizar sessão ativa no localStorage para garantir que nada seja desmarcado involuntariamente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_ACTIVE_SESSION_KEY, JSON.stringify({
+          sessionTitle,
+          sessionCategory,
+          exercises,
+        }));
+      } catch (e) {}
+    }
+  }, [sessionTitle, sessionCategory, exercises]);
 
   // Exercício com gráfico aberto
   const [selectedExerciseForChart, setSelectedExerciseForChart] = useState<string | null>(null);
@@ -406,6 +476,42 @@ function TreinosPage() {
     setTimeout(() => {
       setScheduleFeedback((cur) => (cur === msg ? null : cur));
     }, 3500);
+  };
+
+  // Autenticação e Alternância do Modo Administrador
+  const handleRequestAdminMode = () => {
+    if (isAdminUnlocked) {
+      setWorkoutMode('MONTAR');
+    } else {
+      setAdminPinInput('');
+      setAdminPinError(false);
+      setIsAdminPinModalOpen(true);
+    }
+  };
+
+  const handleVerifyAdminPin = () => {
+    const pin = adminPinInput.trim();
+    if (pin === '1234' || pin.toLowerCase() === 'admin' || pin === '0000') {
+      setIsAdminUnlocked(true);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(LOCAL_STORAGE_ADMIN_KEY, 'true');
+      }
+      setIsAdminPinModalOpen(false);
+      setWorkoutMode('MONTAR');
+      reward(25);
+      showScheduleToast('👑 Modo Administrador desbloqueado com sucesso!');
+    } else {
+      setAdminPinError(true);
+    }
+  };
+
+  const handleLockAdmin = () => {
+    setIsAdminUnlocked(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LOCAL_STORAGE_ADMIN_KEY);
+    }
+    setWorkoutMode('FAZER');
+    showScheduleToast('🔒 Modo Administrador bloqueado.');
   };
 
   // Vídeo retrátil
@@ -834,6 +940,11 @@ function TreinosPage() {
 
   // Carregar treino a partir do dia da semana clicado (pesquisa em todas as rotinas)
   const handleSelectDay = (day: WeeklyScheduleDay) => {
+    if (day.workoutTitle === sessionTitle) {
+      showScheduleToast(`Sessão "${sessionTitle}" já está ativa!`);
+      return;
+    }
+
     let match: WorkoutTemplateItem | undefined;
     for (const s of splits) {
       const found = s.workouts.find((w) => (day.workoutId && w.id === day.workoutId) || w.title === day.workoutTitle);
@@ -999,596 +1110,856 @@ function TreinosPage() {
   };
 
   return (
-    <div className="space-y-8 pb-20">
-      {/* Header Principal */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-primary">
-            Arquitetura Hipertrófica & Sobrecarga Progressiva
-          </span>
-          <h1 className="text-3xl font-extrabold md:text-4xl text-foreground">
-            Sessão de Treino Diária<span className="text-primary">.</span>
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Agenda semanal de Segunda a Domingo, metas de carga estabelecidas, clusters com micro-descansos e monitor de sobrecarga progressiva.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setIsNightCheckinOpen(true)}
-            className="text-xs flex items-center gap-1.5"
-          >
-            <Moon size={14} className="text-primary" /> Check-in Noturno
-          </Button>
-
-          <Button
-            onClick={() => setIsFinishingWorkout(true)}
-            className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs shadow-lg flex items-center gap-1.5"
-          >
-            <CheckCircle2 size={16} /> Finalizar Sessão ({completedSetsCount}/{totalSetsCount})
-          </Button>
-        </div>
-      </div>
-
-      {/* 1. CALENDÁRIO / DIVISÃO SEMANAL (SEGUNDA A DOMINGO) */}
-      <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-3 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2">
-            <Calendar size={18} className="text-primary shrink-0" />
-            <div>
-              <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
-                Divisão Semanal (Segunda a Domingo)
-              </h3>
-              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
-                Toque no dia para treinar ou selecione no menu.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsWeeklyScheduleModalOpen(true)}
-              className="text-xs font-black gap-1.5 border-primary/50 text-primary hover:bg-primary/15 shadow-sm rounded-xl"
+    <div className="space-y-6 pb-20">
+      {/* 1. BARRA SUPERIOR DE CONTROLE E MODO: FAZER TREINO VS MONTAR TREINO (ADMIN) */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card/70 border border-border/70 rounded-2xl p-3 sm:p-4 shadow-sm backdrop-blur-md">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-background/90 p-1 rounded-xl border border-border/80 shadow-inner">
+            <button
+              type="button"
+              onClick={() => setWorkoutMode('FAZER')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                workoutMode === 'FAZER'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
-              <SlidersHorizontal size={13} /> Configurar Agenda
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleApplySplitToWeek}
-              className="text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
-              title={`Distribuir treinos da rotina ${activeSplit.name} de Seg a Dom`}
+              <Dumbbell size={14} /> Fazer Treino
+            </button>
+            <button
+              type="button"
+              onClick={handleRequestAdminMode}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                workoutMode === 'MONTAR'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
             >
-              <Zap size={13} className="text-primary" /> Distribuir "{activeSplit.name}"
-            </Button>
-          </div>
-        </div>
-
-        {/* Notificação de Atualização dos Dias */}
-        {scheduleFeedback && (
-          <div className="rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2 text-xs font-black text-primary flex items-center justify-between">
-            <span className="flex items-center gap-2 truncate">
-              <CheckCircle2 size={16} className="shrink-0" /> {scheduleFeedback}
-            </span>
-            <button 
-              onClick={() => setScheduleFeedback(null)}
-              className="text-muted-foreground hover:text-foreground text-xs font-black px-1 shrink-0"
-            >
-              ✕
+              {isAdminUnlocked ? <SlidersHorizontal size={14} /> : <Lock size={14} className="text-amber-400" />}
+              <span>Montar Treino</span>
+              {!isAdminUnlocked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1 py-0.2 rounded font-mono">ADM</span>}
             </button>
           </div>
-        )}
 
-        {/* 7 Dias da Semana em Grade */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
-          {weeklySchedule.map((day, idx) => {
-            const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
-            const isLoaded = sessionTitle === day.workoutTitle;
-            const isRestDay = day.workoutTitle.toLowerCase().includes('descanso');
-            
-            const isKnownOption = splits.some(s => s.workouts.some(w => w.title === day.workoutTitle)) ||
-              ['Descanso / Recuperação', 'Descanso / Recuperação Ativa', 'Cardio & Mobilidade', 'Treino Livre / Aeróbico'].includes(day.workoutTitle);
-
-            return (
-              <div
-                key={day.dayOfWeek}
-                onClick={() => handleSelectDay(day)}
-                className={`cursor-pointer rounded-2xl border p-2.5 sm:p-3 transition-all flex flex-col justify-between min-w-0 overflow-hidden ${
-                  isToday
-                    ? 'border-primary bg-primary/15 shadow-sm ring-1 ring-primary'
-                    : isLoaded
-                    ? 'border-primary/60 bg-card/95 shadow-xs'
-                    : isRestDay
-                    ? 'border-border/50 bg-background/30 hover:border-primary/30'
-                    : 'border-border/60 bg-background/50 hover:border-primary/40'
-                }`}
+          {isAdminUnlocked && (
+            <div className="flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 border border-primary/25 px-2.5 py-1 rounded-xl">
+              <ShieldCheck size={14} />
+              <span>Admin Ativo</span>
+              <button
+                type="button"
+                onClick={handleLockAdmin}
+                title="Bloquear painel de administrador"
+                className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
               >
-                <div className="min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[10px] font-black uppercase text-muted-foreground">
-                      {day.shortDay}
-                    </span>
-                    {isToday && (
-                      <span className="rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-[8px] font-black uppercase animate-pulse">
-                        HOJE
-                      </span>
-                    )}
-                    {isLoaded && !isToday && (
-                      <span className="rounded-full bg-muted text-muted-foreground px-1.5 py-0.5 text-[8px] font-bold uppercase">
-                        ATIVO
-                      </span>
-                    )}
-                  </div>
-                  <h4 
-                    className={`font-black text-xs mt-1 truncate ${isLoaded ? 'text-primary' : 'text-foreground'}`} 
-                    title={day.workoutTitle}
-                  >
-                    {day.workoutTitle}
-                  </h4>
-                </div>
-
-                <div className="mt-2.5 pt-1.5 border-t border-border/40 space-y-1.5 min-w-0">
-                  <select
-                    value={day.workoutTitle}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => handleUpdateScheduleDay(idx, e.target.value)}
-                    className="w-full min-w-0 max-w-full rounded-xl border border-border/80 bg-card px-2 py-1 text-[10px] font-black text-foreground focus:border-primary focus:ring-1 focus:ring-primary truncate cursor-pointer shadow-inner"
-                  >
-                    {!isKnownOption && (
-                      <option value={day.workoutTitle}>
-                        ★ {day.workoutTitle}
-                      </option>
-                    )}
-                    {splits.map((s) => (
-                      <optgroup key={s.id} label={`Rotina: ${s.name}`}>
-                        {s.workouts.map((w) => (
-                          <option key={w.id} value={w.title}>
-                            {w.title}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                    <optgroup label="Descanso & Outros">
-                      <option value="Descanso / Recuperação">Descanso / Recuperação</option>
-                      <option value="Descanso / Recuperação Ativa">Descanso / Recuperação Ativa</option>
-                      <option value="Cardio & Mobilidade">Cardio & Mobilidade</option>
-                      <option value="Treino Livre / Aeróbico">Treino Livre / Aeróbico</option>
-                    </optgroup>
-                  </select>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingDayModalIndex(idx);
-                      setCustomDayWorkoutText(day.workoutTitle);
-                    }}
-                    title="Editar ou escrever nome personalizado para este dia"
-                    className="flex items-center justify-center gap-1 w-full rounded-xl border border-border/50 bg-muted/30 hover:bg-primary/20 hover:text-primary py-1 text-[9px] font-bold text-muted-foreground transition-colors"
-                  >
-                    <Edit3 size={10} /> Personalizar
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 2. GESTOR DE ROTINAS & DIVISÕES (PPL, ABC, ETC.) */}
-      <div className="rounded-2xl border border-border bg-card/60 p-4 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1.5 mr-2">
-              <Layers size={14} className="text-primary" /> Rotinas:
-            </span>
-            {splits.map((s) => (
-              <div key={s.id} className="relative inline-flex items-center">
-                <button
-                  onClick={() => setActiveSplitId(s.id)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                    activeSplit.id === s.id
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {s.name}
-                </button>
-                {splits.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteSplit(s.id);
-                    }}
-                    title={`Excluir rotina ${s.name}`}
-                    className="ml-1 p-1 rounded-md text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsCreateSplitModalOpen(true)}
-              className="text-xs border-dashed"
-            >
-              <FolderPlus size={13} className="text-primary" /> + Nova Rotina
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleSaveCurrentWorkoutToSplit}
-              className="text-xs text-primary font-bold hover:bg-primary/10"
-            >
-              <Save size={13} /> Salvar Treino na Rotina
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. BARRA DE EDIÇÃO DO NOME DO TREINO, STATUS E AÇÕES */}
-      <div className="panel p-5 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex-1 min-w-[280px]">
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-            Treino da Sessão Atual
-          </label>
-          <input
-            type="text"
-            value={sessionTitle}
-            onChange={(e) => setSessionTitle(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-base font-extrabold text-foreground focus:border-primary"
-            placeholder="Ex: Pull A — Costas e Bíceps"
-          />
+                (Sair)
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 w-full lg:w-auto text-xs font-mono border-b lg:border-b-0 pb-3 lg:pb-0 border-border/40">
-          <div className="text-center rounded-xl bg-background/50 p-2 sm:p-2.5">
-            <span className="text-[9px] uppercase text-muted-foreground block truncate">Exercícios</span>
-            <span className="font-bold text-foreground text-xs sm:text-sm">{exercises.length}</span>
-          </div>
-          <div className="text-center rounded-xl bg-background/50 p-2 sm:p-2.5">
-            <span className="text-[9px] uppercase text-muted-foreground block truncate">Séries</span>
-            <span className="font-bold text-primary text-xs sm:text-sm">{completedSetsCount} / {totalSetsCount}</span>
-          </div>
-          <div className="text-center rounded-xl bg-background/50 p-2 sm:p-2.5">
-            <span className="text-[9px] uppercase text-muted-foreground block truncate">Tonelagem</span>
-            <span className="font-bold text-primary text-xs sm:text-sm truncate block">{totalSessionTonnage.toLocaleString()} kg</span>
-          </div>
-        </div>
+        <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsNightCheckinOpen(true)}
+            className="text-xs h-8 px-2.5 border-border/80 rounded-xl"
+          >
+            <Moon size={13} className="text-primary mr-1" /> Noturno
+          </Button>
 
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
           <Button
             size="sm"
             onClick={() => setIsFinishingWorkout(true)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs px-3 sm:px-3.5 py-2 shadow-lg flex items-center gap-1.5 cursor-pointer rounded-xl flex-1 sm:flex-initial"
+            className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs h-8 px-3 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
           >
-            <CheckCircle2 size={15} /> 🏁 Concluir
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleSaveCurrentWorkoutToSplit}
-            className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 flex items-center gap-1.5 cursor-pointer rounded-xl"
-          >
-            <Save size={13} /> Salvar
-          </Button>
-
-          <Button
-            size="sm"
-            onClick={() => setIsAddExerciseModalOpen(true)}
-            className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs flex items-center gap-1.5 cursor-pointer rounded-xl"
-          >
-            <Plus size={13} /> + Exercício
+            <CheckCircle2 size={15} /> 🏁 Concluir ({completedSetsCount}/{totalSetsCount})
           </Button>
         </div>
       </div>
 
-      {/* 3.1 CONTROLE CONFIGURÁVEL DE TEMPOS DE DESCANSO (AQUECIMENTO VS TRABALHO) */}
-      <div className="rounded-2xl border border-primary/30 bg-card/70 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
-            <Clock size={16} />
-          </div>
-          <div>
-            <h4 className="text-xs font-black uppercase text-foreground">
-              Descansos Automáticos da Sessão
-            </h4>
-            <p className="text-[10px] text-muted-foreground">
-              Dispara no cronômetro ao concluir a série.
-            </p>
-          </div>
-        </div>
+      {/* ========================================================================= */}
+      {/* =================== MODO 1: FAZER TREINO (ESTILO HEVY) =================== */}
+      {/* ========================================================================= */}
+      {workoutMode === 'FAZER' && (
+        <div className="space-y-5 animate-in fade-in duration-200">
+          {/* BARRA HORIZONTAL COMPACTA DOS 7 DIAS DA SEMANA (ESTILO HEVY) */}
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-2 sm:p-2.5 shadow-sm">
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {weeklySchedule.map((day, idx) => {
+                const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
+                const isLoaded = sessionTitle === day.workoutTitle;
+                const isRest = day.workoutTitle.toLowerCase().includes('descanso');
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 text-xs">
-          {/* Descanso de Aquecimento */}
-          <div className="flex items-center justify-between sm:justify-start gap-2 bg-background/50 sm:bg-transparent p-2 sm:p-0 rounded-xl">
-            <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground">Aquecimento:</span>
-            <div className="flex items-center gap-1">
-              {[45, 60, 90].map((sec) => (
-                <button
-                  key={sec}
-                  type="button"
-                  onClick={() => setRestWarmupSeconds(sec)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
-                    restWarmupSeconds === sec
-                      ? 'bg-amber-500 text-black font-black shadow-sm'
-                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {sec}s
-                </button>
-              ))}
-              <input
-                type="number"
-                min="10"
-                max="300"
-                step="5"
-                value={restWarmupSeconds}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setRestWarmupSeconds(Math.max(10, parseInt(e.target.value) || 60))}
-                className="w-14 rounded-lg border border-border bg-background px-1 py-1 text-center font-mono text-xs font-black text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
-                title="Segundos de aquecimento"
-              />
-              <span className="text-[10px] text-muted-foreground">s</span>
-            </div>
-          </div>
-
-          {/* Descanso de Trabalho */}
-          <div className="flex items-center justify-between sm:justify-start gap-2 bg-background/50 sm:bg-transparent p-2 sm:p-0 rounded-xl">
-            <span className="text-[10px] sm:text-[11px] font-black text-primary">Trabalho:</span>
-            <div className="flex items-center gap-1">
-              {[90, 120, 180].map((sec) => (
-                <button
-                  key={sec}
-                  type="button"
-                  onClick={() => setRestWorkingSeconds(sec)}
-                  className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
-                    restWorkingSeconds === sec
-                      ? 'bg-primary text-primary-foreground font-black shadow-sm'
-                      : 'bg-muted/60 text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {sec}s
-                </button>
-              ))}
-              <input
-                type="number"
-                min="30"
-                max="600"
-                step="10"
-                value={restWorkingSeconds}
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => setRestWorkingSeconds(Math.max(30, parseInt(e.target.value) || 120))}
-                className="w-14 rounded-lg border border-primary bg-background px-1 py-1 text-center font-mono text-xs font-black text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
-                title="Segundos de trabalho"
-              />
-              <span className="text-[10px] text-muted-foreground">s</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. LISTA DE EXERCÍCIOS DA SESSÃO DIÁRIA */}
-      <div className="space-y-6">
-        {exercises.map((ex, exIndex) => {
-          const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
-          const workingSets = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
-
-          return (
-            <div key={ex.id} className="panel p-4 md:p-6 transition-all space-y-4">
-              {/* Header do Exercício com Controles de Reordenação e Meta */}
-              <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/70 pb-3">
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  {/* Seletor de Sequência / Posição */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground">
-                      #{exIndex + 1}
-                    </span>
-                    <div className="flex flex-col gap-0.5">
-                      <button
-                        disabled={exIndex === 0}
-                        onClick={() => handleMoveExercise(exIndex, 'up')}
-                        title="Subir posição na sequência"
-                        className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"
-                      >
-                        <ChevronUp size={13} />
-                      </button>
-                      <button
-                        disabled={exIndex === exercises.length - 1}
-                        onClick={() => handleMoveExercise(exIndex, 'down')}
-                        title="Descer posição na sequência"
-                        className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"
-                      >
-                        <ChevronDown size={13} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-base sm:text-lg font-black text-foreground truncate max-w-[190px] xs:max-w-[260px] sm:max-w-none">
-                        {ex.name}
-                      </h3>
-                      <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0">
-                        {ex.muscle}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                      {ex.equipment} • Padrão: {ex.category}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Ações: Gráfico, Tutorial, Excluir */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Ver Gráfico de Sobrecarga Progressiva */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)
-                    }
-                    className="text-xs h-7 px-2 sm:px-2.5 flex items-center gap-1 text-primary border-primary/30 hover:bg-primary/10 rounded-xl"
+                return (
+                  <button
+                    key={day.dayOfWeek}
+                    type="button"
+                    onClick={() => handleSelectDay(day)}
+                    className={`rounded-xl p-1.5 sm:p-2 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-w-0 ${
+                      isToday
+                        ? 'border border-primary bg-primary/20 ring-1 ring-primary'
+                        : isLoaded
+                        ? 'border border-primary/50 bg-card shadow-xs'
+                        : isRest
+                        ? 'bg-background/30 text-muted-foreground hover:bg-background/60'
+                        : 'bg-background/50 text-foreground hover:border-border hover:bg-background/90'
+                    }`}
                   >
-                    <TrendingUp size={13} /> 
-                    <span className="hidden xs:inline">{selectedExerciseForChart === ex.name ? 'Fechar' : 'Progresso'}</span>
-                  </Button>
-
-                  {/* Vídeo Tutorial */}
-                  {ex.video_url && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setExpandedVideoId(expandedVideoId === ex.id ? null : ex.id)
-                      }
-                      className="text-xs text-primary flex items-center gap-1 h-7 px-2 rounded-xl"
+                    <div className="flex items-center gap-0.5">
+                      <span className="font-mono text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground">
+                        {day.shortDay}
+                      </span>
+                      {isToday && (
+                        <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                      )}
+                    </div>
+                    <span 
+                      className={`text-[9px] sm:text-[11px] font-extrabold truncate w-full mt-0.5 ${
+                        isLoaded ? 'text-primary' : 'text-muted-foreground'
+                      }`}
+                      title={day.workoutTitle}
                     >
-                      <Play size={13} /> 
-                      <span className="hidden xs:inline">{expandedVideoId === ex.id ? 'Fechar' : 'Vídeo'}</span>
-                    </Button>
+                      {isRest ? 'Off' : day.workoutTitle.split('—')[0].trim()}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* CABEÇALHO DO TREINO ATIVO COM RESUMO MINIMALISTA EM LINHA */}
+          <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card to-background p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                Sessão em Andamento
+              </span>
+              <h2 className="text-xl sm:text-2xl font-black text-foreground truncate">
+                {sessionTitle}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <div className="rounded-xl bg-background/80 border border-border/60 px-3 py-1.5 text-center">
+                <span className="text-[9px] text-muted-foreground uppercase block">Exercícios</span>
+                <span className="font-black text-foreground text-xs">{exercises.length}</span>
+              </div>
+              <div className="rounded-xl bg-background/80 border border-border/60 px-3 py-1.5 text-center">
+                <span className="text-[9px] text-muted-foreground uppercase block">Séries</span>
+                <span className={`font-black text-xs ${completedSetsCount === totalSetsCount && totalSetsCount > 0 ? 'text-emerald-400' : 'text-primary'}`}>
+                  {completedSetsCount} / {totalSetsCount}
+                </span>
+              </div>
+              <div className="rounded-xl bg-background/80 border border-border/60 px-3 py-1.5 text-center">
+                <span className="text-[9px] text-muted-foreground uppercase block">Tonelagem</span>
+                <span className="font-black text-primary text-xs">{totalSessionTonnage.toLocaleString()} kg</span>
+              </div>
+            </div>
+          </div>
+
+          {/* LISTA DE EXERCÍCIOS ESTILO HEVY APP (MINIMALISTA, HORIZONTAL, DICAS ESCONDIDAS) */}
+          <div className="space-y-4">
+            {exercises.map((ex, exIndex) => {
+              const allSetsDone = ex.sets.length > 0 && ex.sets.every((s) => s.completed);
+              const completedCount = ex.sets.filter((s) => s.completed).length;
+
+              return (
+                <div 
+                  key={ex.id}
+                  className={`rounded-2xl border transition-all p-3.5 sm:p-4 space-y-3 ${
+                    allSetsDone 
+                      ? 'border-emerald-500/40 bg-emerald-950/10 shadow-sm' 
+                      : 'border-border/70 bg-card/75'
+                  }`}
+                >
+                  {/* Linha Superior do Exercício */}
+                  <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2.5">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className={`size-6 rounded-md font-mono text-[11px] font-black flex items-center justify-center shrink-0 ${
+                        allSetsDone 
+                          ? 'bg-emerald-500 text-black' 
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        #{exIndex + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className="text-sm sm:text-base font-black text-foreground truncate max-w-[200px] xs:max-w-[280px] sm:max-w-none">
+                            {ex.name}
+                          </h3>
+                          <span className="rounded-full bg-primary/15 px-2 py-0.2 text-[9px] font-bold text-primary shrink-0">
+                            {ex.muscle}
+                          </span>
+                          {allSetsDone && (
+                            <span className="rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 text-[8px] font-black uppercase flex items-center gap-0.5">
+                              <Check size={10} strokeWidth={3} /> CONCLUÍDO
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ações Rápidas: Dicas (recolhível) e Gráfico de Progresso */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+                          expandedTipsId === ex.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                        title="Ver orientações de biomecânica e vídeo"
+                      >
+                        <Info size={12} />
+                        <span>Dicas</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all cursor-pointer ${
+                          selectedExerciseForChart === ex.name
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                        title="Gráfico de sobrecarga progressiva"
+                      >
+                        <TrendingUp size={12} />
+                        <span className="hidden xs:inline">Progresso</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Dicas e Vídeo (Apenas exibidos quando o usuário clica) */}
+                  {expandedTipsId === ex.id && (
+                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 space-y-2 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-black text-primary flex items-center gap-1">
+                          <Play size={13} /> Orientação Biomecânica
+                        </span>
+                        {ex.video_url && (
+                          <a
+                            href={ex.video_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-bold"
+                          >
+                            YouTube <ExternalLink size={10} />
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {ex.description || 'Controle a fase excêntrica de 2 a 3 segundos, amplitude segura e estabilidade articular.'}
+                      </p>
+                    </div>
                   )}
 
-                  {/* Remover Exercício */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleRemoveExercise(ex.id)}
-                    className="size-7 text-muted-foreground hover:text-destructive rounded-xl"
-                  >
-                    <Trash2 size={13} />
-                  </Button>
+                  {/* Gráfico de Sobrecarga Histórica */}
+                  {selectedExerciseForChart === ex.name && (
+                    <WorkoutProgressionChart
+                      exerciseName={ex.name}
+                      dataPoints={getProgressionDataForExercise(
+                        ex.name,
+                        ex.sets[0]?.weight ?? ex.targetWeightKg ?? 40,
+                        ex.targetWeightKg ?? 40
+                      )}
+                    />
+                  )}
+
+                  {/* TABELA DE SÉRIES ESTILO HEVY (LINHA ÚNICA, CLEAN, SEM VAZAMENTO) */}
+                  <div className="space-y-1.5">
+                    {/* Linha de Cabeçalho da Tabela Hevy */}
+                    <div className="flex items-center justify-between gap-1.5 sm:gap-2 px-2.5 py-1 text-[9px] font-mono font-bold uppercase text-muted-foreground tracking-wider select-none">
+                      <div className="w-8 shrink-0 text-center">SET</div>
+                      <div className="flex-1 min-w-0 max-w-[85px] sm:max-w-[110px] text-center truncate">ANTERIOR</div>
+                      <div className="w-14 sm:w-16 shrink-0 text-center">KG</div>
+                      <div className="w-12 sm:w-14 shrink-0 text-center">REPS</div>
+                      <div className="w-11 sm:w-12 shrink-0 text-center">RIR</div>
+                      <div className="w-10 shrink-0 text-center">✓</div>
+                    </div>
+
+                    {/* Séries com HevySetRow */}
+                    <div className="space-y-1.5">
+                      {ex.sets.map((set, sIdx) => {
+                        const isPrep = set.baseType === 'WARMUP' || set.baseType === 'FEEDER' || set.baseType === 'PAP';
+                        const workingIdx = isPrep ? undefined : ex.sets.slice(0, sIdx + 1).filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
+
+                        return (
+                          <HevySetRow
+                            key={set.id}
+                            data={set}
+                            workingIndex={workingIdx}
+                            targetWeight={ex.targetWeightKg}
+                            targetReps={ex.targetReps}
+                            restSeconds={isPrep ? restWarmupSeconds : restWorkingSeconds}
+                            onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
+                            onDelete={() => handleDeleteSet(ex.id, set.id)}
+                            onTriggerRestTimer={(sec) => triggerFloatingTimer(sec, `${ex.name} • Série #${sIdx + 1}`)}
+                            onTriggerXP={(pts) => reward(pts)}
+                            onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Rodapé do Exercício: Adicionar Série Rápida */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleAddWorkingSet(ex.id)}
+                        className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer"
+                      >
+                        <Plus size={13} /> + Série
+                      </button>
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {completedCount} de {ex.sets.length} concluídas
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (ESTILO HEVY) */}
+          <div className="rounded-2xl border-2 border-primary/50 bg-gradient-to-br from-card via-card/90 to-primary/10 p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+            <div className="space-y-1 text-center md:text-left">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/20 px-3 py-1 text-xs font-black text-primary">
+                <Trophy size={14} /> Fim dos Exercícios
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-foreground">
+                Concluir Treino: {sessionTitle}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {completedSetsCount === totalSetsCount && totalSetsCount > 0
+                  ? '🎉 Todas as séries do dia foram concluídas! Salve seu treino para consolidar suas cargas e ganhar +150 XP.'
+                  : `Progresso: ${completedSetsCount} de ${totalSetsCount} séries feitas (${totalSessionTonnage.toLocaleString()} kg).`}
+              </p>
+            </div>
+
+            <Button
+              size="lg"
+              onClick={() => setIsFinishingWorkout(true)}
+              className="bg-primary text-primary-foreground font-black text-sm px-6 py-5 shadow-xl hover:bg-primary/90 flex items-center gap-2 w-full md:w-auto justify-center cursor-pointer rounded-2xl"
+            >
+              <CheckCircle2 size={18} />
+              <span>CONCLUIR TREINO (+150 XP)</span>
+            </Button>
+          </div>
+
+          {/* VOLUME CIENTÍFICO (MEV / MAV / MRV) ESCONDIDO EM ACORDEÃO PARA NÃO POLUIR */}
+          <div className="rounded-2xl border border-border/80 bg-card/50 overflow-hidden shadow-xs">
+            <button
+              type="button"
+              onClick={() => setIsVolumeTrackerExpanded(!isVolumeTrackerExpanded)}
+              className="w-full flex items-center justify-between p-4 text-xs font-black uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <BarChart3 size={15} className="text-primary" />
+                Balanço Científico de Volume (MEV / MAV / MRV)
+              </span>
+              <span className="text-[10px] text-primary">
+                {isVolumeTrackerExpanded ? 'Recolher ▲' : 'Ver Detalhes ▼'}
+              </span>
+            </button>
+
+            {isVolumeTrackerExpanded && (
+              <div className="p-4 pt-0 border-t border-border/40 space-y-3 animate-in fade-in duration-150">
+                <p className="text-xs text-muted-foreground">
+                  Monitoramento de estímulo hipertrófico conforme Dr. Mike Israetel & Brad Schoenfeld.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {activeMusclesInSession.map((assessment) => {
+                    const { muscle, effectiveWorkingSets, landmarks, status, statusLabel } = assessment;
+                    const progressPct = Math.min(100, Math.round((effectiveWorkingSets / landmarks.mrv) * 100));
+
+                    return (
+                      <div key={muscle} className="rounded-xl border border-border/80 bg-background/50 p-3.5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs text-foreground">{muscle}</span>
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                            status === 'JUNK_VOLUME'
+                              ? 'bg-destructive/20 text-destructive'
+                              : status === 'MRV_NEAR'
+                              ? 'bg-amber-500/20 text-amber-500'
+                              : status === 'MAV'
+                              ? 'bg-primary/20 text-primary'
+                              : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
+                            <span>Efetivo: <strong className="text-foreground">{effectiveWorkingSets}</strong> séries</span>
+                            <span>MRV: {landmarks.mrv}</span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                            <div 
+                              className={`h-full transition-all duration-300 ${
+                                status === 'JUNK_VOLUME' ? 'bg-destructive' : status === 'MRV_NEAR' ? 'bg-amber-500' : 'bg-primary'
+                              }`}
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ============ MODO 2: MONTAR TREINO (PAINEL DO ADMINISTRADOR) ============= */}
+      {/* ========================================================================= */}
+      {workoutMode === 'MONTAR' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          {/* Banner Exclusivo do Administrador */}
+          <div className="rounded-2xl border-2 border-primary/60 bg-gradient-to-r from-primary/15 via-card to-card p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-black shadow-md shrink-0">
+                <SlidersHorizontal size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-primary">
+                  Área do Treinador / Prescrição
+                </span>
+                <h2 className="text-lg sm:text-xl font-black text-foreground">
+                  Painel de Montagem de Treinos
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Configure as rotinas, adicione exercícios, defina metas de carga e organize a semana de Seg a Dom.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setWorkoutMode('FAZER')}
+                className="text-xs font-bold border-primary/50 text-primary hover:bg-primary/10 rounded-xl"
+              >
+                <Eye size={13} className="mr-1" /> Ver como Aluno
+              </Button>
+
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleLockAdmin}
+                className="text-xs font-bold text-muted-foreground hover:text-destructive rounded-xl"
+              >
+                <Lock size={13} className="mr-1" /> Bloquear
+              </Button>
+            </div>
+          </div>
+
+          {/* 1. GESTOR DE ROTINAS (PPL, ABC, ETC.) */}
+          <div className="rounded-2xl border border-border bg-card/60 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1.5 mr-2">
+                  <Layers size={14} className="text-primary" /> Rotinas:
+                </span>
+                {splits.map((s) => (
+                  <div key={s.id} className="relative inline-flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSplitId(s.id)}
+                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                        activeSplit.id === s.id
+                          ? 'bg-primary text-primary-foreground shadow-sm'
+                          : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                    {splits.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSplit(s.id);
+                        }}
+                        title={`Excluir rotina ${s.name}`}
+                        className="ml-1 p-1 rounded-md text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsCreateSplitModalOpen(true)}
+                  className="text-xs border-dashed rounded-xl"
+                >
+                  <FolderPlus size={13} className="text-primary" /> + Nova Rotina
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleSaveCurrentWorkoutToSplit}
+                  className="text-xs text-primary font-bold hover:bg-primary/10 rounded-xl"
+                >
+                  <Save size={13} /> Salvar Treino na Rotina
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. AGENDA SEMANAL DE SEGUNDA A DOMINGO (PAINEL COMPLETO DO ADMIN) */}
+          <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-3 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Calendar size={18} className="text-primary shrink-0" />
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                    Divisão Semanal Prescrita (Segunda a Domingo)
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                    Escolha qual treino o aluno fará em cada dia da semana.
+                  </p>
                 </div>
               </div>
 
-              {/* GRÁFICO DE SOBRECARGA PROGRESSIVA (RECHARTS) SE ABERTO */}
-              {selectedExerciseForChart === ex.name && (
-                <WorkoutProgressionChart
-                  exerciseName={ex.name}
-                  dataPoints={getProgressionDataForExercise(
-                    ex.name,
-                    workingSets[0]?.weight ?? ex.targetWeightKg ?? 40,
-                    ex.targetWeightKg ?? 40
-                  )}
-                />
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsWeeklyScheduleModalOpen(true)}
+                  className="text-xs font-black gap-1.5 border-primary/50 text-primary hover:bg-primary/15 shadow-sm rounded-xl"
+                >
+                  <SlidersHorizontal size={13} /> Configurar Detalhado
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleApplySplitToWeek}
+                  className="text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
+                  title={`Distribuir treinos da rotina ${activeSplit.name} de Seg a Dom`}
+                >
+                  <Zap size={13} className="text-primary" /> Distribuir "{activeSplit.name}"
+                </Button>
+              </div>
+            </div>
 
-              {/* Tutorial Retrátil */}
-              {expandedVideoId === ex.id && (
-                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-primary flex items-center gap-1">
-                      <Play size={14} /> Guia de Execução Biomecânica
-                    </span>
-                    {ex.video_url && (
-                      <a
-                        href={ex.video_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[11px] text-primary hover:underline flex items-center gap-1"
+            {/* 7 Dias da Semana em Grade para Edição do Admin */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+              {weeklySchedule.map((day, idx) => {
+                const isLoaded = sessionTitle === day.workoutTitle;
+                const isKnownOption = splits.some((s) => s.workouts.some((w) => w.title === day.workoutTitle)) ||
+                  ['Descanso / Recuperação', 'Descanso / Recuperação Ativa', 'Cardio & Mobilidade', 'Treino Livre / Aeróbico'].includes(day.workoutTitle);
+
+                return (
+                  <div
+                    key={day.dayOfWeek}
+                    className={`rounded-2xl border p-2.5 sm:p-3 transition-all flex flex-col justify-between min-w-0 overflow-hidden ${
+                      isLoaded ? 'border-primary/60 bg-card/95 ring-1 ring-primary/40' : 'border-border/60 bg-background/50'
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-black uppercase text-muted-foreground">
+                          {day.shortDay}
+                        </span>
+                        {isLoaded && (
+                          <span className="rounded-full bg-primary text-primary-foreground px-1.5 py-0.2 text-[8px] font-black uppercase">
+                            EDITANDO
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-black text-xs mt-1 truncate text-foreground" title={day.workoutTitle}>
+                        {day.workoutTitle}
+                      </h4>
+                    </div>
+
+                    <div className="mt-2.5 pt-1.5 border-t border-border/40 space-y-1.5 min-w-0">
+                      <select
+                        value={day.workoutTitle}
+                        onChange={(e) => handleUpdateScheduleDay(idx, e.target.value)}
+                        className="w-full min-w-0 max-w-full rounded-xl border border-border/80 bg-card px-2 py-1 text-[10px] font-black text-foreground focus:border-primary truncate cursor-pointer shadow-inner"
                       >
-                        YouTube <ExternalLink size={11} />
-                      </a>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {ex.description ?? 'Controle a fase excêntrica de 2 a 3 segundos.'}
-                  </p>
-                </div>
-              )}
+                        {!isKnownOption && (
+                          <option value={day.workoutTitle}>
+                            ★ {day.workoutTitle}
+                          </option>
+                        )}
+                        {splits.map((s) => (
+                          <optgroup key={s.id} label={`Rotina: ${s.name}`}>
+                            {s.workouts.map((w) => (
+                              <option key={w.id} value={w.title}>
+                                {w.title}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                        <optgroup label="Descanso & Outros">
+                          <option value="Descanso / Recuperação">Descanso / Recuperação</option>
+                          <option value="Descanso / Recuperação Ativa">Descanso / Recuperação Ativa</option>
+                          <option value="Cardio & Mobilidade">Cardio & Mobilidade</option>
+                          <option value="Treino Livre / Aeróbico">Treino Livre / Aeróbico</option>
+                        </optgroup>
+                      </select>
 
-              <div className="space-y-4">
-                {/* SEÇÃO 1: SÉRIES PREPARATÓRIAS (AQUECIMENTO / RECONHECIMENTO DE CARGA) */}
-                <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 sm:p-4 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                    <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
-                      <Clock size={13} className="text-amber-500 shrink-0" />
-                      <span>Séries Preparatórias</span>
-                    </span>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      Aquecimento & Calibração (Não pontua no MEV)
-                    </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingDayModalIndex(idx);
+                          setCustomDayWorkoutText(day.workoutTitle);
+                        }}
+                        className="flex items-center justify-center gap-1 w-full rounded-xl border border-border/50 bg-muted/30 hover:bg-primary/20 hover:text-primary py-1 text-[9px] font-bold text-muted-foreground transition-colors"
+                      >
+                        <Edit3 size={10} /> Personalizar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. BARRA DE EDIÇÃO DO NOME DO TREINO E BOTÕES DE ADICIONAR */}
+          <div className="panel p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex-1 min-w-[260px]">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                Nome do Treino Prescrito
+              </label>
+              <input
+                type="text"
+                value={sessionTitle}
+                onChange={(e) => setSessionTitle(e.target.value)}
+                className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-base font-extrabold text-foreground focus:border-primary"
+                placeholder="Ex: Pull A — Densidade Dorsal & Bíceps"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setIsAddExerciseModalOpen(true)}
+                className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs flex items-center gap-1.5 cursor-pointer rounded-xl"
+              >
+                <Plus size={14} /> + Adicionar Exercício
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveCurrentWorkoutToSplit}
+                className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 rounded-xl"
+              >
+                <Save size={13} className="mr-1" /> Salvar Treino
+              </Button>
+            </div>
+          </div>
+
+          {/* 4. TEMPOS DE DESCANSO AUTOMÁTICOS DA SESSÃO */}
+          <div className="rounded-2xl border border-primary/30 bg-card/70 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
+                <Clock size={16} />
+              </div>
+              <div>
+                <h4 className="text-xs font-black uppercase text-foreground">
+                  Descansos Automáticos Prescritos
+                </h4>
+                <p className="text-[10px] text-muted-foreground">
+                  Tempo que dispara automaticamente ao aluno concluir a série.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-muted-foreground">Aquecimento:</span>
+                <input
+                  type="number"
+                  min="10"
+                  max="300"
+                  step="5"
+                  value={restWarmupSeconds}
+                  onChange={(e) => setRestWarmupSeconds(Math.max(10, parseInt(e.target.value) || 60))}
+                  className="w-14 rounded-xl border border-border bg-background px-1 py-1 text-center font-mono text-xs font-black"
+                />
+                <span className="text-[10px] text-muted-foreground">s</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black text-primary">Trabalho:</span>
+                <input
+                  type="number"
+                  min="30"
+                  max="600"
+                  step="10"
+                  value={restWorkingSeconds}
+                  onChange={(e) => setRestWorkingSeconds(Math.max(30, parseInt(e.target.value) || 120))}
+                  className="w-14 rounded-xl border border-primary bg-background px-1 py-1 text-center font-mono text-xs font-black text-primary"
+                />
+                <span className="text-[10px] text-muted-foreground">s</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 5. LISTA DE EXERCÍCIOS PARA EDIÇÃO AVANÇADA DO ADMINISTRADOR */}
+          <div className="space-y-6">
+            {exercises.map((ex, exIndex) => {
+              const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
+              const workingSets = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
+
+              return (
+                <div key={ex.id} className="panel p-4 md:p-6 transition-all space-y-4">
+                  {/* Header do Exercício */}
+                  <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/70 pb-3">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground">
+                          #{exIndex + 1}
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <button
+                            disabled={exIndex === 0}
+                            onClick={() => handleMoveExercise(exIndex, 'up')}
+                            className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"
+                          >
+                            <ChevronUp size={13} />
+                          </button>
+                          <button
+                            disabled={exIndex === exercises.length - 1}
+                            onClick={() => handleMoveExercise(exIndex, 'down')}
+                            className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"
+                          >
+                            <ChevronDown size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base sm:text-lg font-black text-foreground truncate max-w-[190px] xs:max-w-[260px] sm:max-w-none">
+                            {ex.name}
+                          </h3>
+                          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0">
+                            {ex.muscle}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                          {ex.equipment} • {ex.category}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveExercise(ex.id)}
+                        className="size-7 text-muted-foreground hover:text-destructive rounded-xl"
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    </div>
                   </div>
 
-                  {preparatorySets.length > 0 ? (
-                    <div className="space-y-2">
+                  {/* Configuração de Carga Meta e Reps Meta */}
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-bold text-primary flex items-center gap-1">
+                      <Target size={13} /> Metas Prescritas para o Aluno:
+                    </span>
+                    <div className="flex items-center gap-2 font-mono">
+                      <span>Carga Alvo:</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={ex.targetWeightKg ?? 40}
+                        onChange={(e) => handleUpdateExerciseTarget(ex.id, parseFloat(e.target.value) || 0, ex.targetReps ?? 10)}
+                        className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-center font-bold"
+                      />
+                      <span>kg</span>
+                      <span className="ml-2">Reps:</span>
+                      <input
+                        type="number"
+                        value={ex.targetReps ?? 10}
+                        onChange={(e) => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, parseInt(e.target.value) || 0)}
+                        className="w-14 rounded-lg border border-border bg-background px-2 py-1 text-center font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Séries Preparatórias e de Trabalho */}
+                  <div className="space-y-4">
+                    {/* Séries Preparatórias */}
+                    <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 sm:p-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                          <Clock size={13} className="text-amber-500" /> Séries Preparatórias
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAddPreparatorySet(ex.id, 'WARMUP')}
+                            className="text-[10px] h-6 px-2 text-muted-foreground border border-dashed rounded-lg"
+                          >
+                            + Aquecimento
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAddPreparatorySet(ex.id, 'FEEDER')}
+                            className="text-[10px] h-6 px-2 text-amber-500 border border-dashed border-amber-500/40 rounded-lg"
+                          >
+                            + Feeder
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleAddPreparatorySet(ex.id, 'PAP')}
+                            className="text-[10px] h-6 px-2 text-cyan-400 border border-dashed border-cyan-500/40 rounded-lg"
+                          >
+                            + PAP
+                          </Button>
+                        </div>
+                      </div>
+
                       {preparatorySets.map((set) => (
                         <AdvancedSetRow
                           key={set.id}
                           data={set}
+                          mode="PLAN"
                           restWarmupSeconds={restWarmupSeconds}
                           restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
                           onDelete={() => handleDeleteSet(ex.id, set.id)}
-                          onTriggerRestTimer={(seconds) =>
-                            triggerFloatingTimer(seconds, `${ex.name} - Preparação`)
-                          }
+                          onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Preparação`)}
                         />
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground italic">
-                      Nenhuma série preparatória. Adicione aquecimento ou feeder para irrigação articular.
-                    </p>
-                  )}
 
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleAddPreparatorySet(ex.id, 'WARMUP')}
-                      className="text-[10px] h-6 px-2 text-muted-foreground hover:text-foreground border border-dashed border-border/60 rounded-lg"
-                    >
-                      + Aquecimento (W)
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleAddPreparatorySet(ex.id, 'FEEDER')}
-                      className="text-[10px] h-6 px-2 text-amber-500 hover:text-amber-400 border border-dashed border-amber-500/40 rounded-lg"
-                    >
-                      + Feeder / Reconhecimento (F)
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleAddPreparatorySet(ex.id, 'PAP')}
-                      className="text-[10px] h-6 px-2 text-cyan-400 hover:text-cyan-300 border border-dashed border-cyan-500/40 rounded-lg"
-                    >
-                      + PAP (Potenciação Pós-Ativação)
-                    </Button>
-                  </div>
+                    {/* Séries de Trabalho */}
+                    <div className="rounded-2xl border border-primary/30 bg-card/60 p-3 sm:p-4 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
+                          <Flame size={14} className="text-primary" /> Séries de Trabalho Efetivas
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAddWorkingSet(ex.id)}
+                          className="text-xs border-dashed text-primary border-primary/40 rounded-lg"
+                        >
+                          <Plus size={12} className="mr-1" /> + Série
+                        </Button>
+                      </div>
 
-                  {/* Explicação Didática da PAP */}
-                  <div className="rounded-xl bg-cyan-950/20 border border-cyan-800/30 p-2.5 text-[10px] text-cyan-200/90 leading-relaxed">
-                    <span className="font-bold text-cyan-300">💡 O que é PAP (Potenciação Pós-Ativação)?</span> Uma contração intensa e breve (1 a 2 reps com ~90-95% da carga, sem chegar à falha) logo antes da série de trabalho. Ela sensibiliza as pontes de miosina e ativa o Sistema Nervoso Central, permitindo produzir mais força e recrutar mais fibras musculares na série principal sem gerar fadiga metabólica.
-                  </div>
-                </div>
-
-                {/* SEÇÃO 2: SÉRIES DE TRABALHO EFETIVAS (EXCLUSIVAMENTE TÉCNICAS DE TRABALHO) */}
-                <div className="rounded-2xl border border-primary/30 bg-card/60 p-3 sm:p-4 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                    <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
-                      <Flame size={14} className="text-primary shrink-0" />
-                      <span>Séries de Trabalho Efetivas</span>
-                    </span>
-                    <span className="text-[10px] font-bold text-primary font-mono">
-                      MEV/MAV · Gamificação PR
-                    </span>
-                  </div>
-
-                  {workingSets.length > 0 ? (
-                    <div className="space-y-2">
                       {workingSets.map((set, wIdx) => (
                         <AdvancedSetRow
                           key={set.id}
@@ -1597,150 +1968,52 @@ function TreinosPage() {
                             targetWeight: set.targetWeight ?? ex.targetWeightKg,
                             targetReps: set.targetReps ?? ex.targetReps,
                           }}
+                          mode="PLAN"
                           workingIndex={wIdx + 1}
                           restWarmupSeconds={restWarmupSeconds}
                           restWorkingSeconds={restWorkingSeconds}
                           onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
                           onDelete={() => handleDeleteSet(ex.id, set.id)}
-                          onTriggerRestTimer={(seconds) =>
-                            triggerFloatingTimer(seconds, `${ex.name} - Série #${wIdx + 1}`)
-                          }
+                          onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Série #${wIdx + 1}`)}
                           onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
                         />
                       ))}
                     </div>
-                  ) : (
-                    <p className="text-[11px] text-muted-foreground italic">
-                      Nenhuma série de trabalho adicionada.
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between pt-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleAddWorkingSet(ex.id)}
-                      className="text-xs border-dashed flex items-center gap-1.5 text-primary border-primary/40 hover:bg-primary/10"
-                    >
-                      <Plus size={13} /> + Adicionar Série de Trabalho (#{workingSets.length + 1})
-                    </Button>
-
-                    <span className="text-[11px] text-muted-foreground font-mono">
-                      {workingSets.filter((s) => s.completed).length}/{workingSets.length} séries feitas
-                    </span>
                   </div>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+
+          {/* Salvar Modelo e Concluir Montagem */}
+          <div className="rounded-2xl border border-primary bg-card p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-black text-foreground">
+                Pronto para prescrever este treino?
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Salve as alterações para que fiquem salvas na rotina e disponíveis para o aluno treinar.
+              </p>
             </div>
-          );
-        })}
-      </div>
 
-      {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (LOGO ABAIXO DOS EXERCÍCIOS) */}
-      <div className="rounded-2xl border-2 border-primary/50 bg-gradient-to-br from-card via-card/90 to-primary/10 p-6 flex flex-col md:flex-row items-center justify-between gap-5 shadow-2xl">
-        <div className="space-y-1 text-center md:text-left">
-          <div className="inline-flex items-center gap-2 rounded-full bg-primary/20 px-3 py-1 text-xs font-black text-primary">
-            <Trophy size={14} /> Fim dos Exercícios
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setWorkoutMode('FAZER')}
+                className="text-xs rounded-xl"
+              >
+                👁️ Testar no Modo Aluno
+              </Button>
+              <Button
+                onClick={handleSaveCurrentWorkoutToSplit}
+                className="bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90 rounded-xl"
+              >
+                <Save size={14} className="mr-1" /> Salvar Treino na Rotina
+              </Button>
+            </div>
           </div>
-          <h3 className="text-xl font-black text-foreground">
-            Concluir Treino: {sessionTitle}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {completedSetsCount === totalSetsCount && totalSetsCount > 0
-              ? '🎉 Excelente! Todas as séries programadas foram concluídas. Finalize para salvar seu progresso e ganhar XP!'
-              : `Progresso: ${completedSetsCount} de ${totalSetsCount} séries concluídas (${totalSessionTonnage.toLocaleString()} kg levantados no total).`}
-          </p>
         </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-3 w-full md:w-auto">
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={handleSaveCurrentWorkoutToSplit}
-            className="border-primary/40 text-primary font-bold text-xs hover:bg-primary/10"
-          >
-            <Save size={14} className="mr-1" /> Salvar Modelo na Rotina
-          </Button>
-
-          <Button
-            size="lg"
-            onClick={() => setIsFinishingWorkout(true)}
-            className="bg-primary text-primary-foreground font-black text-sm px-6 py-6 shadow-xl hover:bg-primary/90 flex items-center gap-2 w-full md:w-auto justify-center cursor-pointer"
-          >
-            <CheckCircle2 size={20} />
-            <span>🏁 CONCLUIR TREINO DO DIA (+150 XP)</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* 5. VOLUME TRACKER (MEV, MAV, MRV) */}
-      <div className="panel p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-          <div>
-            <SectionHeading title="Controle Científico de Volume (MEV, MAV, MRV)" />
-            <p className="text-xs text-muted-foreground mt-1">
-              Myo-reps e Drop-sets são ponderados matematicamente para proteger sua recuperação contra Junk Volume.
-            </p>
-          </div>
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-            Dr. Mike Israetel & Brad Schoenfeld
-          </span>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {activeMusclesInSession.map((assessment) => {
-            const { muscle, effectiveWorkingSets, landmarks, status, statusLabel } = assessment;
-            const progressPct = Math.min(100, Math.round((effectiveWorkingSets / landmarks.mrv) * 100));
-
-            return (
-              <div key={muscle} className="rounded-xl border border-border/80 bg-background/50 p-4 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-foreground">{muscle}</span>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${
-                    status === 'JUNK_VOLUME'
-                      ? 'bg-destructive/20 text-destructive'
-                      : status === 'MRV_NEAR'
-                      ? 'bg-amber-500/20 text-amber-500'
-                      : status === 'MAV'
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {statusLabel}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
-                    <span>Efetivo: <strong className="text-foreground">{effectiveWorkingSets}</strong> séries</span>
-                    <span>MRV: {landmarks.mrv}</span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-300 ${
-                        status === 'JUNK_VOLUME'
-                          ? 'bg-destructive'
-                          : status === 'MRV_NEAR'
-                          ? 'bg-amber-500'
-                          : 'bg-primary'
-                      }`}
-                      style={{ width: `${progressPct}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[9px] text-muted-foreground pt-0.5">
-                    <span>MEV ({landmarks.mev})</span>
-                    <span>MAV ({landmarks.mavMin}-{landmarks.mavMax})</span>
-                    <span>MRV ({landmarks.mrv})</span>
-                  </div>
-                </div>
-
-                <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  {assessment.recommendation}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
       {/* 6. TIMER FLUTUANTE GLOBAL (CENTRALIZADO NO MOBILE / FIXO NO DESKTOP) */}
       {restTime > 0 && (
@@ -2492,6 +2765,81 @@ function TreinosPage() {
                 Salvar Dia
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 10. MODAL DE ACESSO DO ADMINISTRADOR / TREINADOR */}
+      {isAdminPinModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="panel max-w-sm w-full p-5 sm:p-6 space-y-4 border border-primary/50 shadow-2xl rounded-2xl">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="size-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Lock size={16} />
+                </div>
+                <h3 className="text-base font-black text-foreground">
+                  Acesso do Treinador (Admin)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAdminPinModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-xs font-black p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Área exclusiva para o administrador/personal montar, editar exercícios e prescrever treinos. Digite a senha ou PIN de acesso:
+            </p>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleVerifyAdminPin();
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <input
+                  type="password"
+                  autoFocus
+                  value={adminPinInput}
+                  onChange={(e) => {
+                    setAdminPinInput(e.target.value);
+                    if (adminPinError) setAdminPinError(false);
+                  }}
+                  placeholder="PIN de acesso (padrão: 1234)"
+                  className={`w-full rounded-xl border bg-background px-3 py-2 text-center font-mono text-sm font-black focus:border-primary ${
+                    adminPinError ? 'border-destructive ring-1 ring-destructive' : 'border-border'
+                  }`}
+                />
+                {adminPinError && (
+                  <span className="text-[11px] font-bold text-destructive block mt-1 text-center">
+                    PIN incorreto. Tente "1234".
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAdminPinModalOpen(false)}
+                  className="flex-1 text-xs rounded-xl"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90 rounded-xl"
+                >
+                  Desbloquear
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
