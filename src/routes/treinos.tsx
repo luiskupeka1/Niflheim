@@ -1033,16 +1033,16 @@ function TreinosPage() {
       </div>
 
       {/* 1. CALENDÁRIO / DIVISÃO SEMANAL (SEGUNDA A DOMINGO) */}
-      <div className="rounded-2xl border border-border bg-card/70 p-5 space-y-3 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+      <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-3 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
-            <Calendar size={18} className="text-primary" />
+            <Calendar size={18} className="text-primary shrink-0" />
             <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-foreground">
-                Divisão Semanal de Treinos (Segunda a Domingo)
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                Divisão Semanal (Segunda a Domingo)
               </h3>
-              <p className="text-[11px] text-muted-foreground">
-                Toque no dia para treinar, selecione no menu ou clique em "Configurar Agenda".
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                Toque no dia para treinar ou selecione no menu.
               </p>
             </div>
           </div>
@@ -1052,15 +1052,15 @@ function TreinosPage() {
               size="sm"
               variant="outline"
               onClick={() => setIsWeeklyScheduleModalOpen(true)}
-              className="text-xs font-black gap-1.5 border-primary/50 text-primary hover:bg-primary/15 shadow-sm"
+              className="text-xs font-black gap-1.5 border-primary/50 text-primary hover:bg-primary/15 shadow-sm rounded-xl"
             >
-              <SlidersHorizontal size={13} /> Configurar Agenda Completa
+              <SlidersHorizontal size={13} /> Configurar Agenda
             </Button>
             <Button
               size="sm"
               variant="ghost"
               onClick={handleApplySplitToWeek}
-              className="text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60"
+              className="text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
               title={`Distribuir treinos da rotina ${activeSplit.name} de Seg a Dom`}
             >
               <Zap size={13} className="text-primary" /> Distribuir "{activeSplit.name}"
@@ -1071,12 +1071,12 @@ function TreinosPage() {
         {/* Notificação de Atualização dos Dias */}
         {scheduleFeedback && (
           <div className="rounded-xl border border-primary/40 bg-primary/10 px-3.5 py-2 text-xs font-black text-primary flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <CheckCircle2 size={16} /> {scheduleFeedback}
+            <span className="flex items-center gap-2 truncate">
+              <CheckCircle2 size={16} className="shrink-0" /> {scheduleFeedback}
             </span>
             <button 
               onClick={() => setScheduleFeedback(null)}
-              className="text-muted-foreground hover:text-foreground text-xs font-black px-1"
+              className="text-muted-foreground hover:text-foreground text-xs font-black px-1 shrink-0"
             >
               ✕
             </button>
@@ -1097,7 +1097,7 @@ function TreinosPage() {
               <div
                 key={day.dayOfWeek}
                 onClick={() => handleSelectDay(day)}
-                className={`cursor-pointer rounded-xl border p-2.5 transition-all flex flex-col justify-between ${
+                className={`cursor-pointer rounded-2xl border p-2.5 sm:p-3 transition-all flex flex-col justify-between min-w-0 overflow-hidden ${
                   isToday
                     ? 'border-primary bg-primary/15 shadow-sm ring-1 ring-primary'
                     : isLoaded
@@ -1107,36 +1107,36 @@ function TreinosPage() {
                     : 'border-border/60 bg-background/50 hover:border-primary/40'
                 }`}
               >
-                <div>
+                <div className="min-w-0">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-[10px] font-black uppercase text-muted-foreground">
                       {day.shortDay}
                     </span>
                     {isToday && (
-                      <span className="rounded bg-primary text-primary-foreground px-1.5 py-0.5 text-[8px] font-black uppercase animate-pulse">
+                      <span className="rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-[8px] font-black uppercase animate-pulse">
                         HOJE
                       </span>
                     )}
                     {isLoaded && !isToday && (
-                      <span className="rounded bg-muted text-muted-foreground px-1 py-0.2 text-[8px] font-bold uppercase">
+                      <span className="rounded-full bg-muted text-muted-foreground px-1.5 py-0.5 text-[8px] font-bold uppercase">
                         ATIVO
                       </span>
                     )}
                   </div>
                   <h4 
-                    className={`font-black text-xs mt-1 line-clamp-1 ${isLoaded ? 'text-primary' : 'text-foreground'}`} 
+                    className={`font-black text-xs mt-1 truncate ${isLoaded ? 'text-primary' : 'text-foreground'}`} 
                     title={day.workoutTitle}
                   >
                     {day.workoutTitle}
                   </h4>
                 </div>
 
-                <div className="mt-2.5 pt-1.5 border-t border-border/40 space-y-1">
+                <div className="mt-2.5 pt-1.5 border-t border-border/40 space-y-1.5 min-w-0">
                   <select
                     value={day.workoutTitle}
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => handleUpdateScheduleDay(idx, e.target.value)}
-                    className="w-full rounded-md border border-border/80 bg-card px-1.5 py-1 text-[10px] font-black text-foreground focus:border-primary focus:ring-1 focus:ring-primary truncate cursor-pointer shadow-inner"
+                    className="w-full min-w-0 max-w-full rounded-xl border border-border/80 bg-card px-2 py-1 text-[10px] font-black text-foreground focus:border-primary focus:ring-1 focus:ring-primary truncate cursor-pointer shadow-inner"
                   >
                     {!isKnownOption && (
                       <option value={day.workoutTitle}>
@@ -1168,7 +1168,7 @@ function TreinosPage() {
                       setCustomDayWorkoutText(day.workoutTitle);
                     }}
                     title="Editar ou escrever nome personalizado para este dia"
-                    className="flex items-center justify-center gap-1 w-full rounded border border-border/50 bg-muted/30 hover:bg-primary/20 hover:text-primary py-0.5 text-[9px] font-bold text-muted-foreground transition-colors"
+                    className="flex items-center justify-center gap-1 w-full rounded-xl border border-border/50 bg-muted/30 hover:bg-primary/20 hover:text-primary py-1 text-[9px] font-bold text-muted-foreground transition-colors"
                   >
                     <Edit3 size={10} /> Personalizar
                   </button>
@@ -1250,76 +1250,76 @@ function TreinosPage() {
           />
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-mono">
-          <div className="text-center">
-            <span className="text-[10px] uppercase text-muted-foreground block">Exercícios</span>
-            <span className="font-bold text-foreground text-sm">{exercises.length}</span>
+        <div className="grid grid-cols-3 gap-2 w-full lg:w-auto text-xs font-mono border-b lg:border-b-0 pb-3 lg:pb-0 border-border/40">
+          <div className="text-center rounded-xl bg-background/50 p-2 sm:p-2.5">
+            <span className="text-[9px] uppercase text-muted-foreground block truncate">Exercícios</span>
+            <span className="font-bold text-foreground text-xs sm:text-sm">{exercises.length}</span>
           </div>
-          <div className="text-center">
-            <span className="text-[10px] uppercase text-muted-foreground block">Séries Concluídas</span>
-            <span className="font-bold text-primary text-sm">{completedSetsCount} / {totalSetsCount}</span>
+          <div className="text-center rounded-xl bg-background/50 p-2 sm:p-2.5">
+            <span className="text-[9px] uppercase text-muted-foreground block truncate">Séries</span>
+            <span className="font-bold text-primary text-xs sm:text-sm">{completedSetsCount} / {totalSetsCount}</span>
           </div>
-          <div className="text-center">
-            <span className="text-[10px] uppercase text-muted-foreground block">Tonelagem Total</span>
-            <span className="font-bold text-primary text-sm">{totalSessionTonnage.toLocaleString()} kg</span>
+          <div className="text-center rounded-xl bg-background/50 p-2 sm:p-2.5">
+            <span className="text-[9px] uppercase text-muted-foreground block truncate">Tonelagem</span>
+            <span className="font-bold text-primary text-xs sm:text-sm truncate block">{totalSessionTonnage.toLocaleString()} kg</span>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
           <Button
             size="sm"
             onClick={() => setIsFinishingWorkout(true)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs px-3.5 py-2 shadow-lg flex items-center gap-1.5 cursor-pointer"
+            className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs px-3 sm:px-3.5 py-2 shadow-lg flex items-center gap-1.5 cursor-pointer rounded-xl flex-1 sm:flex-initial"
           >
-            <CheckCircle2 size={16} /> 🏁 Concluir Treino
+            <CheckCircle2 size={15} /> 🏁 Concluir
           </Button>
 
           <Button
             size="sm"
             variant="outline"
             onClick={handleSaveCurrentWorkoutToSplit}
-            className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 flex items-center gap-1.5 cursor-pointer"
+            className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 flex items-center gap-1.5 cursor-pointer rounded-xl"
           >
-            <Save size={14} /> Salvar na Rotina
+            <Save size={13} /> Salvar
           </Button>
 
           <Button
             size="sm"
             onClick={() => setIsAddExerciseModalOpen(true)}
-            className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs flex items-center gap-1.5 cursor-pointer"
+            className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs flex items-center gap-1.5 cursor-pointer rounded-xl"
           >
-            <Plus size={14} /> + Exercício
+            <Plus size={13} /> + Exercício
           </Button>
         </div>
       </div>
 
       {/* 3.1 CONTROLE CONFIGURÁVEL DE TEMPOS DE DESCANSO (AQUECIMENTO VS TRABALHO) */}
-      <div className="rounded-2xl border border-primary/30 bg-card/70 p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+      <div className="rounded-2xl border border-primary/30 bg-card/70 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/20 text-primary">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
             <Clock size={16} />
           </div>
           <div>
             <h4 className="text-xs font-black uppercase text-foreground">
-              Tempos de Descanso Automáticos da Sessão
+              Descansos Automáticos da Sessão
             </h4>
             <p className="text-[10px] text-muted-foreground">
-              Dispara automaticamente no cronômetro ao concluir a série.
+              Dispara no cronômetro ao concluir a série.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-5 text-xs">
-          {/* Descanso de Aquecimento / Preparação */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-muted-foreground">Aquecimento / PAP:</span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 text-xs">
+          {/* Descanso de Aquecimento */}
+          <div className="flex items-center justify-between sm:justify-start gap-2 bg-background/50 sm:bg-transparent p-2 sm:p-0 rounded-xl">
+            <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground">Aquecimento:</span>
             <div className="flex items-center gap-1">
               {[45, 60, 90].map((sec) => (
                 <button
                   key={sec}
                   type="button"
                   onClick={() => setRestWarmupSeconds(sec)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                  className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all ${
                     restWarmupSeconds === sec
                       ? 'bg-amber-500 text-black font-black shadow-sm'
                       : 'bg-muted/60 text-muted-foreground hover:bg-muted'
@@ -1336,23 +1336,23 @@ function TreinosPage() {
                 value={restWarmupSeconds}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setRestWarmupSeconds(Math.max(10, parseInt(e.target.value) || 60))}
-                className="w-16 rounded border border-border bg-background px-1 py-1 text-center font-mono text-xs font-black text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
-                title="Editar segundos personalizados para aquecimento"
+                className="w-14 rounded-lg border border-border bg-background px-1 py-1 text-center font-mono text-xs font-black text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
+                title="Segundos de aquecimento"
               />
               <span className="text-[10px] text-muted-foreground">s</span>
             </div>
           </div>
 
-          {/* Descanso de Séries de Trabalho */}
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black text-primary">Séries de Trabalho:</span>
+          {/* Descanso de Trabalho */}
+          <div className="flex items-center justify-between sm:justify-start gap-2 bg-background/50 sm:bg-transparent p-2 sm:p-0 rounded-xl">
+            <span className="text-[10px] sm:text-[11px] font-black text-primary">Trabalho:</span>
             <div className="flex items-center gap-1">
               {[90, 120, 180].map((sec) => (
                 <button
                   key={sec}
                   type="button"
                   onClick={() => setRestWorkingSeconds(sec)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                  className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all cursor-pointer ${
                     restWorkingSeconds === sec
                       ? 'bg-primary text-primary-foreground font-black shadow-sm'
                       : 'bg-muted/60 text-muted-foreground hover:bg-muted'
@@ -1369,8 +1369,8 @@ function TreinosPage() {
                 value={restWorkingSeconds}
                 onFocus={(e) => e.target.select()}
                 onChange={(e) => setRestWorkingSeconds(Math.max(30, parseInt(e.target.value) || 120))}
-                className="w-16 rounded border border-primary bg-background px-1 py-1 text-center font-mono text-xs font-black text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
-                title="Editar segundos personalizados para séries de trabalho"
+                className="w-14 rounded-lg border border-primary bg-background px-1 py-1 text-center font-mono text-xs font-black text-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none focus:border-primary"
+                title="Segundos de trabalho"
               />
               <span className="text-[10px] text-muted-foreground">s</span>
             </div>
@@ -1387,11 +1387,11 @@ function TreinosPage() {
           return (
             <div key={ex.id} className="panel p-4 md:p-6 transition-all space-y-4">
               {/* Header do Exercício com Controles de Reordenação e Meta */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/70 pb-3">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
                   {/* Seletor de Sequência / Posição */}
-                  <div className="flex items-center gap-1">
-                    <span className="flex size-7 items-center justify-center rounded-md bg-secondary font-mono text-xs font-black text-foreground">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground">
                       #{exIndex + 1}
                     </span>
                     <div className="flex flex-col gap-0.5">
@@ -1414,21 +1414,23 @@ function TreinosPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-black text-foreground">{ex.name}</h3>
-                      <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base sm:text-lg font-black text-foreground truncate max-w-[190px] xs:max-w-[260px] sm:max-w-none">
+                        {ex.name}
+                      </h3>
+                      <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0">
                         {ex.muscle}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
                       {ex.equipment} • Padrão: {ex.category}
                     </p>
                   </div>
                 </div>
 
                 {/* Ações: Gráfico, Tutorial, Excluir */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {/* Ver Gráfico de Sobrecarga Progressiva */}
                   <Button
                     variant="outline"
@@ -1436,9 +1438,10 @@ function TreinosPage() {
                     onClick={() =>
                       setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)
                     }
-                    className="text-xs h-7 px-2.5 flex items-center gap-1 text-primary border-primary/30 hover:bg-primary/10"
+                    className="text-xs h-7 px-2 sm:px-2.5 flex items-center gap-1 text-primary border-primary/30 hover:bg-primary/10 rounded-xl"
                   >
-                    <TrendingUp size={12} /> {selectedExerciseForChart === ex.name ? 'Fechar Gráfico' : 'Ver Progresso de Carga'}
+                    <TrendingUp size={13} /> 
+                    <span className="hidden xs:inline">{selectedExerciseForChart === ex.name ? 'Fechar' : 'Progresso'}</span>
                   </Button>
 
                   {/* Vídeo Tutorial */}
@@ -1449,9 +1452,10 @@ function TreinosPage() {
                       onClick={() =>
                         setExpandedVideoId(expandedVideoId === ex.id ? null : ex.id)
                       }
-                      className="text-xs text-primary flex items-center gap-1 h-7 px-2"
+                      className="text-xs text-primary flex items-center gap-1 h-7 px-2 rounded-xl"
                     >
-                      <Play size={12} /> {expandedVideoId === ex.id ? 'Fechar Vídeo' : 'Execução'}
+                      <Play size={13} /> 
+                      <span className="hidden xs:inline">{expandedVideoId === ex.id ? 'Fechar' : 'Vídeo'}</span>
                     </Button>
                   )}
 
@@ -1460,7 +1464,7 @@ function TreinosPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleRemoveExercise(ex.id)}
-                    className="size-7 text-muted-foreground hover:text-destructive"
+                    className="size-7 text-muted-foreground hover:text-destructive rounded-xl"
                   >
                     <Trash2 size={13} />
                   </Button>
@@ -1505,14 +1509,14 @@ function TreinosPage() {
 
               <div className="space-y-4">
                 {/* SEÇÃO 1: SÉRIES PREPARATÓRIAS (AQUECIMENTO / RECONHECIMENTO DE CARGA) */}
-                <div className="rounded-xl border border-border/40 bg-muted/10 p-3 space-y-2.5">
-                  <div className="flex items-center justify-between">
+                <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 sm:p-4 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
-                      <Clock size={13} className="text-amber-500" />
-                      Séries Preparatórias (Aquecimento & Reconhecimento de Carga)
+                      <Clock size={13} className="text-amber-500 shrink-0" />
+                      <span>Séries Preparatórias</span>
                     </span>
                     <span className="text-[10px] text-muted-foreground font-mono">
-                      Não pontua no MEV/MAV (não desgasta hipertrofia)
+                      Aquecimento & Calibração (Não pontua no MEV)
                     </span>
                   </div>
 
@@ -1543,7 +1547,7 @@ function TreinosPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddPreparatorySet(ex.id, 'WARMUP')}
-                      className="text-[10px] h-6 px-2 text-muted-foreground hover:text-foreground border border-dashed border-border/60"
+                      className="text-[10px] h-6 px-2 text-muted-foreground hover:text-foreground border border-dashed border-border/60 rounded-lg"
                     >
                       + Aquecimento (W)
                     </Button>
@@ -1551,7 +1555,7 @@ function TreinosPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddPreparatorySet(ex.id, 'FEEDER')}
-                      className="text-[10px] h-6 px-2 text-amber-500 hover:text-amber-400 border border-dashed border-amber-500/40"
+                      className="text-[10px] h-6 px-2 text-amber-500 hover:text-amber-400 border border-dashed border-amber-500/40 rounded-lg"
                     >
                       + Feeder / Reconhecimento (F)
                     </Button>
@@ -1559,27 +1563,27 @@ function TreinosPage() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleAddPreparatorySet(ex.id, 'PAP')}
-                      className="text-[10px] h-6 px-2 text-cyan-400 hover:text-cyan-300 border border-dashed border-cyan-500/40"
+                      className="text-[10px] h-6 px-2 text-cyan-400 hover:text-cyan-300 border border-dashed border-cyan-500/40 rounded-lg"
                     >
                       + PAP (Potenciação Pós-Ativação)
                     </Button>
                   </div>
 
                   {/* Explicação Didática da PAP */}
-                  <div className="rounded-lg bg-cyan-950/20 border border-cyan-800/30 p-2 text-[10px] text-cyan-200/90 leading-relaxed">
+                  <div className="rounded-xl bg-cyan-950/20 border border-cyan-800/30 p-2.5 text-[10px] text-cyan-200/90 leading-relaxed">
                     <span className="font-bold text-cyan-300">💡 O que é PAP (Potenciação Pós-Ativação)?</span> Uma contração intensa e breve (1 a 2 reps com ~90-95% da carga, sem chegar à falha) logo antes da série de trabalho. Ela sensibiliza as pontes de miosina e ativa o Sistema Nervoso Central, permitindo produzir mais força e recrutar mais fibras musculares na série principal sem gerar fadiga metabólica.
                   </div>
                 </div>
 
                 {/* SEÇÃO 2: SÉRIES DE TRABALHO EFETIVAS (EXCLUSIVAMENTE TÉCNICAS DE TRABALHO) */}
-                <div className="rounded-xl border border-primary/30 bg-card/60 p-3.5 space-y-2.5">
-                  <div className="flex items-center justify-between">
+                <div className="rounded-2xl border border-primary/30 bg-card/60 p-3 sm:p-4 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
-                      <Flame size={14} className="text-primary" />
-                      Séries de Trabalho Efetivas (#1, #2, #3...)
+                      <Flame size={14} className="text-primary shrink-0" />
+                      <span>Séries de Trabalho Efetivas</span>
                     </span>
                     <span className="text-[10px] font-bold text-primary font-mono">
-                      Alimenta MEV/MAV e Gamificação de Carga
+                      MEV/MAV · Gamificação PR
                     </span>
                   </div>
 

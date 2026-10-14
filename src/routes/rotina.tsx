@@ -128,52 +128,52 @@ function RotinaPage() {
       </div>
 
       {/* Cards de Resumo */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="panel p-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="panel p-4 sm:p-5 rounded-2xl min-w-0">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>Ofensiva Atual</span>
-            <Flame size={18} className="text-primary" />
+            <span className="font-semibold truncate">Ofensiva Atual</span>
+            <Flame size={17} className="text-primary shrink-0" />
           </div>
-          <div className="font-display text-3xl font-extrabold text-foreground">
-            {daysStreak} <span className="text-xs font-normal text-muted-foreground">dias seguidos</span>
+          <div className="font-display text-2xl sm:text-3xl font-extrabold text-foreground truncate">
+            {daysStreak} <span className="text-xs font-normal text-muted-foreground font-sans">dias seguidos</span>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Mantenha a chama acesa completando suas metas hoje.
+          <p className="mt-2 text-[10px] sm:text-[11px] text-muted-foreground truncate">
+            Mantenha o ritmo completando metas.
           </p>
         </div>
 
-        <div className="panel p-5">
+        <div className="panel p-4 sm:p-5 rounded-2xl min-w-0">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>Concluídos Hoje</span>
-            <CheckSquare size={18} className="text-success" />
+            <span className="font-semibold truncate">Concluídos Hoje</span>
+            <CheckSquare size={17} className="text-success shrink-0" />
           </div>
-          <div className="font-display text-3xl font-extrabold text-foreground">
+          <div className="font-display text-2xl sm:text-3xl font-extrabold text-foreground truncate">
             {completed.length} / {habits.length}
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
+          <p className="mt-2 text-[10px] sm:text-[11px] text-muted-foreground truncate">
             {habits.length > 0
-              ? `${Math.round((completed.length / habits.length) * 100)}% concluído`
+              ? `${Math.round((completed.length / habits.length) * 100)}% concluído hoje`
               : 'Nenhum hábito cadastrado'}
           </p>
         </div>
 
-        <div className="panel p-5">
+        <div className="panel p-4 sm:p-5 rounded-2xl min-w-0">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
-            <span>XP de Hábitos</span>
-            <Sparkles size={18} className="text-primary" />
+            <span className="font-semibold truncate">XP de Hábitos</span>
+            <Sparkles size={17} className="text-primary shrink-0" />
           </div>
-          <div className="font-display text-3xl font-extrabold text-foreground">
-            +{completed.length * 20} <span className="text-xs font-normal text-primary">XP</span>
+          <div className="font-display text-2xl sm:text-3xl font-extrabold text-foreground truncate">
+            +{completed.length * 20} <span className="text-xs font-normal text-primary font-sans">XP</span>
           </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Cada hábito concluído rende 20 pontos de experiência.
+          <p className="mt-2 text-[10px] sm:text-[11px] text-muted-foreground truncate">
+            +20 XP por hábito diário feito.
           </p>
         </div>
       </div>
 
       {/* Modal Criar Hábito */}
       {isCreating && (
-        <div className="panel p-6 border-primary/40 bg-primary/5 space-y-4">
+        <div className="panel p-4 sm:p-6 rounded-2xl border-primary/40 bg-primary/5 space-y-4">
           <h3 className="text-sm font-bold">Criar Novo Hábito</h3>
           <div className="grid gap-3 sm:grid-cols-2">
             <input
@@ -181,12 +181,12 @@ function RotinaPage() {
               placeholder="Nome do hábito (ex: Beber 3L de água, Ler 15 min)..."
               value={newHabitName}
               onChange={(e) => setNewHabitName(e.target.value)}
-              className="text-xs"
+              className="text-xs rounded-xl"
             />
             <select
               value={newHabitCategory}
               onChange={(e) => setNewHabitCategory(e.target.value)}
-              className="text-xs"
+              className="text-xs rounded-xl"
             >
               <option value="Manhã">Manhã</option>
               <option value="Tarde">Tarde</option>
@@ -200,14 +200,14 @@ function RotinaPage() {
               variant="ghost"
               size="sm"
               onClick={() => setIsCreating(false)}
-              className="text-xs"
+              className="text-xs rounded-xl"
             >
               Cancelar
             </Button>
             <Button
               size="sm"
               onClick={handleCreateHabit}
-              className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs"
+              className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs rounded-xl"
             >
               Salvar Hábito
             </Button>
@@ -216,7 +216,7 @@ function RotinaPage() {
       )}
 
       {/* Lista de Hábitos */}
-      <div className="panel p-6">
+      <div className="panel p-4 sm:p-6 rounded-2xl">
         <SectionHeading title="Checklist do Dia" />
 
         {habits.length === 0 ? (
@@ -232,7 +232,7 @@ function RotinaPage() {
               variant="outline"
               size="sm"
               onClick={() => setIsCreating(true)}
-              className="mt-4 text-xs"
+              className="mt-4 text-xs rounded-xl"
             >
               <Plus size={13} /> Criar Primeiro Hábito
             </Button>
@@ -244,13 +244,13 @@ function RotinaPage() {
               return (
                 <div
                   key={h.id}
-                  className="flex items-center justify-between py-3.5 hover:bg-muted/15 px-2 rounded-lg transition-colors"
+                  className="flex items-center justify-between py-3 hover:bg-muted/15 px-2 rounded-xl transition-colors gap-2"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <button
                       type="button"
                       onClick={() => toggleHabit(h.id)}
-                      className={`inline-flex size-6 items-center justify-center rounded border transition-all ${
+                      className={`inline-flex size-6 items-center justify-center rounded-lg border transition-all shrink-0 ${
                         isDone
                           ? 'border-primary bg-primary text-primary-foreground shadow-sm'
                           : 'border-border bg-background text-muted-foreground hover:border-primary'
@@ -258,21 +258,21 @@ function RotinaPage() {
                     >
                       {isDone && <Check size={13} strokeWidth={3} />}
                     </button>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p
-                        className={`text-xs font-semibold ${
+                        className={`text-xs font-semibold truncate ${
                           isDone ? 'line-through text-muted-foreground' : 'text-foreground'
                         }`}
                       >
                         {h.details['name']}
                       </p>
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-[10px] text-muted-foreground truncate block">
                         {h.details['category']}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[10px] font-bold text-primary mr-2">
                       +20 XP
                     </span>

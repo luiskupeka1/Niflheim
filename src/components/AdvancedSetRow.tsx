@@ -248,7 +248,7 @@ export function AdvancedSetRow({
         return (
           <span 
             title="Aquecimento Articular / Ativação (Não conta no MEV/MAV)"
-            className="flex size-7 items-center justify-center rounded bg-muted/80 border border-muted-foreground/30 font-mono text-[11px] font-black text-muted-foreground"
+            className="flex size-7 items-center justify-center rounded-lg bg-muted/80 border border-muted-foreground/30 font-mono text-[11px] font-black text-muted-foreground"
           >
             W
           </span>
@@ -257,7 +257,7 @@ export function AdvancedSetRow({
         return (
           <span 
             title="Preparatória / Feeder de Reconhecimento de Carga (1-3 reps de calibração neural)"
-            className="flex size-7 items-center justify-center rounded bg-amber-500/20 border border-amber-500/40 font-mono text-[11px] font-black text-amber-500"
+            className="flex size-7 items-center justify-center rounded-lg bg-amber-500/20 border border-amber-500/40 font-mono text-[11px] font-black text-amber-500"
           >
             F
           </span>
@@ -266,7 +266,7 @@ export function AdvancedSetRow({
         return (
           <span 
             title="PAP (Potenciação Pós-Ativação): 1-2 reps com sobrecarga máxima para acordar o SNC e aumentar produção de força"
-            className="flex h-7 px-1.5 items-center justify-center rounded bg-purple-500/20 border border-purple-500/50 font-mono text-[10px] font-black text-purple-400"
+            className="flex h-7 px-1.5 items-center justify-center rounded-lg bg-purple-500/20 border border-purple-500/50 font-mono text-[10px] font-black text-purple-400"
           >
             PAP
           </span>
@@ -275,7 +275,7 @@ export function AdvancedSetRow({
         return (
           <span 
             title="Back-off Set (B)"
-            className="flex size-7 items-center justify-center rounded bg-chart-2/20 border border-chart-2/40 font-mono text-[11px] font-black text-chart-2"
+            className="flex size-7 items-center justify-center rounded-lg bg-chart-2/20 border border-chart-2/40 font-mono text-[11px] font-black text-chart-2"
           >
             B
           </span>
@@ -285,7 +285,7 @@ export function AdvancedSetRow({
         return (
           <span 
             title={`Série de Trabalho Efetiva #${workingIndex ?? data.setNumber}`}
-            className="flex size-7 items-center justify-center rounded bg-primary font-mono text-xs font-black text-primary-foreground shadow-sm"
+            className="flex size-7 items-center justify-center rounded-lg bg-primary font-mono text-xs font-black text-primary-foreground shadow-sm"
           >
             {workingIndex !== undefined ? `#${workingIndex}` : `#${data.setNumber}`}
           </span>
@@ -308,7 +308,7 @@ export function AdvancedSetRow({
 
   return (
     <div 
-      className={`rounded-xl border transition-all p-3 space-y-3 ${
+      className={`rounded-2xl border transition-all p-3 space-y-3 ${
         isPreparatory
           ? data.completed
             ? 'border-border/60 bg-muted/20 opacity-80'
@@ -330,7 +330,7 @@ export function AdvancedSetRow({
               <select
                 value={data.baseType}
                 onChange={(e) => handleSelectSetMode(e.target.value)}
-                className="rounded border border-border/60 bg-background/90 px-2 py-1 text-[11px] font-bold text-muted-foreground focus:border-primary max-w-[170px] sm:max-w-none truncate"
+                className="rounded-xl border border-border/60 bg-background/90 px-2 py-1 text-[11px] font-bold text-muted-foreground focus:border-primary max-w-[170px] sm:max-w-none truncate"
               >
                 <option value="WARMUP">Aquecimento (W)</option>
                 <option value="FEEDER">Feeder / Calibração (F)</option>
@@ -340,7 +340,7 @@ export function AdvancedSetRow({
               <select
                 value={currentSelectValue()}
                 onChange={(e) => handleSelectSetMode(e.target.value)}
-                className="rounded border border-primary/40 bg-background px-2 py-1 text-[11px] font-black text-foreground focus:border-primary max-w-[170px] sm:max-w-none truncate"
+                className="rounded-xl border border-primary/40 bg-background px-2 py-1 text-[11px] font-black text-foreground focus:border-primary max-w-[170px] sm:max-w-none truncate"
               >
                 <option value="WORKING_NORMAL">Série Normal</option>
                 <option value="BACKOFF">Back-off Set (B)</option>
@@ -352,7 +352,7 @@ export function AdvancedSetRow({
             )}
 
             {data.technique !== 'NONE' && (
-              <span className="hidden xs:inline-block rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-black text-primary uppercase">
+              <span className="hidden xs:inline-block rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-black text-primary uppercase">
                 {data.technique.replace('_', ' ')}
               </span>
             )}
@@ -364,7 +364,7 @@ export function AdvancedSetRow({
               type="button"
               onClick={() => onTriggerRestTimer(isPreparatory ? restWarmupSeconds : restWorkingSeconds)}
               title={`Iniciar descanso de ${isPreparatory ? restWarmupSeconds : restWorkingSeconds}s`}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border/80 bg-background text-[11px] font-mono font-bold text-muted-foreground hover:text-primary transition-colors"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-xl border border-border/80 bg-background text-[11px] font-mono font-bold text-muted-foreground hover:text-primary transition-colors"
             >
               <Clock size={11} className="text-primary" />
               <span>{isPreparatory ? restWarmupSeconds : restWorkingSeconds}s</span>
@@ -373,7 +373,7 @@ export function AdvancedSetRow({
               type="button"
               onClick={onDelete}
               title="Remover série"
-              className="p-1 text-muted-foreground/60 hover:text-destructive transition-colors"
+              className="p-1 text-muted-foreground/60 hover:text-destructive transition-colors rounded-lg"
             >
               <Trash2 size={13} />
             </button>
@@ -397,7 +397,7 @@ export function AdvancedSetRow({
                   const num = val === '' ? 0 : parseFloat(val) || 0;
                   onUpdate({ ...data, weight: num, targetWeight: num });
                 }}
-                className="w-14 sm:w-16 rounded border border-border bg-background px-1 sm:px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-14 sm:w-16 rounded-xl border border-border bg-background px-1 sm:px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span className="text-[9px] text-muted-foreground block font-bold">kg</span>
             </div>
@@ -415,7 +415,7 @@ export function AdvancedSetRow({
                   const num = val === '' ? 0 : parseInt(val) || 0;
                   onUpdate({ ...data, reps: num, targetReps: num });
                 }}
-                className="w-12 sm:w-14 rounded border border-border bg-background px-1 sm:px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-12 sm:w-14 rounded-xl border border-border bg-background px-1 sm:px-2 py-1 text-center font-mono text-xs font-bold text-foreground focus:border-primary focus:ring-1 focus:ring-primary [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <span className="text-[9px] text-muted-foreground block font-bold">reps</span>
             </div>
@@ -432,7 +432,7 @@ export function AdvancedSetRow({
                       onUpdate({ ...data, rir: parseInt(e.target.value) });
                     }
                   }}
-                  className="rounded border border-border bg-background px-1 py-1 font-mono text-[11px] font-bold text-foreground focus:border-primary"
+                  className="rounded-xl border border-border bg-background px-1.5 py-1 font-mono text-[11px] font-bold text-foreground focus:border-primary"
                   title="RIR (Reps in Reserve)"
                 >
                   <option value={0}>0 (Falha)</option>
@@ -455,7 +455,7 @@ export function AdvancedSetRow({
                       const num = parseInt(val);
                       onUpdate({ ...data, rir: isNaN(num) ? val : num });
                     }}
-                    className="w-10 sm:w-12 rounded border border-primary/50 bg-background px-1 py-1 text-center font-mono text-[11px] font-bold text-primary focus:border-primary"
+                    className="w-10 sm:w-12 rounded-xl border border-primary/50 bg-background px-1 py-1 text-center font-mono text-[11px] font-bold text-primary focus:border-primary"
                   />
                 )}
               </div>
@@ -470,7 +470,7 @@ export function AdvancedSetRow({
             {isPrTonnage && (
               <div 
                 title={`Novo recorde pessoal de tonelagem!`}
-                className="flex items-center gap-1 rounded bg-primary/20 px-1.5 sm:px-2 py-1 text-[9px] sm:text-[10px] font-black text-primary animate-bounce shrink-0"
+                className="flex items-center gap-1 rounded-full bg-primary/20 px-2 py-0.5 text-[9px] sm:text-[10px] font-black text-primary animate-bounce shrink-0"
               >
                 <Trophy size={11} />
                 <span className="hidden xs:inline">NOVO</span> PR
@@ -482,7 +482,7 @@ export function AdvancedSetRow({
               type="button"
               onClick={() => onTriggerRestTimer(isPreparatory ? restWarmupSeconds : restWorkingSeconds)}
               title={`Iniciar descanso de ${isPreparatory ? restWarmupSeconds : restWorkingSeconds}s`}
-              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border/80 bg-background/80 text-[11px] font-mono font-bold text-muted-foreground hover:text-primary hover:border-primary transition-all cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-border/80 bg-background/80 text-[11px] font-mono font-bold text-muted-foreground hover:text-primary hover:border-primary transition-all cursor-pointer"
             >
               <Clock size={12} className="text-primary" />
               <span>{isPreparatory ? restWarmupSeconds : restWorkingSeconds}s</span>
@@ -492,7 +492,7 @@ export function AdvancedSetRow({
             <button
               type="button"
               onClick={handleToggleComplete}
-              className={`inline-flex items-center justify-center gap-1 px-3 sm:px-3.5 py-1.5 h-8 sm:h-8 rounded-lg border text-xs font-black transition-all cursor-pointer select-none active:scale-95 ${
+              className={`inline-flex items-center justify-center gap-1 px-3 sm:px-3.5 py-1.5 h-8 sm:h-8 rounded-xl border text-xs font-black transition-all cursor-pointer select-none active:scale-95 ${
                 data.completed
                   ? isPreparatory
                     ? 'border-muted-foreground bg-muted text-foreground'
@@ -509,7 +509,7 @@ export function AdvancedSetRow({
               type="button"
               onClick={onDelete}
               title="Remover série"
-              className="hidden sm:inline-flex p-1.5 text-muted-foreground/60 hover:text-destructive rounded transition-colors"
+              className="hidden sm:inline-flex p-1.5 text-muted-foreground/60 hover:text-destructive rounded-xl transition-colors"
             >
               <Trash2 size={13} />
             </button>

@@ -479,19 +479,19 @@ function NutricaoPage() {
             <span className="text-[10px] font-bold text-muted-foreground mr-1">Presets:</span>
             <button
               onClick={() => applyCardioPreset('10_10_10')}
-              className="rounded bg-muted/60 px-2 py-1 text-[10px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+              className="rounded-full bg-muted/60 px-2.5 py-1 text-[10px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
             >
               🏃 10m Anda + 10m Trota + 10m Corre
             </button>
             <button
               onClick={() => applyCardioPreset('z2_run')}
-              className="rounded bg-muted/60 px-2 py-1 text-[10px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+              className="rounded-full bg-muted/60 px-2.5 py-1 text-[10px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
             >
               ⏱️ 5m Aquec. + 25m Z2
             </button>
             <button
               onClick={() => applyCardioPreset('hiit_burn')}
-              className="rounded bg-muted/60 px-2 py-1 text-[10px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
+              className="rounded-full bg-muted/60 px-2.5 py-1 text-[10px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition-all"
             >
               🔥 HIIT Explosivo
             </button>
@@ -502,27 +502,38 @@ function NutricaoPage() {
             {cardioSegments.map((seg, idx) => (
               <div
                 key={seg.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/80 bg-background/80 p-2.5 text-xs"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-2xl border border-border/80 bg-background/80 p-2.5 text-xs"
               >
-                <div className="flex items-center gap-2 flex-1 min-w-[140px]">
-                  <span className="flex size-5 items-center justify-center rounded bg-secondary text-[10px] font-mono font-bold text-muted-foreground">
-                    #{idx + 1}
-                  </span>
-                  <input
-                    type="text"
-                    value={seg.name}
-                    onChange={(e) => handleUpdateCardioSegment(seg.id, { name: e.target.value })}
-                    className="border-0 bg-transparent text-xs font-bold text-foreground focus:ring-0 p-0 w-28"
-                  />
+                <div className="flex items-center justify-between sm:justify-start gap-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="flex size-5 shrink-0 items-center justify-center rounded-md bg-secondary text-[10px] font-mono font-bold text-muted-foreground">
+                      #{idx + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={seg.name}
+                      onChange={(e) => handleUpdateCardioSegment(seg.id, { name: e.target.value })}
+                      className="border-0 bg-transparent text-xs font-bold text-foreground focus:ring-0 p-0 flex-1 min-w-0 truncate"
+                    />
+                  </div>
+
+                  {/* Lixeira visível no cabeçalho no mobile */}
+                  <button
+                    onClick={() => handleRemoveCardioSegment(seg.id)}
+                    disabled={cardioSegments.length <= 1}
+                    className="sm:hidden text-muted-foreground hover:text-destructive disabled:opacity-20 p-1"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Ajuste de Tempo Espaçoso e Visível (Sem corte de setas) */}
-                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded-lg p-0.5">
+                <div className="flex items-center justify-between sm:justify-end gap-2 border-t border-border/30 pt-1.5 sm:border-t-0 sm:pt-0">
+                  {/* Ajuste de Tempo Espaçoso e Visível */}
+                  <div className="flex items-center gap-1 bg-background border border-border/80 rounded-xl p-0.5">
                     <button
                       type="button"
                       onClick={() => handleUpdateCardioSegment(seg.id, { minutes: Math.max(1, seg.minutes - 5) })}
-                      className="size-6 rounded bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-black text-xs flex items-center justify-center transition-all cursor-pointer"
+                      className="size-6 rounded-lg bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-black text-xs flex items-center justify-center transition-all cursor-pointer"
                       title="-5 minutos"
                     >
                       -
@@ -537,13 +548,13 @@ function NutricaoPage() {
                       onChange={(e) =>
                         handleUpdateCardioSegment(seg.id, { minutes: Math.max(1, parseInt(e.target.value) || 0) })
                       }
-                      className="w-14 text-center font-mono text-sm font-black text-foreground bg-transparent border-0 p-0 focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-12 sm:w-14 text-center font-mono text-xs sm:text-sm font-black text-foreground bg-transparent border-0 p-0 focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                     <span className="text-[10px] font-bold text-muted-foreground pr-1">min</span>
                     <button
                       type="button"
                       onClick={() => handleUpdateCardioSegment(seg.id, { minutes: seg.minutes + 5 })}
-                      className="size-6 rounded bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-black text-xs flex items-center justify-center transition-all cursor-pointer"
+                      className="size-6 rounded-lg bg-muted/60 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-black text-xs flex items-center justify-center transition-all cursor-pointer"
                       title="+5 minutos"
                     >
                       +
@@ -555,7 +566,7 @@ function NutricaoPage() {
                     onChange={(e) =>
                       handleUpdateCardioSegment(seg.id, { intensity: e.target.value as CardioIntensity })
                     }
-                    className="rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-bold text-foreground"
+                    className="rounded-xl border border-border bg-background px-2 py-1 text-[10px] font-bold text-foreground max-w-[140px] truncate"
                   >
                     <option value="low">Caminhada (100 ppm)</option>
                     <option value="moderate">Trote (120 ppm)</option>
@@ -565,7 +576,7 @@ function NutricaoPage() {
                   <button
                     onClick={() => handleRemoveCardioSegment(seg.id)}
                     disabled={cardioSegments.length <= 1}
-                    className="text-muted-foreground hover:text-destructive disabled:opacity-20 p-1"
+                    className="hidden sm:inline-block text-muted-foreground hover:text-destructive disabled:opacity-20 p-1"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -579,17 +590,17 @@ function NutricaoPage() {
               variant="outline"
               size="sm"
               onClick={handleAddCardioSegment}
-              className="text-[11px] h-7 border-dashed"
+              className="text-[11px] h-7 border-dashed rounded-xl"
             >
               <Plus size={13} /> + Adicionar Etapa
             </Button>
           </div>
 
           {/* Resultado Composto e Botão de Registro */}
-          <div className="rounded-xl border border-primary/40 bg-primary/10 p-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="rounded-2xl border border-primary/40 bg-primary/10 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-xs font-black text-foreground">
-                <Footprints size={16} className="text-primary" />
+                <Footprints size={16} className="text-primary shrink-0" />
                 <span>+{previewMultiCardio.totalSteps.toLocaleString('pt-BR')} Passos Farmados</span>
               </div>
               <div className="text-[11px] text-muted-foreground mt-0.5">
@@ -599,7 +610,7 @@ function NutricaoPage() {
 
             <Button
               onClick={handleRegisterMultiCardio}
-              className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs flex items-center gap-1.5"
+              className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs flex items-center justify-center gap-1.5 rounded-xl w-full sm:w-auto"
             >
               <Flame size={14} /> Registrar Cardio
             </Button>
@@ -653,18 +664,18 @@ function NutricaoPage() {
           const isOpen = openMeal === meal;
 
           return (
-            <div key={meal} className="panel overflow-hidden transition-all">
+            <div key={meal} className="panel overflow-hidden transition-all rounded-2xl">
               <div
                 onClick={() => setOpenMeal(isOpen ? '' : meal)}
-                className="flex cursor-pointer items-center justify-between p-4 md:p-5 hover:bg-muted/20"
+                className="flex cursor-pointer items-center justify-between p-3.5 sm:p-5 hover:bg-muted/20 gap-2"
               >
-                <div className="flex items-center gap-3">
-                  <span className="grid size-9 place-items-center rounded-lg bg-secondary text-primary">
-                    <Utensils size={18} />
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary text-primary">
+                    <Utensils size={17} />
                   </span>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-foreground">{meal}</h3>
-                    <p className="text-[11px] text-muted-foreground font-mono">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-extrabold text-foreground truncate">{meal}</h3>
+                    <p className="text-[10px] sm:text-[11px] text-muted-foreground font-mono truncate">
                       {items.length} {items.length === 1 ? 'item' : 'itens'} •{' '}
                       <strong className="text-foreground">{Math.round(mealKcal)} kcal</strong> •{' '}
                       <span className="text-primary">{Math.round(mealProtein)}g P</span> •{' '}
@@ -674,7 +685,7 @@ function NutricaoPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
@@ -683,18 +694,18 @@ function NutricaoPage() {
                       setSelectedMeal(meal);
                       setIsAddingFood(true);
                     }}
-                    className="text-xs h-8 flex items-center gap-1"
+                    className="text-xs h-8 px-2.5 rounded-xl flex items-center gap-1"
                   >
-                    <Plus size={13} /> Alimento
+                    <Plus size={13} /> <span className="hidden xs:inline">Alimento</span>
                   </Button>
-                  <button className="text-muted-foreground">
+                  <button className="text-muted-foreground p-1 hover:text-foreground">
                     {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </button>
                 </div>
               </div>
 
               {isOpen && (
-                <div className="border-t border-border/60 bg-background/50 p-4 md:p-5">
+                <div className="border-t border-border/60 bg-background/50 p-3.5 sm:p-5">
                   {items.length === 0 ? (
                     <div className="text-center py-4 space-y-2">
                       <p className="text-xs text-muted-foreground italic">
@@ -707,7 +718,7 @@ function NutricaoPage() {
                           setSelectedMeal(meal);
                           setIsAddingFood(true);
                         }}
-                        className="text-xs text-primary font-bold hover:bg-primary/10"
+                        className="text-xs text-primary font-bold hover:bg-primary/10 rounded-xl"
                       >
                         + Adicionar primeiro alimento
                       </Button>
@@ -720,34 +731,34 @@ function NutricaoPage() {
                         return (
                           <div
                             key={item.id}
-                            className="flex flex-wrap items-center justify-between py-2.5 text-xs gap-2"
+                            className="flex flex-col xs:flex-row xs:items-center justify-between py-2.5 text-xs gap-1.5"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-foreground">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className="font-bold text-foreground truncate max-w-[170px] xs:max-w-[200px] sm:max-w-none">
                                 {item.details['name']}
                               </span>
 
                               {isEditing ? (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 shrink-0">
                                   <input
                                     type="number"
                                     min="1"
                                     max="2000"
                                     value={editingItemGrams}
                                     onChange={(e) => setEditingItemGrams(parseInt(e.target.value) || 0)}
-                                    className="w-16 rounded border border-primary bg-background px-1 py-0.5 text-center font-mono text-xs font-bold"
+                                    className="w-14 rounded-lg border border-primary bg-background px-1 py-0.5 text-center font-mono text-xs font-bold"
                                   />
                                   <span className="text-[10px] text-muted-foreground">g</span>
                                   <button
                                     onClick={() => handleSaveEditedGrams(item)}
-                                    className="p-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+                                    className="p-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                                     title="Salvar nova porção"
                                   >
                                     <Check size={12} />
                                   </button>
                                   <button
                                     onClick={() => setEditingItemId(null)}
-                                    className="p-1 rounded text-muted-foreground hover:text-foreground"
+                                    className="p-1 rounded-md text-muted-foreground hover:text-foreground"
                                   >
                                     ✕
                                   </button>
@@ -758,7 +769,7 @@ function NutricaoPage() {
                                     setEditingItemId(item.id);
                                     setEditingItemGrams(Number(item.details['grams'] || 100));
                                   }}
-                                  className="text-muted-foreground hover:text-primary flex items-center gap-0.5 font-mono text-[11px]"
+                                  className="text-muted-foreground hover:text-primary flex items-center gap-0.5 font-mono text-[10px] sm:text-[11px] shrink-0"
                                   title="Clique para editar as gramas"
                                 >
                                   ({item.details['grams']}g) <Edit2 size={10} />
@@ -766,8 +777,8 @@ function NutricaoPage() {
                               )}
                             </div>
 
-                            <div className="flex items-center gap-4">
-                              <span className="font-mono text-muted-foreground text-[11px]">
+                            <div className="flex items-center justify-between xs:justify-end gap-3 shrink-0">
+                              <span className="font-mono text-muted-foreground text-[10px] sm:text-[11px] truncate">
                                 <b className="text-foreground">{item.details['kcal']}</b> kcal ·{' '}
                                 <b className="text-primary">{item.details['protein']}g</b> P ·{' '}
                                 <b className="text-sky-400">{item.details['carbs']}g</b> C ·{' '}
@@ -776,7 +787,7 @@ function NutricaoPage() {
 
                               <button
                                 onClick={() => handleDeleteItem(item.id)}
-                                className="text-muted-foreground hover:text-destructive p-1 rounded"
+                                className="text-muted-foreground hover:text-destructive p-1 rounded-lg"
                                 title="Excluir item da refeição"
                               >
                                 <Trash2 size={13} />
