@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
-import { Check, Sparkles, Clock, Star, Flame, Zap } from 'lucide-react';
-import { type AdvancedSetRowData } from './AdvancedSetRow';
+import { Check, Sparkles, Clock, Flame, Zap, Layers, ArrowDown, CornerDownRight } from 'lucide-react';
+import { 
+  type AdvancedSetRowData, 
+  type ClusterBlock, 
+  type RestPauseSubSet, 
+  type MyoMicroSet, 
+  type DropSubSet 
+} from './AdvancedSetRow';
 
 interface HevySetRowProps {
   data: AdvancedSetRowData;
@@ -13,7 +19,7 @@ interface HevySetRowProps {
   intraRestSeconds?: number;
   onUpdate: (updated: AdvancedSetRowData) => void;
   onDelete?: () => void;
-  onTriggerRestTimer: (seconds: number) => void;
+  onTriggerRestTimer: (seconds: number, source?: string) => void;
   onTriggerXP: (xp: number) => void;
   onCelebratePR?: (info: { weight: number; reps: number; tonnage: number }) => void;
 }
@@ -34,6 +40,7 @@ export function HevySetRow({
   onCelebratePR,
 }: HevySetRowProps) {
   const [justCompleted, setJustCompleted] = useState(false);
+  const [recentIntraRestTriggered, setRecentIntraRestTriggered] = useState(false);
 
   const isWarmup = data.baseType === 'WARMUP';
   const isFeeder = data.baseType === 'FEEDER';
@@ -77,9 +84,9 @@ export function HevySetRow({
   }
 
   // Nome formatado da técnica
-  // Nome formatado da técnica
   const techniqueLabel = () => {
-    if (data.technique === 'REST_PAUSE' || data.technique === 'CLUSTER_SET') return 'Rest-Pause';
+    if (data.technique === 'CLUSTER_SET') return 'Cluster Set';
+    if (data.technique === 'REST_PAUSE') return 'Rest-Pause';
     if (data.technique === 'MYO_REPS') return 'Myo-Reps';
     if (data.technique === 'MUSCLE_ROUNDS') return 'Muscle Rounds';
     if (data.technique === 'DROP_SET') return 'Drop-Set';
@@ -133,34 +140,118 @@ export function HevySetRow({
     );
   };
 
-  // Formatação do Target conforme especificação: 12 reps × 20 kg • 60s
+  // Formatação do Target com informação de descanso diferenciado
   const targetDescription = () => {
     const tech = techniqueLabel();
     let repsDisplay = `${effectiveTargetReps} reps`;
     if (targetRepsText) {
       repsDisplay = targetRepsText;
     } else if (tech === 'Rest-Pause') {
-      repsDisplay = '(4+3+2 reps)';
+      repsDisplay = `(${effectiveTargetReps} + 3+2 reps)`;
     } else if (tech === 'Myo-Reps') {
-      repsDisplay = '(12+4+3+3 reps)';
+      repsDisplay = `(${effectiveTargetReps} + 4+4+3 reps)`;
     } else if (tech === 'Muscle Rounds') {
       repsDisplay = '(6×2 reps)';
+    } else if (tech === 'Cluster Set') {
+      repsDisplay = '(2+2+2 reps)';
     }
 
     const weightDisplay = effectiveTargetWeight > 0 ? `${effectiveTargetWeight} kg` : 'Carga livre';
 
     return (
       <span className="text-[11px] font-mono text-muted-foreground">
-        {repsDisplay} × {weightDisplay} • {effectiveRest}s
-        {tech && <span className="text-primary font-bold ml-1">({effectiveIntraRest}s intra)</span>}
+        {repsDisplay} × {weightDisplay} • {effectiveRest}s total
+        {tech && data.technique !== 'DROP_SET' && (
+          <span className="text-primary font-bold ml-1">({effectiveIntraRest}s intra)</span>
+        )}
       </span>
     );
   };
 
+  // Handlers para Sub-blocos das Técnicas Avançadas
+  const defaultClusterBlocks = (): ClusterBlock[] => [
+    { id: `${data.id}-cb1`, reps: 2, completed: false },
+    { id: `${data.id}-cb2`, reps: 2, completed: false },
+    { id: `${data.id}-cb3`, reps: 2, completed: false },
+  ];
+
+  const defaultRestPauseBlocks = (): RestPauseSubSet[] => [
+    { id: `${data.id}-rp1`, reps: 3, completed: false },
+    { id: `${data.id}-rp2`, reps: 2, completed: false },
+  ];
+
+  const defaultMyoMicroSets = (): MyoMicroSet[] => [
+    { id: `${data.id}-myo1`, reps: 4, completed: false },
+    { id: `${data.id}-myo2`, reps: 4, completed: false },
+    { id: `${data.id}-myo3`, reps: 3, completed: false },
+  ];
+
+  const defaultMuscleRoundBlocks = (): ClusterBlock[] => [
+    { id: `${data.id}-mr1`, reps: 2, completed: false },
+    { id: `${data.id}-mr2`, reps: 2, completed: false },
+    { id: `${data.id}-mr3`, reps: 2, completed: false },
+    { id: `${data.id}-mr4`, reps: 2, completed: false },
+    { id: `${data.id}-mr5`, reps: 2, completed: false },
+    { id: `${data.id}-mr6`, reps: 2, completed: false },
+  ];
+
+  const defaultDropSets = (): DropSubSet[] => [
+    { 
+      id: `${data.id}-ds1`, 
+      weight: Math.max(5, Math.round((currentWeight > 0 ? currentWeight : 40) * 0.75 * 2) / 2), 
+      reps: 8, 
+      completed: false 
+    },
+  ];
+
+  const notifyCompletion = (updatedWeight: number, updatedReps: number) => {
+    setJustCompleted(true);
+    setTimeout(() => setJustCompleted(false), 1400);
+
+    if (!isPreparatory && calculatedXP > 0) {
+      onTriggerXP(calculatedXP);
+    }
+
+    // Descanso Total Pós-Série Completa
+    onTriggerRestTimer(effectiveRest, `${exerciseName || 'Treino'} • Concluído (${effectiveRest}s)`);
+
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([100, 50, 100]);
+    }
+
+    if (!isPreparatory && calculatedXP === 30 && onCelebratePR) {
+      onCelebratePR({
+        weight: updatedWeight,
+        reps: updatedReps,
+        tonnage: updatedWeight * updatedReps,
+      });
+    }
+  };
+
+  const triggerIntraRest = (blockLabel: string) => {
+    setRecentIntraRestTriggered(true);
+    setTimeout(() => setRecentIntraRestTriggered(false), 1500);
+
+    // Descanso Intra-Bloco Diferenciado
+    onTriggerRestTimer(effectiveIntraRest, `${exerciseName || 'Treino'} • Intra-Bloco (${effectiveIntraRest}s)`);
+
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([60]);
+    }
+  };
+
+  // Toggle Série Principal (Botão OK Grande)
   const handleToggle = () => {
     const nextCompleted = !data.completed;
     const updatedWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
     const updatedReps = data.reps > 0 ? data.reps : effectiveTargetReps;
+
+    // Sincroniza todos os sub-blocos com o estado da série principal
+    const currentClusters = data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : defaultClusterBlocks();
+    const currentRps = data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : defaultRestPauseBlocks();
+    const currentMyos = data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : defaultMyoMicroSets();
+    const currentMuscles = data.muscleRoundBlocks && data.muscleRoundBlocks.length > 0 ? data.muscleRoundBlocks : defaultMuscleRoundBlocks();
+    const currentDrops = data.dropSets && data.dropSets.length > 0 ? data.dropSets : defaultDropSets();
 
     const updatedData: AdvancedSetRowData = {
       ...data,
@@ -169,115 +260,456 @@ export function HevySetRow({
       reps: updatedReps,
       xpAwarded: nextCompleted ? calculatedXP : 0,
       xpReason: nextCompleted ? xpReason : undefined,
+      clusterBlocks: data.technique === 'CLUSTER_SET' ? currentClusters.map(b => ({ ...b, completed: nextCompleted })) : data.clusterBlocks,
+      restPauseSubSets: data.technique === 'REST_PAUSE' ? currentRps.map(r => ({ ...r, completed: nextCompleted })) : data.restPauseSubSets,
+      myoMicroSets: data.technique === 'MYO_REPS' ? currentMyos.map(m => ({ ...m, completed: nextCompleted })) : data.myoMicroSets,
+      muscleRoundBlocks: data.technique === 'MUSCLE_ROUNDS' ? currentMuscles.map(m => ({ ...m, completed: nextCompleted })) : data.muscleRoundBlocks,
+      dropSets: data.technique === 'DROP_SET' ? currentDrops.map(d => ({ ...d, completed: nextCompleted })) : data.dropSets,
     };
 
     onUpdate(updatedData);
 
     if (nextCompleted) {
-      setJustCompleted(true);
-      setTimeout(() => setJustCompleted(false), 1400);
+      notifyCompletion(updatedWeight, updatedReps);
+    }
+  };
 
-      // Concede XP apenas para Working Sets / Back-off
-      if (!isPreparatory && calculatedXP > 0) {
-        onTriggerXP(calculatedXP);
-      }
+  // Toggle de Mini-Bloco do Cluster Set
+  const handleToggleClusterBlock = (blockId: string) => {
+    const blocks = data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : defaultClusterBlocks();
+    const target = blocks.find(b => b.id === blockId);
+    if (!target) return;
+    const nextCompleted = !target.completed;
+    const updatedBlocks = blocks.map(b => b.id === blockId ? { ...b, completed: nextCompleted } : b);
+    const allCompleted = updatedBlocks.every(b => b.completed);
 
-      // Dispara descanso
-      onTriggerRestTimer(effectiveRest);
+    const updatedWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
+    const updatedReps = data.reps > 0 ? data.reps : effectiveTargetReps;
 
-      // Vibração no celular
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        navigator.vibrate([100, 50, 100]);
-      }
+    const updatedData: AdvancedSetRowData = {
+      ...data,
+      clusterBlocks: updatedBlocks,
+      completed: allCompleted,
+      weight: updatedWeight,
+      reps: updatedReps,
+      xpAwarded: allCompleted ? calculatedXP : 0,
+      xpReason: allCompleted ? xpReason : undefined,
+    };
+    onUpdate(updatedData);
 
-      // Celebração de PR de carga
-      if (!isPreparatory && calculatedXP === 30 && onCelebratePR) {
-        onCelebratePR({
-          weight: updatedWeight,
-          reps: updatedReps,
-          tonnage: updatedWeight * updatedReps,
-        });
+    if (nextCompleted) {
+      if (allCompleted) {
+        notifyCompletion(updatedWeight, updatedReps);
+      } else {
+        triggerIntraRest('Cluster Set');
       }
     }
   };
 
+  // Toggle de Mini-Série Rest-Pause
+  const handleToggleRestPauseSubSet = (subId: string) => {
+    const subs = data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : defaultRestPauseBlocks();
+    const target = subs.find(s => s.id === subId);
+    if (!target) return;
+    const nextCompleted = !target.completed;
+    const updatedSubs = subs.map(s => s.id === subId ? { ...s, completed: nextCompleted } : s);
+    const allCompleted = updatedSubs.every(s => s.completed);
+
+    const updatedWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
+    const updatedReps = data.reps > 0 ? data.reps : effectiveTargetReps;
+
+    const updatedData: AdvancedSetRowData = {
+      ...data,
+      restPauseSubSets: updatedSubs,
+      completed: allCompleted,
+      weight: updatedWeight,
+      reps: updatedReps,
+      xpAwarded: allCompleted ? calculatedXP : 0,
+      xpReason: allCompleted ? xpReason : undefined,
+    };
+    onUpdate(updatedData);
+
+    if (nextCompleted) {
+      if (allCompleted) {
+        notifyCompletion(updatedWeight, updatedReps);
+      } else {
+        triggerIntraRest('Rest-Pause');
+      }
+    }
+  };
+
+  // Toggle de Micro-Série Myo-Reps
+  const handleToggleMyoMicroSet = (microId: string) => {
+    const micros = data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : defaultMyoMicroSets();
+    const target = micros.find(m => m.id === microId);
+    if (!target) return;
+    const nextCompleted = !target.completed;
+    const updatedMicros = micros.map(m => m.id === microId ? { ...m, completed: nextCompleted } : m);
+    const allCompleted = updatedMicros.every(m => m.completed);
+
+    const updatedWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
+    const updatedReps = data.reps > 0 ? data.reps : effectiveTargetReps;
+
+    const updatedData: AdvancedSetRowData = {
+      ...data,
+      myoMicroSets: updatedMicros,
+      completed: allCompleted,
+      weight: updatedWeight,
+      reps: updatedReps,
+      xpAwarded: allCompleted ? calculatedXP : 0,
+      xpReason: allCompleted ? xpReason : undefined,
+    };
+    onUpdate(updatedData);
+
+    if (nextCompleted) {
+      if (allCompleted) {
+        notifyCompletion(updatedWeight, updatedReps);
+      } else {
+        triggerIntraRest('Myo-Reps');
+      }
+    }
+  };
+
+  // Toggle de Round do Muscle Rounds
+  const handleToggleMuscleRound = (roundId: string) => {
+    const rounds = data.muscleRoundBlocks && data.muscleRoundBlocks.length > 0 ? data.muscleRoundBlocks : defaultMuscleRoundBlocks();
+    const target = rounds.find(r => r.id === roundId);
+    if (!target) return;
+    const nextCompleted = !target.completed;
+    const updatedRounds = rounds.map(r => r.id === roundId ? { ...r, completed: nextCompleted } : r);
+    const allCompleted = updatedRounds.every(r => r.completed);
+
+    const updatedWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
+    const updatedReps = data.reps > 0 ? data.reps : effectiveTargetReps;
+
+    const updatedData: AdvancedSetRowData = {
+      ...data,
+      muscleRoundBlocks: updatedRounds,
+      completed: allCompleted,
+      weight: updatedWeight,
+      reps: updatedReps,
+      xpAwarded: allCompleted ? calculatedXP : 0,
+      xpReason: allCompleted ? xpReason : undefined,
+    };
+    onUpdate(updatedData);
+
+    if (nextCompleted) {
+      if (allCompleted) {
+        notifyCompletion(updatedWeight, updatedReps);
+      } else {
+        triggerIntraRest('Muscle Rounds');
+      }
+    }
+  };
+
+  // Toggle de Drop do Drop-Set
+  const handleToggleDropSet = (dropId: string) => {
+    const drops = data.dropSets && data.dropSets.length > 0 ? data.dropSets : defaultDropSets();
+    const target = drops.find(d => d.id === dropId);
+    if (!target) return;
+    const nextCompleted = !target.completed;
+    const updatedDrops = drops.map(d => d.id === dropId ? { ...d, completed: nextCompleted } : d);
+    const allCompleted = updatedDrops.every(d => d.completed);
+
+    const updatedWeight = data.weight > 0 ? data.weight : effectiveTargetWeight;
+    const updatedReps = data.reps > 0 ? data.reps : effectiveTargetReps;
+
+    const updatedData: AdvancedSetRowData = {
+      ...data,
+      dropSets: updatedDrops,
+      completed: allCompleted,
+      weight: updatedWeight,
+      reps: updatedReps,
+      xpAwarded: allCompleted ? calculatedXP : 0,
+      xpReason: allCompleted ? xpReason : undefined,
+    };
+    onUpdate(updatedData);
+
+    if (nextCompleted) {
+      if (allCompleted) {
+        notifyCompletion(updatedWeight, updatedReps);
+      } else {
+        // Drop set é contínuo (0s de descanso), apenas vibração tátil
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([40]);
+        }
+      }
+    }
+  };
+
+  // Sub-blocos renderizados
+  const renderAdvancedBlocks = () => {
+    if (isPreparatory || data.technique === 'NONE') return null;
+
+    return (
+      <div className="mt-2.5 pt-2 border-t border-border/40 space-y-2">
+        {/* Header da Técnica com Indicação do Descanso Diferenciado */}
+        <div className="flex items-center justify-between gap-1 text-[11px]">
+          <span className="font-bold text-primary flex items-center gap-1">
+            <Zap size={12} className="text-primary" />
+            {data.technique === 'CLUSTER_SET' && `Cluster Set • ${effectiveIntraRest}s intra-bloco`}
+            {data.technique === 'REST_PAUSE' && `Rest-Pause • ${effectiveIntraRest}s intra-pausa`}
+            {data.technique === 'MYO_REPS' && `Myo-Reps • ${effectiveIntraRest}s intra-micro`}
+            {data.technique === 'MUSCLE_ROUNDS' && `Muscle Rounds • 6×2 • ${effectiveIntraRest}s intra`}
+            {data.technique === 'DROP_SET' && `Drop-Set • Redução imediata (0s descanso)`}
+          </span>
+
+          {recentIntraRestTriggered && (
+            <span className="font-mono text-[10px] font-bold text-primary bg-primary/20 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+              <Clock size={10} /> Pausa de {effectiveIntraRest}s iniciada!
+            </span>
+          )}
+        </div>
+
+        {/* 1. CLUSTER SET */}
+        {data.technique === 'CLUSTER_SET' && (
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {(data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : defaultClusterBlocks()).map((block, bIdx) => (
+              <div
+                key={block.id}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                  block.completed
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
+                    : 'bg-background/80 border-border/70 text-foreground'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-muted-foreground font-bold">#{bIdx + 1}:</span>
+                <span className="font-mono font-bold text-xs">{block.reps} reps</span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleClusterBlock(block.id)}
+                  className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
+                    block.completed
+                      ? 'bg-emerald-500 text-black shadow-xs font-black'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                  }`}
+                  title={block.completed ? 'Desmarcar bloco' : `Concluir bloco e iniciar ${effectiveIntraRest}s de pausa`}
+                >
+                  <Check size={12} strokeWidth={block.completed ? 3.5 : 2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 2. REST-PAUSE */}
+        {data.technique === 'REST_PAUSE' && (
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-chart-3/40 bg-chart-3/10 text-xs font-bold text-chart-3">
+              <span className="text-[10px] uppercase font-mono">Ativação:</span>
+              <span className="font-mono">{currentReps} reps</span>
+            </div>
+            {(data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : defaultRestPauseBlocks()).map((rp, idx) => (
+              <div
+                key={rp.id}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                  rp.completed
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
+                    : 'bg-background/80 border-border/70 text-foreground'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-muted-foreground">Pausa #{idx + 1}:</span>
+                <span className="font-mono font-bold text-xs">{rp.reps} reps</span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleRestPauseSubSet(rp.id)}
+                  className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
+                    rp.completed
+                      ? 'bg-emerald-500 text-black shadow-xs font-black'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                  }`}
+                  title={rp.completed ? 'Desmarcar mini-série' : `Concluir mini-série e pausar ${effectiveIntraRest}s`}
+                >
+                  <Check size={12} strokeWidth={rp.completed ? 3.5 : 2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 3. MYO-REPS */}
+        {data.technique === 'MYO_REPS' && (
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-primary/40 bg-primary/10 text-xs font-bold text-primary">
+              <span className="text-[10px] uppercase font-mono">Ativação:</span>
+              <span className="font-mono">{currentReps} reps</span>
+            </div>
+            {(data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : defaultMyoMicroSets()).map((micro, idx) => (
+              <div
+                key={micro.id}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                  micro.completed
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
+                    : 'bg-background/80 border-border/70 text-foreground'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-muted-foreground">Micro #{idx + 1}:</span>
+                <span className="font-mono font-bold text-xs">{micro.reps} reps</span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleMyoMicroSet(micro.id)}
+                  className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
+                    micro.completed
+                      ? 'bg-emerald-500 text-black shadow-xs font-black'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                  }`}
+                  title={micro.completed ? 'Desmarcar micro-série' : `Concluir micro-série e pausar ${effectiveIntraRest}s`}
+                >
+                  <Check size={12} strokeWidth={micro.completed ? 3.5 : 2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 4. MUSCLE ROUNDS */}
+        {data.technique === 'MUSCLE_ROUNDS' && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {(data.muscleRoundBlocks && data.muscleRoundBlocks.length > 0 ? data.muscleRoundBlocks : defaultMuscleRoundBlocks()).map((round, rIdx) => (
+              <div
+                key={round.id}
+                className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-xs transition-all ${
+                  round.completed
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
+                    : 'bg-background/80 border-border/70 text-foreground'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-muted-foreground font-bold">R{rIdx + 1}:</span>
+                <span className="font-mono font-bold text-xs">{round.reps}</span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleMuscleRound(round.id)}
+                  className={`size-5 rounded-md flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
+                    round.completed
+                      ? 'bg-emerald-500 text-black shadow-xs font-black'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                  }`}
+                  title={round.completed ? 'Desmarcar round' : `Concluir round e pausar ${effectiveIntraRest}s`}
+                >
+                  <Check size={11} strokeWidth={round.completed ? 3.5 : 2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 5. DROP-SET */}
+        {data.technique === 'DROP_SET' && (
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {(data.dropSets && data.dropSets.length > 0 ? data.dropSets : defaultDropSets()).map((drop, idx) => (
+              <div
+                key={drop.id}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                  drop.completed
+                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
+                    : 'bg-background/80 border-destructive/40 text-foreground'
+                }`}
+              >
+                <span className="text-[10px] font-mono text-destructive font-bold">Drop #{idx + 1}:</span>
+                <span className="font-mono font-bold text-xs">{drop.weight} kg × {drop.reps} reps</span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleDropSet(drop.id)}
+                  className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
+                    drop.completed
+                      ? 'bg-emerald-500 text-black shadow-xs font-black'
+                      : 'bg-muted/70 text-muted-foreground hover:bg-destructive/20 hover:text-destructive'
+                  }`}
+                  title={drop.completed ? 'Desmarcar drop' : 'Concluir drop'}
+                >
+                  <Check size={12} strokeWidth={drop.completed ? 3.5 : 2} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div 
-      className={`py-2 px-2 rounded-xl transition-all duration-200 select-none flex items-center justify-between gap-1.5 sm:gap-2.5 ${
+      className={`py-2 px-2.5 rounded-2xl transition-all duration-200 select-none ${
         data.completed 
           ? 'bg-emerald-500/[0.08] border border-emerald-500/25 shadow-xs' 
           : 'hover:bg-muted/30 border border-transparent'
       }`}
     >
-      {/* 1. ESQUERDA: IDENTIFICADOR DA SÉRIE E META */}
-      <div className="flex-1 min-w-0 pr-1 overflow-hidden">
-        <div className="flex items-center gap-1 flex-wrap">
-          {renderSetLabel()}
+      {/* LINHA SUPERIOR PRINCIPAL (HEVY STYLE) */}
+      <div className="flex items-center justify-between gap-1.5 sm:gap-2.5">
+        {/* 1. ESQUERDA: IDENTIFICADOR DA SÉRIE E META */}
+        <div className="flex-1 min-w-0 pr-1 overflow-hidden">
+          <div className="flex items-center gap-1 flex-wrap">
+            {renderSetLabel()}
+          </div>
+          <div className="mt-0.5 truncate text-[11px] font-mono text-muted-foreground">
+            {targetDescription()}
+          </div>
         </div>
-        <div className="mt-0.5 truncate text-[11px] font-mono text-muted-foreground">
-          {targetDescription()}
+
+        {/* 2. DIREITA: INPUTS COMPACTOS ARREDONDADOS E BOTÃO CHECK */}
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+          <div className="flex flex-col items-center">
+            <input
+              type="number"
+              step="0.5"
+              min="0"
+              value={data.weight === 0 ? '' : data.weight}
+              placeholder={String(effectiveTargetWeight || 0)}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = e.target.value;
+                const num = val === '' ? 0 : parseFloat(val) || 0;
+                onUpdate({ ...data, weight: num });
+              }}
+              className="!w-12 sm:!w-14 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              title="Carga Levantada (kg)"
+            />
+            <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">KG</span>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <input
+              type="number"
+              min="0"
+              value={data.reps === 0 ? '' : data.reps}
+              placeholder={String(effectiveTargetReps || 0)}
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = e.target.value;
+                const num = val === '' ? 0 : parseInt(val) || 0;
+                onUpdate({ ...data, reps: num });
+              }}
+              className="!w-10 sm:!w-12 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              title="Repetições Realizadas"
+            />
+            <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">REPS</span>
+          </div>
+
+          {/* Botão de Conclusão Moderno e Arredondado (Hevy Style) */}
+          <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={handleToggle}
+              className={`!h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer select-none shrink-0 ${
+                data.completed
+                  ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30 font-black border border-emerald-400'
+                  : 'bg-muted/60 border border-border/80 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/10'
+              }`}
+              title={data.completed ? 'Série concluída! Toque para reabrir' : 'Toque para concluir série e computar XP'}
+            >
+              <Check size={14} strokeWidth={data.completed ? 3.5 : 2} />
+              {data.completed && !isPreparatory && calculatedXP > 0 && (
+                <span className="text-[9px] sm:text-[10px] font-black tracking-tight">+{calculatedXP}</span>
+              )}
+            </button>
+            <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">OK</span>
+          </div>
         </div>
       </div>
 
-      {/* 2. DIREITA: INPUTS COMPACTOS ARREDONDADOS E BOTÃO CHECK */}
-      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-        <div className="flex flex-col items-center">
-          <input
-            type="number"
-            step="0.5"
-            min="0"
-            value={data.weight === 0 ? '' : data.weight}
-            placeholder={String(effectiveTargetWeight || 0)}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => {
-              const val = e.target.value;
-              const num = val === '' ? 0 : parseFloat(val) || 0;
-              onUpdate({ ...data, weight: num });
-            }}
-            className="!w-12 sm:!w-14 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            title="Carga Levantada (kg)"
-          />
-          <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">KG</span>
-        </div>
-
-        <div className="flex flex-col items-center">
-          <input
-            type="number"
-            min="0"
-            value={data.reps === 0 ? '' : data.reps}
-            placeholder={String(effectiveTargetReps || 0)}
-            onFocus={(e) => e.target.select()}
-            onChange={(e) => {
-              const val = e.target.value;
-              const num = val === '' ? 0 : parseInt(val) || 0;
-              onUpdate({ ...data, reps: num });
-            }}
-            className="!w-10 sm:!w-12 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            title="Repetições Realizadas"
-          />
-          <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">REPS</span>
-        </div>
-
-        {/* Botão de Conclusão Moderno e Arredondado (Hevy Style) */}
-        <div className="flex flex-col items-center">
-          <button
-            type="button"
-            onClick={handleToggle}
-            className={`!h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer select-none shrink-0 ${
-              data.completed
-                ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30 font-black border border-emerald-400'
-                : 'bg-muted/60 border border-border/80 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/10'
-            }`}
-            title={data.completed ? 'Série concluída! Toque para reabrir' : 'Toque para concluir série e computar XP'}
-          >
-            <Check size={14} strokeWidth={data.completed ? 3.5 : 2} />
-            {data.completed && !isPreparatory && calculatedXP > 0 && (
-              <span className="text-[9px] sm:text-[10px] font-black tracking-tight">+{calculatedXP}</span>
-            )}
-          </button>
-          <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">OK</span>
-        </div>
-      </div>
+      {/* SUB-BLOCOS INTERATIVOS DAS TÉCNICAS AVANÇADAS */}
+      {renderAdvancedBlocks()}
 
       {/* Pop-up flutuante de XP imediato com animação e efeito glow */}
       {justCompleted && !isPreparatory && calculatedXP > 0 && (
@@ -291,3 +723,5 @@ export function HevySetRow({
     </div>
   );
 }
+
+export default HevySetRow;

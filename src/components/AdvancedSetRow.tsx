@@ -69,6 +69,7 @@ export interface AdvancedSetRowData {
   myoMicroSets?: MyoMicroSet[];
   clusterBlocks?: ClusterBlock[];
   restPauseSubSets?: RestPauseSubSet[];
+  muscleRoundBlocks?: ClusterBlock[];
 }
 
 interface AdvancedSetRowProps {
@@ -195,6 +196,8 @@ export function AdvancedSetRow({
         ...data,
         baseType: 'WORKING',
         technique: 'CLUSTER_SET',
+        intraRestSeconds: data.intraRestSeconds ?? 15,
+        restSeconds: data.restSeconds ?? 180,
         clusterBlocks: data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : [
           { id: crypto.randomUUID(), reps: 2, completed: false },
           { id: crypto.randomUUID(), reps: 2, completed: false },
@@ -209,6 +212,8 @@ export function AdvancedSetRow({
         ...data,
         baseType: 'WORKING',
         technique: 'MYO_REPS',
+        intraRestSeconds: data.intraRestSeconds ?? 15,
+        restSeconds: data.restSeconds ?? 150,
         myoMicroSets: data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : [
           { id: crypto.randomUUID(), reps: 4, completed: false },
           { id: crypto.randomUUID(), reps: 4, completed: false },
@@ -223,8 +228,10 @@ export function AdvancedSetRow({
         ...data,
         baseType: 'WORKING',
         technique: 'DROP_SET',
+        intraRestSeconds: 0,
+        restSeconds: data.restSeconds ?? 120,
         dropSets: data.dropSets && data.dropSets.length > 0 ? data.dropSets : [
-          { id: crypto.randomUUID(), weight: Math.round(data.weight * 0.75 * 2) / 2, reps: 8, completed: false },
+          { id: crypto.randomUUID(), weight: Math.round((data.weight > 0 ? data.weight : 40) * 0.75 * 2) / 2, reps: 8, completed: false },
         ],
       });
       return;
@@ -235,8 +242,30 @@ export function AdvancedSetRow({
         ...data,
         baseType: 'WORKING',
         technique: 'REST_PAUSE',
+        intraRestSeconds: data.intraRestSeconds ?? 15,
+        restSeconds: data.restSeconds ?? 180,
         restPauseSubSets: data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : [
-          { id: crypto.randomUUID(), reps: 4, completed: false },
+          { id: crypto.randomUUID(), reps: 3, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+        ],
+      });
+      return;
+    }
+
+    if (mode === 'MUSCLE_ROUNDS') {
+      onUpdate({
+        ...data,
+        baseType: 'WORKING',
+        technique: 'MUSCLE_ROUNDS',
+        intraRestSeconds: data.intraRestSeconds ?? 15,
+        restSeconds: data.restSeconds ?? 180,
+        muscleRoundBlocks: data.muscleRoundBlocks && data.muscleRoundBlocks.length > 0 ? data.muscleRoundBlocks : [
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
+          { id: crypto.randomUUID(), reps: 2, completed: false },
         ],
       });
       return;
@@ -308,6 +337,7 @@ export function AdvancedSetRow({
     if (data.technique === 'MYO_REPS') return 'MYO_REPS';
     if (data.technique === 'DROP_SET') return 'DROP_SET';
     if (data.technique === 'REST_PAUSE') return 'REST_PAUSE';
+    if (data.technique === 'MUSCLE_ROUNDS') return 'MUSCLE_ROUNDS';
     return 'WORKING_NORMAL';
   };
 
@@ -339,6 +369,7 @@ export function AdvancedSetRow({
                 <option value="REST_PAUSE">Rest-Pause (Pausa 15s)</option>
                 <option value="MYO_REPS">Myo-Reps (Ativação)</option>
                 <option value="CLUSTER_SET">Cluster Set (Blocos)</option>
+                <option value="MUSCLE_ROUNDS">Muscle Rounds (6×2 / 15s)</option>
                 <option value="DROP_SET">Drop Set (Redução)</option>
               </select>
             )}
@@ -410,6 +441,314 @@ export function AdvancedSetRow({
             <span className="text-[10px] text-muted-foreground">s</span>
           </div>
         </div>
+
+        {/* Linha 3: Configuração de Sub-blocos para Técnicas Avançadas no Modo PLAN */}
+        {!isPreparatory && data.technique !== 'NONE' && (
+          <div className="pt-2 border-t border-primary/20 space-y-2">
+            {/* Header com Ajuste do Descanso Intra-Bloco Diferenciado */}
+            <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+              <span className="font-bold text-primary flex items-center gap-1">
+                <Layers size={12} />
+                {data.technique === 'CLUSTER_SET' && 'Configuração de Cluster Set (Mini-Blocos)'}
+                {data.technique === 'REST_PAUSE' && 'Configuração de Rest-Pause (Pausa Curta)'}
+                {data.technique === 'MYO_REPS' && 'Configuração de Myo-Reps (Ativação + Micro)'}
+                {data.technique === 'MUSCLE_ROUNDS' && 'Configuração de Muscle Rounds (6 Rounds)'}
+                {data.technique === 'DROP_SET' && 'Configuração de Drop-Set (Redução de Carga)'}
+              </span>
+
+              {data.technique !== 'DROP_SET' && (
+                <div className="flex items-center gap-1 bg-background/80 px-2 py-0.5 rounded-lg border border-border">
+                  <span className="text-[10px] font-bold text-muted-foreground">Pausa Intra:</span>
+                  <input
+                    type="number"
+                    min="5"
+                    max="60"
+                    step="5"
+                    value={data.intraRestSeconds ?? 15}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 15;
+                      onUpdate({ ...data, intraRestSeconds: val });
+                    }}
+                    className="!w-9 !h-5 !p-0 text-center font-mono text-[11px] font-bold text-primary border-0 bg-transparent focus:ring-0"
+                  />
+                  <span className="text-[10px] text-muted-foreground">s</span>
+                </div>
+              )}
+            </div>
+
+            {/* 1. CLUSTER SET */}
+            {data.technique === 'CLUSTER_SET' && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : [
+                  { id: crypto.randomUUID(), reps: 2, completed: false },
+                  { id: crypto.randomUUID(), reps: 2, completed: false },
+                  { id: crypto.randomUUID(), reps: 2, completed: false },
+                ]).map((block, idx, arr) => (
+                  <div key={block.id} className="flex items-center gap-1 bg-background/80 border border-border/80 rounded-lg px-2 py-1 text-xs">
+                    <span className="text-[10px] font-mono text-primary font-bold">#{idx + 1}:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="15"
+                      value={block.reps}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        const updated = arr.map((b) => b.id === block.id ? { ...b, reps: val } : b);
+                        onUpdate({ ...data, clusterBlocks: updated });
+                      }}
+                      className="!w-8 !h-5 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                    />
+                    <span className="text-[9px] text-muted-foreground">reps</span>
+                    {arr.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = arr.filter((b) => b.id !== block.id);
+                          onUpdate({ ...data, clusterBlocks: updated });
+                        }}
+                        className="text-muted-foreground hover:text-destructive p-0.5 ml-0.5"
+                        title="Remover bloco"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : [];
+                    const newBlock: ClusterBlock = { id: crypto.randomUUID(), reps: 2, completed: false };
+                    onUpdate({ ...data, clusterBlocks: [...current, newBlock] });
+                  }}
+                  className="text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg border border-dashed border-primary/40 hover:bg-primary/10 transition-colors"
+                >
+                  + Bloco
+                </button>
+              </div>
+            )}
+
+            {/* 2. REST-PAUSE */}
+            {data.technique === 'REST_PAUSE' && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex items-center gap-1 bg-background/80 border border-chart-3/40 rounded-lg px-2 py-1 text-xs text-chart-3 font-bold">
+                  <span className="text-[10px] uppercase font-mono">Ativação:</span>
+                  <span className="font-mono">{data.targetReps ?? data.reps ?? 8} reps</span>
+                </div>
+                {(data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : [
+                  { id: crypto.randomUUID(), reps: 3, completed: false },
+                  { id: crypto.randomUUID(), reps: 2, completed: false },
+                ]).map((rp, idx, arr) => (
+                  <div key={rp.id} className="flex items-center gap-1 bg-background/80 border border-border/80 rounded-lg px-2 py-1 text-xs">
+                    <span className="text-[10px] font-mono text-muted-foreground">Pausa #{idx + 1}:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={rp.reps}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        const updated = arr.map((r) => r.id === rp.id ? { ...r, reps: val } : r);
+                        onUpdate({ ...data, restPauseSubSets: updated });
+                      }}
+                      className="!w-8 !h-5 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                    />
+                    <span className="text-[9px] text-muted-foreground">reps</span>
+                    {arr.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = arr.filter((r) => r.id !== rp.id);
+                          onUpdate({ ...data, restPauseSubSets: updated });
+                        }}
+                        className="text-muted-foreground hover:text-destructive p-0.5 ml-0.5"
+                        title="Remover pausa"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : [];
+                    const newRp: RestPauseSubSet = { id: crypto.randomUUID(), reps: 2, completed: false };
+                    onUpdate({ ...data, restPauseSubSets: [...current, newRp] });
+                  }}
+                  className="text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg border border-dashed border-primary/40 hover:bg-primary/10 transition-colors"
+                >
+                  + Mini-Série
+                </button>
+              </div>
+            )}
+
+            {/* 3. MYO-REPS */}
+            {data.technique === 'MYO_REPS' && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex items-center gap-1 bg-background/80 border border-primary/40 rounded-lg px-2 py-1 text-xs text-primary font-bold">
+                  <span className="text-[10px] uppercase font-mono">Ativação:</span>
+                  <span className="font-mono">{data.targetReps ?? data.reps ?? 12} reps</span>
+                </div>
+                {(data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : [
+                  { id: crypto.randomUUID(), reps: 4, completed: false },
+                  { id: crypto.randomUUID(), reps: 4, completed: false },
+                  { id: crypto.randomUUID(), reps: 3, completed: false },
+                ]).map((micro, idx, arr) => (
+                  <div key={micro.id} className="flex items-center gap-1 bg-background/80 border border-border/80 rounded-lg px-2 py-1 text-xs">
+                    <span className="text-[10px] font-mono text-muted-foreground">Micro #{idx + 1}:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={micro.reps}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        const updated = arr.map((m) => m.id === micro.id ? { ...m, reps: val } : m);
+                        onUpdate({ ...data, myoMicroSets: updated });
+                      }}
+                      className="!w-8 !h-5 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                    />
+                    <span className="text-[9px] text-muted-foreground">reps</span>
+                    {arr.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = arr.filter((m) => m.id !== micro.id);
+                          onUpdate({ ...data, myoMicroSets: updated });
+                        }}
+                        className="text-muted-foreground hover:text-destructive p-0.5 ml-0.5"
+                        title="Remover micro-série"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : [];
+                    const newMicro: MyoMicroSet = { id: crypto.randomUUID(), reps: 3, completed: false };
+                    onUpdate({ ...data, myoMicroSets: [...current, newMicro] });
+                  }}
+                  className="text-[11px] font-bold text-primary px-2.5 py-1 rounded-lg border border-dashed border-primary/40 hover:bg-primary/10 transition-colors"
+                >
+                  + Micro
+                </button>
+              </div>
+            )}
+
+            {/* 4. MUSCLE ROUNDS */}
+            {data.technique === 'MUSCLE_ROUNDS' && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-muted-foreground block">
+                  6 Rounds de reps curtas com 15s de pausa intra:
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(data.muscleRoundBlocks && data.muscleRoundBlocks.length > 0 ? data.muscleRoundBlocks : [
+                    { id: crypto.randomUUID(), reps: 2, completed: false },
+                    { id: crypto.randomUUID(), reps: 2, completed: false },
+                    { id: crypto.randomUUID(), reps: 2, completed: false },
+                    { id: crypto.randomUUID(), reps: 2, completed: false },
+                    { id: crypto.randomUUID(), reps: 2, completed: false },
+                    { id: crypto.randomUUID(), reps: 2, completed: false },
+                  ]).map((round, idx, arr) => (
+                    <div key={round.id} className="flex items-center gap-1 bg-background/80 border border-border/80 rounded-lg px-2 py-1 text-xs">
+                      <span className="text-[10px] font-mono text-primary font-bold">R{idx + 1}:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="8"
+                        value={round.reps}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1;
+                          const updated = arr.map((r) => r.id === round.id ? { ...r, reps: val } : r);
+                          onUpdate({ ...data, muscleRoundBlocks: updated });
+                        }}
+                        className="!w-7 !h-5 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                      />
+                      <span className="text-[9px] text-muted-foreground">reps</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 5. DROP-SET */}
+            {data.technique === 'DROP_SET' && (
+              <div className="space-y-1.5">
+                <span className="text-[10px] text-muted-foreground block">
+                  Redução imediata de peso (sem descanso entre drops):
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(data.dropSets && data.dropSets.length > 0 ? data.dropSets : [
+                    { id: crypto.randomUUID(), weight: Math.round((data.targetWeight || data.weight || 40) * 0.75 * 2) / 2, reps: 8, completed: false },
+                  ]).map((drop, idx, arr) => (
+                    <div key={drop.id} className="flex items-center gap-1.5 bg-background/80 border border-border/80 rounded-lg px-2 py-1 text-xs">
+                      <span className="text-[10px] font-mono text-destructive font-bold">Drop #{idx + 1}:</span>
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="1"
+                        value={drop.weight}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const updated = arr.map((d) => d.id === drop.id ? { ...d, weight: val } : d);
+                          onUpdate({ ...data, dropSets: updated });
+                        }}
+                        className="!w-12 !h-5 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                      />
+                      <span className="text-[9px] text-muted-foreground">kg ×</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={drop.reps}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1;
+                          const updated = arr.map((d) => d.id === drop.id ? { ...d, reps: val } : d);
+                          onUpdate({ ...data, dropSets: updated });
+                        }}
+                        className="!w-8 !h-5 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                      />
+                      <span className="text-[9px] text-muted-foreground">reps</span>
+                      {arr.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = arr.filter((d) => d.id !== drop.id);
+                            onUpdate({ ...data, dropSets: updated });
+                          }}
+                          className="text-muted-foreground hover:text-destructive p-0.5 ml-0.5"
+                          title="Remover drop"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = data.dropSets && data.dropSets.length > 0 ? data.dropSets : [];
+                      const lastWeight = current[current.length - 1]?.weight ?? (data.targetWeight || data.weight || 40);
+                      const newDrop: DropSubSet = {
+                        id: crypto.randomUUID(),
+                        weight: Math.round(lastWeight * 0.75 * 2) / 2,
+                        reps: 6,
+                        completed: false,
+                      };
+                      onUpdate({ ...data, dropSets: [...current, newDrop] });
+                    }}
+                    className="text-[11px] font-bold text-destructive px-2.5 py-1 rounded-lg border border-dashed border-destructive/40 hover:bg-destructive/10 transition-colors"
+                  >
+                    + Adicionar Drop
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -454,8 +793,9 @@ export function AdvancedSetRow({
                 <option value="BACKOFF">Back-off Set (B)</option>
                 <option value="CLUSTER_SET">Cluster Set (Blocos)</option>
                 <option value="MYO_REPS">Myo-Reps (Ativação)</option>
-                <option value="DROP_SET">Drop Set (Redução)</option>
                 <option value="REST_PAUSE">Rest-Pause (Pausa 15s)</option>
+                <option value="MUSCLE_ROUNDS">Muscle Rounds (6×2 / 15s)</option>
+                <option value="DROP_SET">Drop Set (Redução)</option>
               </select>
             )}
 
@@ -917,6 +1257,64 @@ export function AdvancedSetRow({
             >
               + Mini-Série Rest-Pause
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-LINHAS DINÂMICAS: 5. MUSCLE ROUNDS (6 BLOCOS DE 2 REPS COM 15S INTRA-DESCANSO) */}
+      {data.technique === 'MUSCLE_ROUNDS' && data.muscleRoundBlocks && (
+        <div className="ml-2 sm:ml-8 rounded-lg border border-primary/40 bg-primary/5 p-3 space-y-2">
+          <div className="flex items-center justify-between text-[11px] font-bold text-primary">
+            <span>Muscle Rounds: 6 blocos com 15s de descanso intra-série</span>
+            {microTimer > 0 && (
+              <span className="font-mono text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1 font-black">
+                <Clock size={11} /> Micro-descanso: {microTimer}s
+              </span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {data.muscleRoundBlocks.map((round, rIdx) => (
+              <div 
+                key={round.id}
+                className="flex items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1"
+              >
+                <span className="text-[10px] text-muted-foreground font-mono">R#{rIdx + 1}:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={round.reps}
+                  onChange={(e) => {
+                    const newReps = parseInt(e.target.value) || 0;
+                    const updated = data.muscleRoundBlocks?.map((r) =>
+                      r.id === round.id ? { ...r, reps: newReps } : r
+                    );
+                    onUpdate({ ...data, muscleRoundBlocks: updated });
+                  }}
+                  className="w-7 text-center font-mono text-xs font-bold border-0 bg-transparent p-0 text-foreground"
+                />
+                <span className="text-[9px] text-muted-foreground">reps</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextState = !round.completed;
+                    const updated = data.muscleRoundBlocks?.map((r) =>
+                      r.id === round.id ? { ...r, completed: nextState } : r
+                    );
+                    onUpdate({ ...data, muscleRoundBlocks: updated });
+                    if (nextState) startMicroRest(15);
+                  }}
+                  className={`size-5 rounded border flex items-center justify-center ${
+                    round.completed 
+                      ? 'border-primary bg-primary text-primary-foreground font-bold' 
+                      : 'border-border text-muted-foreground'
+                  }`}
+                >
+                  <Check size={11} />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
       )}

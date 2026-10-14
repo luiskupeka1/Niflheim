@@ -1515,7 +1515,7 @@ function TreinosPage() {
                             intraRestSeconds={set.intraRestSeconds}
                             onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
                             onDelete={() => handleDeleteSet(ex.id, set.id)}
-                            onTriggerRestTimer={(sec) => triggerFloatingTimer(sec, `${ex.name} • Série #${sIdx + 1}`)}
+                            onTriggerRestTimer={(sec, src) => triggerFloatingTimer(sec, src || `${ex.name} • Série #${sIdx + 1}`)}
                             onTriggerXP={(pts) => reward(pts)}
                             onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
                           />
@@ -1548,8 +1548,8 @@ function TreinosPage() {
               <div className="flex items-center gap-2.5">
                 <Clock size={18} className={`text-primary ${timerActive ? 'animate-spin' : ''}`} />
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
-                    Descanso Ativo
+                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block truncate max-w-[200px]">
+                    {lastRestTriggerSource || 'Descanso Ativo'}
                   </span>
                   <span className="font-mono text-base font-black text-primary tracking-wider">
                     {formatTimer(restTime)}
