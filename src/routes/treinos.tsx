@@ -371,13 +371,25 @@ function TreinosPage() {
   const todayDayIndex = new Date().getDay(); // 0 = Domingo, 1 = Segunda...
 
   // Modo de visualização: 'FAZER' (Visão do Usuário / Estilo Hevy) vs 'MONTAR' (Painel do Administrador)
-  const [workoutMode, setWorkoutMode] = useState<'FAZER' | 'MONTAR'>('FAZER');
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isUrlAdmin = searchParams.get('mode') === 'admin' || searchParams.get('admin') === 'true' || window.location.hash.includes('admin');
+      if (isUrlAdmin) return true;
       return localStorage.getItem(LOCAL_STORAGE_ADMIN_KEY) === 'true';
     }
     return false;
   });
+
+  const [workoutMode, setWorkoutMode] = useState<'FAZER' | 'MONTAR'>(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isUrlAdmin = searchParams.get('mode') === 'admin' || searchParams.get('admin') === 'true' || window.location.hash.includes('admin');
+      if (isUrlAdmin) return 'MONTAR';
+    }
+    return 'FAZER';
+  });
+
   const [isAdminPinModalOpen, setIsAdminPinModalOpen] = useState(false);
   const [adminUserInput, setAdminUserInput] = useState('coach@niflheim.fit');
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
@@ -399,7 +411,15 @@ function TreinosPage() {
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem(LOCAL_STORAGE_SPLITS_KEY);
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((s) => ({
+              ...s,
+              workouts: Array.isArray(s?.workouts) ? s.workouts : [],
+            }));
+          }
+        }
       } catch (e) {}
     }
     return DEFAULT_SPLITS;
@@ -407,18 +427,15 @@ function TreinosPage() {
 
   const [activeSplitId, setActiveSplitId] = useState<string>('split-ppl');
   const activeSplit = useMemo(() => {
-    return splits.find((s) => s.id === activeSplitId) ?? splits[0] ?? DEFAULT_SPLITS[0];
+    const found = splits.find((s) => s.id === activeSplitId);
+    if (found && Array.isArray(found.workouts) && found.workouts.length > 0) return found;
+    if (splits[0] && Array.isArray(splits[0].workouts)) return splits[0];
+    return DEFAULT_SPLITS[0];
   }, [splits, activeSplitId]);
 
   // Agenda Semanal (Segunda a Domingo)
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklyScheduleDay[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(LOCAL_STORAGE_SCHEDULE_KEY);
-        if (stored) return JSON.parse(stored);
-      } catch (e) {}
-    }
-    return [
+    const defaultSchedule: WeeklyScheduleDay[] = [
       { dayOfWeek: 'Segunda-feira', shortDay: 'SEG', workoutTitle: 'Pull A — Densidade Dorsal & Bíceps', workoutId: 'ppl-pull' },
       { dayOfWeek: 'Terça-feira', shortDay: 'TER', workoutTitle: 'Push A — Hipertrofia & Força', workoutId: 'ppl-push' },
       { dayOfWeek: 'Quarta-feira', shortDay: 'QUA', workoutTitle: 'Legs A — Quadríceps & Isquiotibiais', workoutId: 'ppl-legs' },
@@ -427,7 +444,37 @@ function TreinosPage() {
       { dayOfWeek: 'Sábado', shortDay: 'SÁB', workoutTitle: 'Pull A — Densidade Dorsal & Bíceps', workoutId: 'ppl-pull' },
       { dayOfWeek: 'Domingo', shortDay: 'DOM', workoutTitle: 'Descanso / Recuperação' },
     ];
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(LOCAL_STORAGE_SCHEDULE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length === 7) {
+            return parsed.map((d, i) => ({
+              dayOfWeek: d?.dayOfWeek || defaultSchedule[i].dayOfWeek,
+              shortDay: d?.shortDay || defaultSchedule[i].shortDay,
+              workoutTitle: d?.workoutTitle || 'Descanso / Recuperação',
+              workoutId: d?.workoutId,
+            }));
+          }
+        }
+      } catch (e) {}
+    }
+    return defaultSchedule;
   });
+
+  // Efeito para detectar alternância ou link direto para o modo admin
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const isUrlAdmin = searchParams.get('mode') === 'admin' || searchParams.get('admin') === 'true' || window.location.hash.includes('admin');
+      if (isUrlAdmin) {
+        setIsAdminUnlocked(true);
+        setWorkoutMode('MONTAR');
+      }
+    }
+  }, []);
 
   // Salvar agenda no localStorage
   useEffect(() => {
@@ -537,7 +584,20 @@ function TreinosPage() {
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('NIFLHEIM_CUSTOM_MUSCLE_GROUPS');
-        if (stored) return JSON.parse(stored);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((item, idx) => ({
+              id: item?.id || `mus-${idx}-${item?.name || 'm'}`,
+              name: item?.name || DEFAULT_CUSTOM_MUSCLES[idx]?.name || 'Músculo',
+              mev: typeof item?.mev === 'number' ? item.mev : (DEFAULT_CUSTOM_MUSCLES[idx]?.mev ?? 6),
+              mavMin: typeof item?.mavMin === 'number' ? item.mavMin : (DEFAULT_CUSTOM_MUSCLES[idx]?.mavMin ?? 10),
+              mavMax: typeof item?.mavMax === 'number' ? item.mavMax : (DEFAULT_CUSTOM_MUSCLES[idx]?.mavMax ?? 16),
+              mrv: typeof item?.mrv === 'number' ? item.mrv : (DEFAULT_CUSTOM_MUSCLES[idx]?.mrv ?? 20),
+              ceiling: typeof item?.ceiling === 'number' ? item.ceiling : (DEFAULT_CUSTOM_MUSCLES[idx]?.ceiling ?? 14),
+            }));
+          }
+        }
       } catch (e) {}
     }
     return DEFAULT_CUSTOM_MUSCLES;
@@ -552,8 +612,10 @@ function TreinosPage() {
 
   const muscleCeilings = useMemo(() => {
     const map: Record<string, number> = {};
-    muscleGroupsList.forEach((m) => {
-      map[m.name] = m.ceiling;
+    (muscleGroupsList || []).forEach((m) => {
+      if (m?.name) {
+        map[m.name] = typeof m.ceiling === 'number' ? m.ceiling : 14;
+      }
     });
     return map;
   }, [muscleGroupsList]);
@@ -2530,12 +2592,13 @@ function TreinosPage() {
                 <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                   {weeklySchedule.map((day, idx) => {
                     const isSelected = selectedCoachDayIndex === idx;
-                    const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
-                    const isRest = day.workoutTitle.toLowerCase().includes('descanso');
+                    const isToday = DAYS_OF_WEEK[idx]?.dayIndex === todayDayIndex;
+                    const dayWorkoutTitle = day?.workoutTitle || 'Descanso / Recuperação';
+                    const isRest = dayWorkoutTitle.toLowerCase().includes('descanso');
 
                     return (
                       <button
-                        key={day.dayOfWeek}
+                        key={day?.dayOfWeek || idx}
                         type="button"
                         onClick={() => {
                           setSelectedCoachDayIndex(idx);
@@ -2552,10 +2615,10 @@ function TreinosPage() {
                         }`}
                       >
                         <span className={`font-mono text-xs font-black uppercase ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {day.shortDay}
+                          {day?.shortDay || DAYS_OF_WEEK[idx]?.short || 'DIA'}
                         </span>
-                        <span className="text-[9px] truncate max-w-full font-bold text-foreground mt-0.5" title={day.workoutTitle}>
-                          {isRest ? 'Descanso' : day.workoutTitle.split('—')[0].trim()}
+                        <span className="text-[9px] truncate max-w-full font-bold text-foreground mt-0.5" title={dayWorkoutTitle}>
+                          {isRest ? 'Descanso' : dayWorkoutTitle.split('—')[0].trim()}
                         </span>
                         {isSelected && (
                           <span className="size-1 rounded-full bg-primary mt-1" />
@@ -2573,7 +2636,7 @@ function TreinosPage() {
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="rounded-full bg-primary/20 text-primary px-2.5 py-0.5 text-[10px] font-black uppercase">
-                        {weeklySchedule[selectedCoachDayIndex]?.dayOfWeek}
+                        {weeklySchedule[selectedCoachDayIndex]?.dayOfWeek || 'Dia do Treino'}
                       </span>
                       <input
                         type="text"
@@ -2585,7 +2648,7 @@ function TreinosPage() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Grupamentos: <strong className="text-foreground">{programMuscleGroups}</strong> • Rotina: <strong className="text-primary">{activeSplit.name}</strong>
+                      Grupamentos: <strong className="text-foreground">{programMuscleGroups}</strong> • Rotina: <strong className="text-primary">{activeSplit?.name || 'Rotina Principal'}</strong>
                     </p>
                   </div>
 
@@ -2642,11 +2705,12 @@ function TreinosPage() {
                 {/* Seletor Rápido de Treino para este Dia */}
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    Atribuir à {weeklySchedule[selectedCoachDayIndex]?.shortDay}:
+                    Atribuir à {weeklySchedule[selectedCoachDayIndex]?.shortDay || 'Dia'}:
                   </span>
                   <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                    {activeSplit.workouts.map((w) => {
+                    {(activeSplit?.workouts || []).map((w) => {
                       const isCurrent = weeklySchedule[selectedCoachDayIndex]?.workoutTitle === w.title;
+                      const wTitle = w?.title || 'Treino';
                       return (
                         <button
                           key={w.id}
@@ -2661,7 +2725,7 @@ function TreinosPage() {
                               : 'bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground border border-border/60'
                           }`}
                         >
-                          ⚡ {w.title.split('—')[0].trim()}
+                          ⚡ {wTitle.split('—')[0].trim()}
                         </button>
                       );
                     })}
