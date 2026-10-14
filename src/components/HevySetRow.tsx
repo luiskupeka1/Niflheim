@@ -638,11 +638,11 @@ export function HevySetRow({
       {/* LINHA SUPERIOR PRINCIPAL (HEVY STYLE) */}
       <div className="flex items-center justify-between gap-1.5 sm:gap-2.5">
         {/* 1. ESQUERDA: IDENTIFICADOR DA SÉRIE E META */}
-        <div className="flex-1 min-w-0 pr-1 overflow-hidden">
+        <div className="flex-1 min-w-0 pr-1">
           <div className="flex items-center gap-1 flex-wrap">
             {renderSetLabel()}
           </div>
-          <div className="mt-0.5 truncate text-[11px] font-mono text-muted-foreground font-medium">
+          <div className="mt-0.5 text-[10px] sm:text-[11px] font-mono text-muted-foreground font-medium leading-tight break-words">
             {targetDescription()}
           </div>
         </div>

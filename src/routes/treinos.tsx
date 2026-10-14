@@ -81,6 +81,7 @@ export interface ExerciseItem {
   equipment: string;
   targetWeightKg?: number; // Carga programada/meta
   targetReps?: number;     // Repetições programadas/meta
+  targetRestSeconds?: number; // Tempo de descanso específico prescrito deste exercício
   video_url?: string;
   description?: string;
   sets: AdvancedSetRowData[];
@@ -95,6 +96,7 @@ export interface WorkoutTemplateItem {
     exerciseId: string;
     targetWeightKg?: number;
     targetReps?: number;
+    targetRestSeconds?: number;
     sets: AdvancedSetRowData[];
   }[];
 }
@@ -476,9 +478,29 @@ function TreinosPage() {
 
   // Agenda Semanal - Modais e Notificações
   const [isWeeklyScheduleModalOpen, setIsWeeklyScheduleModalOpen] = useState(false);
+  const [isMrvModalOpen, setIsMrvModalOpen] = useState(false);
+  const [selectedCoachDayIndex, setSelectedCoachDayIndex] = useState<number>(() => {
+    const dow = new Date().getDay();
+    return dow === 0 ? 6 : dow - 1; // 0 = Seg, 6 = Dom
+  });
   const [scheduleFeedback, setScheduleFeedback] = useState<string | null>(null);
   const [editingDayModalIndex, setEditingDayModalIndex] = useState<number | null>(null);
   const [customDayWorkoutText, setCustomDayWorkoutText] = useState('');
+
+  // Atualização em lote do tempo de descanso por exercício
+  const handleUpdateExerciseRest = (exerciseId: string, restSecs: number) => {
+    setExercises((prev) =>
+      prev.map((ex) => {
+        if (ex.id !== exerciseId) return ex;
+        return {
+          ...ex,
+          targetRestSeconds: restSecs,
+          sets: ex.sets.map((s) => ({ ...s, restSeconds: restSecs })),
+        };
+      })
+    );
+    showScheduleToast(`⏱️ Descanso do exercício definido para ${restSecs}s`);
+  };
 
   const showScheduleToast = (msg: string) => {
     setScheduleFeedback(msg);
@@ -1513,13 +1535,13 @@ function TreinosPage() {
                   }`}
                 >
                   {/* Linha Superior do Exercício */}
-                  <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5 sm:pb-3">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="text-sm sm:text-base font-black text-foreground truncate tracking-tight">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2.5 sm:pb-3">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                      <span className="text-sm sm:text-base font-black text-foreground tracking-tight break-words">
                         {exIndex + 1}. {ex.name}
                       </span>
                       {allSetsDone && (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-0.5 shrink-0">
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-0.5 shrink-0">
                           <Check size={10} strokeWidth={3} /> Feito
                         </span>
                       )}
@@ -1800,7 +1822,7 @@ function TreinosPage() {
       {/* ========================================================================= */}
       {workoutMode === 'MONTAR' && (
         <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Banner Exclusivo do Administrador */}
+          {/* Banner Exclusivo do Treinador / ADM */}
           <div className="rounded-2xl border-2 border-primary/60 bg-gradient-to-r from-primary/15 via-card to-card p-4 sm:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-lg">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-black shadow-md shrink-0">
@@ -1811,10 +1833,10 @@ function TreinosPage() {
                   Área do Treinador / Prescrição
                 </span>
                 <h2 className="text-lg sm:text-xl font-black text-foreground">
-                  Painel de Montagem de Treinos
+                  Coach Studio — Montagem Horizontal de Treinos
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Configure as rotinas, adicione exercícios, defina metas de carga e organize a semana de Seg a Dom.
+                  Fluxo horizontal: 1. Dia da Semana → 2. Tipo de Treino (PPL/ABC) → 3. Exercícios com Descanso Próprio.
                 </p>
               </div>
             </div>
@@ -1823,8 +1845,17 @@ function TreinosPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setIsMrvModalOpen(true)}
+                className="text-xs font-bold border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-xl cursor-pointer"
+              >
+                <BarChart3 size={13} className="mr-1" /> Janela MRV
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setWorkoutMode('FAZER')}
-                className="text-xs font-bold border-primary/50 text-primary hover:bg-primary/10 rounded-xl"
+                className="text-xs font-bold border-primary/50 text-primary hover:bg-primary/10 rounded-xl cursor-pointer"
               >
                 <Eye size={13} className="mr-1" /> Ver como Aluno
               </Button>
@@ -1833,29 +1864,152 @@ function TreinosPage() {
                 size="sm"
                 variant="ghost"
                 onClick={handleLockAdmin}
-                className="text-xs font-bold text-muted-foreground hover:text-destructive rounded-xl"
+                className="text-xs font-bold text-muted-foreground hover:text-destructive rounded-xl cursor-pointer"
               >
                 <Lock size={13} className="mr-1" /> Bloquear
               </Button>
             </div>
           </div>
 
-          {/* 1. GESTOR DE ROTINAS (PPL, ABC, ETC.) */}
-          <div className="rounded-2xl border border-border bg-card/60 p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1.5 mr-2">
-                  <Layers size={14} className="text-primary" /> Rotinas:
+          {/* ================================================================= */}
+          {/* PASSO 1: SELECIONAR O DIA DA SEMANA (BARRA HORIZONTAL SEG A DOM) */}
+          {/* ================================================================= */}
+          <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-3 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/50 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex size-6 items-center justify-center rounded-lg bg-primary text-primary-foreground font-black text-xs">
+                  1
                 </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                    Passo 1: Selecione o Dia da Semana
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                    Clique em um dia para prescrever ou ajustar o treino desse dia específico.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsWeeklyScheduleModalOpen(true)}
+                  className="text-[11px] font-bold border-primary/40 text-primary hover:bg-primary/10 rounded-xl h-7 cursor-pointer"
+                >
+                  <SlidersHorizontal size={11} className="mr-1" /> Janela Completa da Semana
+                </Button>
+              </div>
+            </div>
+
+            {/* Barra Horizontal dos 7 Dias da Semana */}
+            <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-7 gap-2">
+              {weeklySchedule.map((day, idx) => {
+                const isSelected = selectedCoachDayIndex === idx;
+                const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
+                const isRest = day.workoutTitle.toLowerCase().includes('descanso');
+
+                return (
+                  <button
+                    key={day.dayOfWeek}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCoachDayIndex(idx);
+                      handleSelectDay(day);
+                    }}
+                    className={`rounded-2xl border p-2.5 sm:p-3 text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 min-w-0 ${
+                      isSelected
+                        ? 'border-primary bg-primary/15 ring-2 ring-primary shadow-md'
+                        : isToday
+                        ? 'border-primary/50 bg-card/90 ring-1 ring-primary/40'
+                        : isRest
+                        ? 'border-border/40 bg-background/40 hover:bg-background/80'
+                        : 'border-border/60 bg-card/60 hover:bg-card hover:border-primary/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className={`font-mono text-xs font-black uppercase ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {day.shortDay}
+                      </span>
+                      {isSelected ? (
+                        <span className="rounded-full bg-primary text-primary-foreground px-1.5 py-0.2 text-[8px] font-black uppercase">
+                          ATIVO
+                        </span>
+                      ) : isToday ? (
+                        <span className="rounded-full bg-primary/20 text-primary px-1.5 py-0.2 text-[8px] font-black uppercase">
+                          HOJE
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="font-black text-xs line-clamp-2 leading-tight text-foreground" title={day.workoutTitle}>
+                      {day.workoutTitle}
+                    </div>
+
+                    <div className="text-[9px] text-muted-foreground pt-1 border-t border-border/30 truncate">
+                      {day.dayOfWeek}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* PASSO 2: SELECIONAR O TIPO DE TREINO (ABC, PPL, DESCANSO, ETC.)          */}
+          {/* ========================================================================= */}
+          <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/50 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex size-6 items-center justify-center rounded-lg bg-[#00E5FF] text-black font-black text-xs">
+                  2
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                    Passo 2: Tipo de Treino para {weeklySchedule[selectedCoachDayIndex]?.dayOfWeek}
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                    Escolha a rotina (PPL, ABC) e selecione qual treino prescrever para este dia.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsCreateSplitModalOpen(true)}
+                  className="text-[11px] font-bold border-dashed border-primary/50 text-primary hover:bg-primary/10 rounded-xl h-7 cursor-pointer"
+                >
+                  <FolderPlus size={11} className="mr-1" /> + Nova Rotina
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleApplySplitToWeek}
+                  className="text-[11px] font-bold text-muted-foreground hover:text-foreground rounded-xl h-7 cursor-pointer"
+                  title={`Distribuir toda a rotina ${activeSplit.name} de Seg a Dom`}
+                >
+                  <Zap size={11} className="text-primary mr-1" /> Distribuir "{activeSplit.name}"
+                </Button>
+              </div>
+            </div>
+
+            {/* Seletor Horizontal de Rotinas (PPL, ABC...) */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <Layers size={12} className="text-primary" /> Divisão Base:
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
                 {splits.map((s) => (
-                  <div key={s.id} className="relative inline-flex items-center">
+                  <div key={s.id} className="relative inline-flex items-center shrink-0">
                     <button
                       type="button"
                       onClick={() => setActiveSplitId(s.id)}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
+                      className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
                         activeSplit.id === s.id
                           ? 'bg-primary text-primary-foreground shadow-sm'
-                          : 'bg-muted/60 text-muted-foreground hover:bg-muted'
+                          : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
                       {s.name}
@@ -1868,496 +2022,442 @@ function TreinosPage() {
                           handleDeleteSplit(s.id);
                         }}
                         title={`Excluir rotina ${s.name}`}
-                        className="ml-1 p-1 rounded-md text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+                        className="ml-1 p-1 rounded-md text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors cursor-pointer"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={11} />
                       </button>
                     )}
                   </div>
                 ))}
               </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsCreateSplitModalOpen(true)}
-                  className="text-xs border-dashed rounded-xl"
-                >
-                  <FolderPlus size={13} className="text-primary" /> + Nova Rotina
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleSaveCurrentWorkoutToSplit}
-                  className="text-xs text-primary font-bold hover:bg-primary/10 rounded-xl"
-                >
-                  <Save size={13} /> Salvar Treino na Rotina
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. AGENDA SEMANAL DE SEGUNDA A DOMINGO (PAINEL COMPLETO DO ADMIN) */}
-          <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-3 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <Calendar size={18} className="text-primary shrink-0" />
-                <div>
-                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
-                    Divisão Semanal Prescrita (Segunda a Domingo)
-                  </h3>
-                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">
-                    Escolha qual treino o aluno fará em cada dia da semana.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsWeeklyScheduleModalOpen(true)}
-                  className="text-xs font-black gap-1.5 border-primary/50 text-primary hover:bg-primary/15 shadow-sm rounded-xl"
-                >
-                  <SlidersHorizontal size={13} /> Configurar Detalhado
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleApplySplitToWeek}
-                  className="text-xs font-bold gap-1 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl"
-                  title={`Distribuir treinos da rotina ${activeSplit.name} de Seg a Dom`}
-                >
-                  <Zap size={13} className="text-primary" /> Distribuir "{activeSplit.name}"
-                </Button>
-              </div>
             </div>
 
-            {/* 7 Dias da Semana em Grade para Edição do Admin */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
-              {weeklySchedule.map((day, idx) => {
-                const isLoaded = sessionTitle === day.workoutTitle;
-                const isKnownOption = splits.some((s) => s.workouts.some((w) => w.title === day.workoutTitle)) ||
-                  ['Descanso / Recuperação', 'Descanso / Recuperação Ativa', 'Cardio & Mobilidade', 'Treino Livre / Aeróbico'].includes(day.workoutTitle);
+            {/* Opções de Treinos da Rotina Ativa em Barra Horizontal */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <Zap size={12} className="text-amber-400" /> Clique para Atribuir a {weeklySchedule[selectedCoachDayIndex]?.shortDay}:
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {activeSplit.workouts.map((w) => {
+                  const isAssigned = weeklySchedule[selectedCoachDayIndex]?.workoutTitle === w.title;
 
-                return (
-                  <div
-                    key={day.dayOfWeek}
-                    className={`rounded-2xl border p-2.5 sm:p-3 transition-all flex flex-col justify-between min-w-0 overflow-hidden ${
-                      isLoaded ? 'border-primary/60 bg-card/95 ring-1 ring-primary/40' : 'border-border/60 bg-background/50'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-[10px] font-black uppercase text-muted-foreground">
-                          {day.shortDay}
+                  return (
+                    <button
+                      key={w.id}
+                      type="button"
+                      onClick={() => {
+                        handleUpdateScheduleDay(selectedCoachDayIndex, w.title, w.id);
+                        handleLoadWorkout(w);
+                      }}
+                      className={`rounded-xl border p-3 text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                        isAssigned
+                          ? 'border-[#00E5FF] bg-[#00E5FF]/10 ring-1 ring-[#00E5FF]'
+                          : 'border-border/60 bg-background/50 hover:bg-background/90 hover:border-primary/40'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="rounded-full bg-primary/20 text-primary px-2 py-0.5 text-[9px] font-bold uppercase">
+                          {w.category}
                         </span>
-                        {isLoaded && (
-                          <span className="rounded-full bg-primary text-primary-foreground px-1.5 py-0.2 text-[8px] font-black uppercase">
-                            EDITANDO
+                        {isAssigned && (
+                          <span className="rounded-full bg-[#00E5FF] text-black px-1.5 py-0.2 text-[8px] font-black uppercase">
+                            ATRIBUÍDO
                           </span>
                         )}
                       </div>
-                      <h4 className="font-black text-xs mt-1 truncate text-foreground" title={day.workoutTitle}>
-                        {day.workoutTitle}
-                      </h4>
-                    </div>
 
-                    <div className="mt-2.5 pt-1.5 border-t border-border/40 space-y-1.5 min-w-0">
-                      <select
-                        value={day.workoutTitle}
-                        onChange={(e) => handleUpdateScheduleDay(idx, e.target.value)}
-                        className="w-full min-w-0 max-w-full rounded-xl border border-border/80 bg-card px-2 py-1 text-[10px] font-black text-foreground focus:border-primary truncate cursor-pointer shadow-inner"
-                      >
-                        {!isKnownOption && (
-                          <option value={day.workoutTitle}>
-                            ★ {day.workoutTitle}
-                          </option>
-                        )}
-                        {splits.map((s) => (
-                          <optgroup key={s.id} label={`Rotina: ${s.name}`}>
-                            {s.workouts.map((w) => (
-                              <option key={w.id} value={w.title}>
-                                {w.title}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                        <optgroup label="Descanso & Outros">
-                          <option value="Descanso / Recuperação">Descanso / Recuperação</option>
-                          <option value="Descanso / Recuperação Ativa">Descanso / Recuperação Ativa</option>
-                          <option value="Cardio & Mobilidade">Cardio & Mobilidade</option>
-                          <option value="Treino Livre / Aeróbico">Treino Livre / Aeróbico</option>
-                        </optgroup>
-                      </select>
+                      <div className="font-black text-xs text-foreground line-clamp-1" title={w.title}>
+                        {w.title}
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingDayModalIndex(idx);
-                          setCustomDayWorkoutText(day.workoutTitle);
-                        }}
-                        className="flex items-center justify-center gap-1 w-full rounded-xl border border-border/50 bg-muted/30 hover:bg-primary/20 hover:text-primary py-1 text-[9px] font-bold text-muted-foreground transition-colors"
-                      >
-                        <Edit3 size={10} /> Personalizar
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                      <div className="text-[10px] text-muted-foreground">
+                        {w.exercises.length} exercícios configurados
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* Opções Rápidas de Descanso e Cardio */}
+                <button
+                  type="button"
+                  onClick={() => handleUpdateScheduleDay(selectedCoachDayIndex, 'Descanso / Recuperação')}
+                  className={`rounded-xl border p-3 text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                    weeklySchedule[selectedCoachDayIndex]?.workoutTitle.toLowerCase().includes('descanso')
+                      ? 'border-primary/60 bg-primary/10'
+                      : 'border-border/40 bg-background/30 hover:bg-background/60'
+                  }`}
+                >
+                  <span className="text-[9px] font-black text-muted-foreground uppercase">OFF / RECOVERY</span>
+                  <div className="font-bold text-xs text-foreground">💤 Descanso / Recuperação</div>
+                  <div className="text-[10px] text-muted-foreground">Regeneração do SNC</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingDayModalIndex(selectedCoachDayIndex);
+                    setCustomDayWorkoutText(weeklySchedule[selectedCoachDayIndex]?.workoutTitle || '');
+                  }}
+                  className="rounded-xl border border-dashed border-border/80 bg-background/20 p-3 text-left hover:border-primary/50 hover:bg-background/50 transition-all cursor-pointer flex flex-col justify-between gap-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <span className="text-[9px] font-black uppercase flex items-center gap-1">
+                    <Edit3 size={10} /> Janela Extra
+                  </span>
+                  <div className="font-bold text-xs text-foreground">✏️ Personalizar Nome</div>
+                  <div className="text-[10px] text-muted-foreground">Digitar título avulso</div>
+                </button>
+              </div>
             </div>
-          </div>
 
-          {/* 3. CABEÇALHO DO PROGRAMA (COACH STUDIO) */}
-          <div className="panel p-4 sm:p-5 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Cabeçalho do Treino Selecionado (Nome + Grupamentos) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-border/50">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-wider text-primary mb-1">
-                  Nome do Treino (ex: Push A - Hipertrofia Focada)
+                  Nome do Treino Atual
                 </label>
                 <input
                   type="text"
                   value={sessionTitle}
                   onChange={(e) => setSessionTitle(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus:border-primary"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs sm:text-sm font-bold text-foreground focus:border-primary"
                   placeholder="Ex: Push A - Hipertrofia Focada"
                 />
               </div>
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-wider text-[#00E5FF] mb-1">
-                  Grupamentos Principais (ex: Peitoral, Ombro e Tríceps)
+                  Grupamentos Principais
                 </label>
                 <input
                   type="text"
                   value={programMuscleGroups}
                   onChange={(e) => setProgramMuscleGroups(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm font-bold text-foreground focus:border-[#00E5FF]"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs sm:text-sm font-bold text-foreground focus:border-[#00E5FF]"
                   placeholder="Ex: Peitoral, Ombro e Tríceps"
                 />
               </div>
             </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-border/50">
-              <Button
-                size="sm"
-                onClick={() => setIsAddExerciseModalOpen(true)}
-                className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs flex items-center gap-1.5 cursor-pointer rounded-xl"
-              >
-                <Plus size={14} /> + Adicionar Exercício
-              </Button>
-
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleSaveCurrentWorkoutToSplit}
-                className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 rounded-xl"
-              >
-                <Save size={13} className="mr-1" /> Salvar Treino
-              </Button>
-            </div>
           </div>
 
-          {/* 4. TEMPOS DE DESCANSO AUTOMÁTICOS DA SESSÃO */}
-          <div className="rounded-2xl border border-primary/30 bg-card/70 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 shadow-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary">
-                <Clock size={16} />
-              </div>
-              <div>
-                <h4 className="text-xs font-black uppercase text-foreground">
-                  Descansos Automáticos Prescritos
-                </h4>
-                <p className="text-[10px] text-muted-foreground">
-                  Tempo que dispara automaticamente ao aluno concluir a série.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 text-xs">
+          {/* ========================================================================= */}
+          {/* PASSO 3: EXERCÍCIOS & CONFIGURAÇÃO DE DESCANSO POR EXERCÍCIO             */}
+          {/* ========================================================================= */}
+          <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/50 pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-muted-foreground">Aquecimento:</span>
-                <input
-                  type="number"
-                  min="10"
-                  max="300"
-                  step="5"
-                  value={restWarmupSeconds}
-                  onChange={(e) => setRestWarmupSeconds(Math.max(10, parseInt(e.target.value) || 60))}
-                  className="w-14 rounded-xl border border-border bg-background px-1 py-1 text-center font-mono text-xs font-black"
-                />
-                <span className="text-[10px] text-muted-foreground">s</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black text-primary">Trabalho:</span>
-                <input
-                  type="number"
-                  min="30"
-                  max="600"
-                  step="10"
-                  value={restWorkingSeconds}
-                  onChange={(e) => setRestWorkingSeconds(Math.max(30, parseInt(e.target.value) || 120))}
-                  className="w-14 rounded-xl border border-primary bg-background px-1 py-1 text-center font-mono text-xs font-black text-primary"
-                />
-                <span className="text-[10px] text-muted-foreground">s</span>
-              </div>
-            </div>
-          </div>
-
-          {/* 5. LISTA DE EXERCÍCIOS PARA EDIÇÃO AVANÇADA DO ADMINISTRADOR */}
-          <div className="space-y-6">
-            {exercises.map((ex, exIndex) => {
-              const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
-              const workingSets = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
-
-              return (
-                <div key={ex.id} className="panel p-4 md:p-6 transition-all space-y-4">
-                  {/* Header do Exercício */}
-                  <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/70 pb-3">
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground">
-                          #{exIndex + 1}
-                        </span>
-                        <div className="flex flex-col gap-0.5">
-                          <button
-                            disabled={exIndex === 0}
-                            onClick={() => handleMoveExercise(exIndex, 'up')}
-                            className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"
-                          >
-                            <ChevronUp size={13} />
-                          </button>
-                          <button
-                            disabled={exIndex === exercises.length - 1}
-                            onClick={() => handleMoveExercise(exIndex, 'down')}
-                            className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20"
-                          >
-                            <ChevronDown size={13} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base sm:text-lg font-black text-foreground truncate max-w-[170px] xs:max-w-[240px] sm:max-w-none">
-                            {ex.name}
-                          </h3>
-                          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0">
-                            {ex.muscle}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1.5 mt-2 w-full">
-                          <span className="text-[10px] font-bold text-primary flex items-center gap-1 shrink-0">
-                            <Play size={10} /> YouTube:
-                          </span>
-                          <input
-                            type="text"
-                            value={ex.video_url || ''}
-                            onChange={(e) => {
-                              const newUrl = e.target.value;
-                              setExercises((prev) => prev.map((item) => item.id === ex.id ? { ...item, video_url: newUrl } : item));
-                            }}
-                            placeholder="https://youtu.be/..."
-                            className="w-full min-w-0 rounded-xl border border-border/80 bg-background px-2 py-1 text-xs text-foreground font-mono focus:border-primary"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveExercise(ex.id)}
-                        className="size-7 text-muted-foreground hover:text-destructive rounded-xl"
-                      >
-                        <Trash2 size={13} />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Configuração de Carga Meta e Reps Meta */}
-                  <div className="rounded-xl border border-primary/25 bg-primary/5 p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <span className="font-bold text-primary flex items-center gap-1">
-                      <Target size={13} /> Metas Prescritas:
-                    </span>
-                    <div className="flex items-center gap-2 font-mono self-start sm:self-auto">
-                      <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase">CARGA:</span>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={ex.targetWeightKg ?? 40}
-                          onChange={(e) => handleUpdateExerciseTarget(ex.id, parseFloat(e.target.value) || 0, ex.targetReps ?? 10)}
-                          className="!w-12 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
-                        />
-                        <span className="text-[10px] text-muted-foreground">kg</span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase">REPS:</span>
-                        <input
-                          type="number"
-                          value={ex.targetReps ?? 10}
-                          onChange={(e) => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, parseInt(e.target.value) || 0)}
-                          className="!w-10 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Séries Preparatórias e de Trabalho */}
-                  <div className="space-y-4">
-                    {/* Séries Preparatórias */}
-                    <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 sm:p-4 space-y-2.5">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
-                          <Clock size={13} className="text-amber-500" /> Séries Preparatórias
-                        </span>
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAddPreparatorySet(ex.id, 'WARMUP')}
-                            className="text-[10px] h-6 px-2 text-muted-foreground border border-dashed rounded-lg"
-                          >
-                            + Aquecimento
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAddPreparatorySet(ex.id, 'FEEDER')}
-                            className="text-[10px] h-6 px-2 text-amber-500 border border-dashed border-amber-500/40 rounded-lg"
-                          >
-                            + Feeder
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleAddPreparatorySet(ex.id, 'PAP')}
-                            className="text-[10px] h-6 px-2 text-cyan-400 border border-dashed border-cyan-500/40 rounded-lg"
-                          >
-                            + PAP
-                          </Button>
-                        </div>
-                      </div>
-
-                      {preparatorySets.map((set) => (
-                        <AdvancedSetRow
-                          key={set.id}
-                          data={set}
-                          mode="PLAN"
-                          restWarmupSeconds={restWarmupSeconds}
-                          restWorkingSeconds={restWorkingSeconds}
-                          onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
-                          onDelete={() => handleDeleteSet(ex.id, set.id)}
-                          onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Preparação`)}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Séries de Trabalho */}
-                    <div className="rounded-2xl border border-primary/30 bg-card/60 p-3 sm:p-4 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
-                          <Flame size={14} className="text-primary" /> Séries de Trabalho Efetivas
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAddWorkingSet(ex.id)}
-                          className="text-xs border-dashed text-primary border-primary/40 rounded-lg"
-                        >
-                          <Plus size={12} className="mr-1" /> + Série
-                        </Button>
-                      </div>
-
-                      {workingSets.map((set, wIdx) => (
-                        <AdvancedSetRow
-                          key={set.id}
-                          data={{
-                            ...set,
-                            targetWeight: set.targetWeight ?? ex.targetWeightKg,
-                            targetReps: set.targetReps ?? ex.targetReps,
-                          }}
-                          mode="PLAN"
-                          workingIndex={wIdx + 1}
-                          restWarmupSeconds={restWarmupSeconds}
-                          restWorkingSeconds={restWorkingSeconds}
-                          onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
-                          onDelete={() => handleDeleteSet(ex.id, set.id)}
-                          onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Série #${wIdx + 1}`)}
-                          onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                <span className="flex size-6 items-center justify-center rounded-lg bg-amber-400 text-black font-black text-xs">
+                  3
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                    Passo 3: Exercícios & Tempo de Descanso por Exercício
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                    Cada exercício tem seu tempo de descanso configurado individualmente para o aluno.
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* ========================================================================= */}
-          {/* MÉTRICAS DO MICROCICLO (CALCULADORA DE MRV NO COACH STUDIO)              */}
-          {/* ========================================================================= */}
-          <div className="rounded-2xl border border-[#232733] bg-[#161920] p-4 sm:p-5 space-y-3 shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BarChart3 size={18} className="text-[#00E5FF]" />
-                <h3 className="text-sm font-black uppercase text-white tracking-wider">
-                  Métricas do Microciclo (Calculadora de MRV Semanal)
-                </h3>
               </div>
-              <span className="text-[10px] text-[#8F9BBA]">
-                Limites: MEV (Mínimo) a MRV (Máximo Recuperável)
-              </span>
+
+              {/* Botões de Ação do Passo 3 */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setIsAddExerciseModalOpen(true)}
+                  className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs flex items-center gap-1.5 rounded-xl cursor-pointer shadow-sm"
+                >
+                  <Plus size={14} /> + Adicionar Exercício
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsMrvModalOpen(true)}
+                  className="text-xs font-bold border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-xl cursor-pointer"
+                >
+                  <BarChart3 size={13} className="mr-1" /> Volume MRV
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSaveCurrentWorkoutToSplit}
+                  className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 rounded-xl cursor-pointer"
+                >
+                  <Save size={13} className="mr-1" /> Salvar Treino
+                </Button>
+              </div>
             </div>
 
-            <p className="text-xs text-[#8F9BBA]">
-              Somatório dinâmico das Working Sets alocadas por músculo para alertar se o volume prescrito está dentro do intervalo seguro para o aluno.
-            </p>
+            {/* Lista dos Exercícios com Configuração de Descanso Individual */}
+            <div className="space-y-5">
+              {exercises.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-3">
+                  <Dumbbell size={32} className="mx-auto text-muted-foreground opacity-50" />
+                  <p className="text-sm font-bold text-muted-foreground">
+                    Nenhum exercício adicionado a este treino ainda.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAddExerciseModalOpen(true)}
+                    className="bg-primary text-primary-foreground font-black text-xs rounded-xl cursor-pointer"
+                  >
+                    <Plus size={13} className="mr-1" /> Abrir Biblioteca de Exercícios
+                  </Button>
+                </div>
+              ) : (
+                exercises.map((ex, exIndex) => {
+                  const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
+                  const workingSets = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
+                  const currentRest = ex.targetRestSeconds || restWorkingSeconds;
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-              {activeMusclesInSession.map((item) => {
-                const isSafe = item.effectiveWorkingSets <= item.landmarks.mrv;
-                const isBelowMev = item.effectiveWorkingSets < item.landmarks.mev;
-                return (
-                  <div key={item.muscle} className="rounded-xl border border-[#232733] bg-[#0F1115] p-3 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">{item.muscle}</span>
-                      <span className={`text-[9px] font-black px-1.5 py-0.2 rounded uppercase ${
-                        !isSafe 
-                          ? 'bg-destructive/20 text-destructive' 
-                          : isBelowMev 
-                          ? 'bg-amber-500/20 text-amber-400' 
-                          : 'bg-[#00E5FF]/20 text-[#00E5FF]'
-                      }`}>
-                        {item.statusLabel}
-                      </span>
-                    </div>
+                  return (
+                    <div key={ex.id} className="rounded-2xl border border-border/80 bg-background/50 p-4 sm:p-5 transition-all space-y-4">
+                      {/* Header do Exercício */}
+                      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/60 pb-3">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground">
+                              #{exIndex + 1}
+                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                disabled={exIndex === 0}
+                                onClick={() => handleMoveExercise(exIndex, 'up')}
+                                className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
+                              >
+                                <ChevronUp size={13} />
+                              </button>
+                              <button
+                                disabled={exIndex === exercises.length - 1}
+                                onClick={() => handleMoveExercise(exIndex, 'down')}
+                                className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
+                              >
+                                <ChevronDown size={13} />
+                              </button>
+                            </div>
+                          </div>
 
-                    <div className="flex items-center justify-between text-[11px] font-mono text-[#8F9BBA]">
-                      <span>Alocadas: <strong className="text-white">{item.effectiveWorkingSets}</strong> séries</span>
-                      <span>Zona: {item.landmarks.mev} - {item.landmarks.mrv}</span>
-                    </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm sm:text-base font-black text-foreground">
+                                {ex.name}
+                              </h3>
+                              <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0">
+                                {ex.muscle}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-2 w-full">
+                              <span className="text-[10px] font-bold text-primary flex items-center gap-1 shrink-0">
+                                <Play size={10} /> YouTube:
+                              </span>
+                              <input
+                                type="text"
+                                value={ex.video_url || ''}
+                                onChange={(e) => {
+                                  const newUrl = e.target.value;
+                                  setExercises((prev) => prev.map((item) => item.id === ex.id ? { ...item, video_url: newUrl } : item));
+                                }}
+                                placeholder="https://youtu.be/..."
+                                className="w-full min-w-0 rounded-xl border border-border/80 bg-card px-2 py-1 text-xs text-foreground font-mono focus:border-primary"
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                    <div className="h-1.5 w-full bg-[#161920] rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          !isSafe ? 'bg-destructive' : 'bg-[#00E5FF]'
-                        }`}
-                        style={{
-                          width: `${Math.min(100, Math.round((item.effectiveWorkingSets / item.landmarks.mrv) * 100))}%`
-                        }}
-                      />
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveExercise(ex.id)}
+                            className="size-7 text-muted-foreground hover:text-destructive rounded-xl cursor-pointer"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* CONFIGURAÇÃO DO TEMPO DE DESCANSO DESTE EXERCÍCIO */}
+                      <div className="rounded-xl border border-primary/30 bg-card/60 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex size-7 items-center justify-center rounded-lg bg-primary/20 text-primary">
+                            <Clock size={14} />
+                          </div>
+                          <div>
+                            <span className="text-xs font-black text-foreground">
+                              Tempo de Descanso deste Exercício:
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block">
+                              Timer disparado automaticamente ao concluir cada série deste exercício
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Botões Pills de Presets + Campo Manual */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {[45, 60, 90, 120, 180].map((presetSecs) => {
+                            const isCurrent = currentRest === presetSecs;
+                            return (
+                              <button
+                                key={presetSecs}
+                                type="button"
+                                onClick={() => handleUpdateExerciseRest(ex.id, presetSecs)}
+                                className={`rounded-xl px-2.5 py-1 text-xs font-black transition-all cursor-pointer ${
+                                  isCurrent
+                                    ? 'bg-[#FFD600] text-black shadow-sm font-black ring-1 ring-[#FFD600]'
+                                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                }`}
+                              >
+                                {presetSecs}s
+                              </button>
+                            );
+                          })}
+
+                          <div className="flex items-center gap-1 bg-background px-2 py-0.5 rounded-xl border border-border/80 ml-1">
+                            <input
+                              type="number"
+                              min="10"
+                              max="600"
+                              step="5"
+                              value={currentRest}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 60;
+                                handleUpdateExerciseRest(ex.id, val);
+                              }}
+                              className="!w-12 !h-6 !p-0 !bg-transparent text-center font-bold text-xs text-foreground focus:outline-none"
+                            />
+                            <span className="text-[10px] text-muted-foreground font-mono">s</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Configuração de Carga Meta e Reps Meta */}
+                      <div className="rounded-xl border border-border/60 bg-muted/20 p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <span className="font-bold text-muted-foreground flex items-center gap-1">
+                          <Target size={13} className="text-primary" /> Metas Prescritas:
+                        </span>
+                        <div className="flex items-center gap-2 font-mono self-start sm:self-auto">
+                          <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase">CARGA:</span>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={ex.targetWeightKg ?? 40}
+                              onChange={(e) => handleUpdateExerciseTarget(ex.id, parseFloat(e.target.value) || 0, ex.targetReps ?? 10)}
+                              className="!w-12 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
+                            />
+                            <span className="text-[10px] text-muted-foreground">kg</span>
+                          </div>
+                          <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase">REPS:</span>
+                            <input
+                              type="number"
+                              value={ex.targetReps ?? 10}
+                              onChange={(e) => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, parseInt(e.target.value) || 0)}
+                              className="!w-10 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Séries Preparatórias e de Trabalho */}
+                      <div className="space-y-4">
+                        {/* Séries Preparatórias */}
+                        <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 sm:p-4 space-y-2.5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                              <Clock size={13} className="text-amber-500" /> Séries Preparatórias
+                            </span>
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAddPreparatorySet(ex.id, 'WARMUP')}
+                                className="text-[10px] h-6 px-2 text-muted-foreground border border-dashed rounded-lg cursor-pointer"
+                              >
+                                + Aquecimento
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAddPreparatorySet(ex.id, 'FEEDER')}
+                                className="text-[10px] h-6 px-2 text-amber-500 border border-dashed border-amber-500/40 rounded-lg cursor-pointer"
+                              >
+                                + Feeder
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAddPreparatorySet(ex.id, 'PAP')}
+                                className="text-[10px] h-6 px-2 text-cyan-400 border border-dashed border-cyan-500/40 rounded-lg cursor-pointer"
+                              >
+                                + PAP
+                              </Button>
+                            </div>
+                          </div>
+
+                          {preparatorySets.map((set) => (
+                            <AdvancedSetRow
+                              key={set.id}
+                              data={{
+                                ...set,
+                                restSeconds: set.restSeconds ?? currentRest,
+                              }}
+                              mode="PLAN"
+                              restWarmupSeconds={restWarmupSeconds}
+                              restWorkingSeconds={currentRest}
+                              onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
+                              onDelete={() => handleDeleteSet(ex.id, set.id)}
+                              onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Preparação`)}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Séries de Trabalho */}
+                        <div className="rounded-2xl border border-primary/30 bg-card/60 p-3 sm:p-4 space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
+                              <Flame size={14} className="text-primary" /> Séries de Trabalho Efetivas
+                            </span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddWorkingSet(ex.id)}
+                              className="text-xs border-dashed text-primary border-primary/40 rounded-lg cursor-pointer"
+                            >
+                              <Plus size={12} className="mr-1" /> + Série
+                            </Button>
+                          </div>
+
+                          {workingSets.map((set, wIdx) => (
+                            <AdvancedSetRow
+                              key={set.id}
+                              data={{
+                                ...set,
+                                restSeconds: set.restSeconds ?? currentRest,
+                                targetWeight: set.targetWeight ?? ex.targetWeightKg,
+                                targetReps: set.targetReps ?? ex.targetReps,
+                              }}
+                              mode="PLAN"
+                              workingIndex={wIdx + 1}
+                              restWarmupSeconds={restWarmupSeconds}
+                              restWorkingSeconds={currentRest}
+                              onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
+                              onDelete={() => handleDeleteSet(ex.id, set.id)}
+                              onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Série #${wIdx + 1}`)}
+                              onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
-          {/* AÇÃO FINAL DO COACH: PUBLICAR / ATUALIZAR TREINO NA CONTA DO ALUNO */}
+          {/* ========================================================================= */}
+          {/* AÇÃO FINAL DO COACH: PUBLICAR / ATUALIZAR TREINO NA CONTA DO ALUNO       */}
+          {/* ========================================================================= */}
           <div className="rounded-2xl border border-[#232733] bg-[#161920] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
             <div>
               <h3 className="text-base font-black text-white">
@@ -2372,7 +2472,7 @@ function TreinosPage() {
               <Button
                 variant="outline"
                 onClick={() => setWorkoutMode('FAZER')}
-                className="text-xs border-[#232733] text-[#8F9BBA] hover:text-white rounded-xl"
+                className="text-xs border-[#232733] text-[#8F9BBA] hover:text-white rounded-xl cursor-pointer"
               >
                 👁️ Ver como Aluno
               </Button>
@@ -3235,6 +3335,96 @@ function TreinosPage() {
                 className="bg-primary text-primary-foreground font-black text-xs hover:bg-primary/90"
               >
                 Salvar Dia
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 📊 JANELA EXTRA MODAL: CALCULADORA CIENTÍFICA DE MRV / VOLUME SEMANAL     */}
+      {/* ========================================================================= */}
+      {isMrvModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="rounded-2xl border-2 border-[#00E5FF]/40 bg-[#12151c] max-w-2xl w-full p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between border-b border-[#232733] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-[#00E5FF]/15 text-[#00E5FF]">
+                  <BarChart3 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">
+                    Calculadora de Volume Semanal (MEV / MAV / MRV)
+                  </h3>
+                  <p className="text-xs text-[#8F9BBA]">
+                    Monitoramento dinâmico das Working Sets semanais por grupamento muscular.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMrvModalOpen(false)}
+                className="size-8 rounded-xl bg-[#1b202c] hover:bg-[#232733] text-[#8F9BBA] hover:text-white flex items-center justify-center font-black text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-[#232733] bg-[#0c0e13] p-3 text-xs text-[#8F9BBA] space-y-1">
+              <div className="flex items-center gap-2 font-bold text-white">
+                <span className="size-2 rounded-full bg-[#00E5FF]" />
+                Legenda de Referência Científica:
+              </div>
+              <p>• <strong>MEV:</strong> Volume Mínimo Efetivo (estímulo limiar para hipertrofia).</p>
+              <p>• <strong>MAV:</strong> Volume Adaptativo Ótimo (faixa ideal de crescimento acelerado).</p>
+              <p>• <strong>MRV:</strong> Volume Máximo Recuperável (teto biológico; acima gera fadiga extrema).</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              {activeMusclesInSession.map((item) => {
+                const isSafe = item.effectiveWorkingSets <= item.landmarks.mrv;
+                const isBelowMev = item.effectiveWorkingSets < item.landmarks.mev;
+                return (
+                  <div key={item.muscle} className="rounded-xl border border-[#232733] bg-[#0F1115] p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-white">{item.muscle}</span>
+                      <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${
+                        !isSafe 
+                          ? 'bg-destructive/20 text-destructive border border-destructive/40' 
+                          : isBelowMev 
+                          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' 
+                          : 'bg-[#00E5FF]/20 text-[#00E5FF] border border-[#00E5FF]/30'
+                      }`}>
+                        {item.statusLabel}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-mono text-[#8F9BBA]">
+                      <span>Alocadas: <strong className="text-white font-bold">{item.effectiveWorkingSets}</strong> séries</span>
+                      <span>Zona Segura: {item.landmarks.mev} - {item.landmarks.mrv}</span>
+                    </div>
+
+                    <div className="h-2 w-full bg-[#1b202c] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          !isSafe ? 'bg-destructive' : isBelowMev ? 'bg-amber-400' : 'bg-[#00E5FF]'
+                        }`}
+                        style={{
+                          width: `${Math.min(100, Math.round((item.effectiveWorkingSets / item.landmarks.mrv) * 100))}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-[#232733]">
+              <Button
+                onClick={() => setIsMrvModalOpen(false)}
+                className="bg-[#00E5FF] text-black font-black text-xs hover:bg-[#00E5FF]/90 px-5 rounded-xl cursor-pointer"
+              >
+                Concluir Análise
               </Button>
             </div>
           </div>
