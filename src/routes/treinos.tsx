@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   Dumbbell, 
   Play, 
@@ -533,7 +533,151 @@ function TreinosPage() {
   // Floating Rest Timer
   const [restTime, setRestTime] = useState<number>(0);
   const [timerActive, setTimerActive] = useState<boolean>(false);
+  const [restTargetTime, setRestTargetTime] = useState<number | null>(null);
   const [lastRestTriggerSource, setLastRestTriggerSource] = useState<string>('Série Concluída');
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Registro do Service Worker para suporte a Notificações em Segundo Plano / PWA
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
+
+  // Toca chime sonoro nítido de conclusão de descanso (3 sinos harmônicos: D5 -> A5 -> D6)
+  const playRestChimeSound = () => {
+    try {
+      const ctx = audioCtxRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioCtxRef.current = ctx;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const notes = [
+        { freq: 587.33, delay: 0, duration: 0.35 },    // D5
+        { freq: 880.00, delay: 0.12, duration: 0.45 },  // A5
+        { freq: 1174.66, delay: 0.26, duration: 0.65 }, // D6
+      ];
+
+      notes.forEach(({ freq, delay, duration }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        const startTime = ctx.currentTime + delay;
+        osc.frequency.setValueAtTime(freq, startTime);
+        gain.gain.setValueAtTime(0.001, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.4, startTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      });
+    } catch (e) {
+      console.warn('Erro ao tocar som do cronômetro:', e);
+    }
+  };
+
+  // Disparo ao finalizar o descanso (Som + Notificação do Sistema + Vibração + Alerta na Aba)
+  const handleTimerComplete = (sourceTitle?: string) => {
+    setTimerActive(false);
+    setRestTargetTime(null);
+    setRestTime(0);
+
+    // 1. Som nítido do cronômetro
+    playRestChimeSound();
+
+    // 2. Vibração tátil no celular
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([250, 100, 250, 100, 500]);
+    }
+
+    // 3. Notificação do Sistema (funciona mesmo com o app minimizado ou em segundo plano)
+    const notificationTitle = '⏱️ Descanso Concluído!';
+    const notificationBody = `${sourceTitle || lastRestTriggerSource || 'Seu descanso acabou'}. Hora de iniciar a próxima série!`;
+
+    if (typeof window !== 'undefined') {
+      document.title = '🔔 TEMPO ESGOTADO! • Niflheim';
+      setTimeout(() => {
+        document.title = 'Niflheim — Treino & Hipertrofia';
+      }, 7000);
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(notificationTitle, {
+                body: notificationBody,
+                icon: '/favicon.svg',
+                badge: '/favicon.svg',
+                vibrate: [250, 100, 250, 100, 500],
+                tag: 'niflheim-rest-timer',
+                renotify: true,
+              });
+            }).catch(() => {
+              new Notification(notificationTitle, {
+                body: notificationBody,
+                icon: '/favicon.svg',
+              });
+            });
+          } else {
+            new Notification(notificationTitle, {
+              body: notificationBody,
+              icon: '/favicon.svg',
+            });
+          }
+        } catch (e) {
+          console.warn('Falha ao enviar notificação:', e);
+        }
+      }
+    }
+
+    showScheduleToast(`⏱️ Descanso finalizado: ${sourceTitle || lastRestTriggerSource || 'Próxima série!'}`);
+  };
+
+  // Timer effect baseado em Timestamp Real (não congela ou atrasa ao sair do app ou bloquear a tela)
+  useEffect(() => {
+    if (!timerActive || !restTargetTime) return;
+
+    const checkTime = () => {
+      const now = Date.now();
+      const diffMs = restTargetTime - now;
+      const remaining = Math.max(0, Math.ceil(diffMs / 1000));
+      setRestTime(remaining);
+
+      if (typeof document !== 'undefined') {
+        if (remaining > 0) {
+          document.title = `(${formatTimer(remaining)}) Descanso • Niflheim`;
+        }
+      }
+
+      if (remaining <= 0) {
+        handleTimerComplete();
+      }
+    };
+
+    checkTime();
+    const interval = setInterval(checkTime, 1000);
+
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        checkTime();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibility);
+      }
+    };
+  }, [timerActive, restTargetTime, lastRestTriggerSource]);
 
   // Modal Pós-Treino
   const [isFinishingWorkout, setIsFinishingWorkout] = useState(false);
@@ -545,39 +689,6 @@ function TreinosPage() {
   const [sleepScore, setSleepScore] = useState(4);
   const [domsScore, setDomsScore] = useState(3);
   const [fatigueScore, setFatigueScore] = useState(3);
-
-  // Timer effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (timerActive && restTime > 0) {
-      interval = setInterval(() => {
-        setRestTime((prev) => {
-          if (prev <= 1) {
-            if (typeof navigator !== 'undefined' && navigator.vibrate) {
-              navigator.vibrate([200, 100, 200, 100, 400]);
-            }
-            try {
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.frequency.setValueAtTime(880, ctx.currentTime);
-              gain.gain.setValueAtTime(0.3, ctx.currentTime);
-              osc.start();
-              osc.stop(ctx.currentTime + 0.3);
-            } catch (e) {}
-            setTimerActive(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [timerActive, restTime]);
 
   // Tempos de descanso configuráveis por tipo de série
   const [restWarmupSeconds, setRestWarmupSeconds] = useState<number>(60);
@@ -593,9 +704,28 @@ function TreinosPage() {
   } | null>(null);
 
   const triggerFloatingTimer = (seconds = 90, source = 'Série Concluída') => {
+    const target = Date.now() + seconds * 1000;
+    setRestTargetTime(target);
     setRestTime(seconds);
     setTimerActive(true);
     setLastRestTriggerSource(source);
+
+    // Solicita permissão para notificações no gesto de clique do usuário
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+
+    // Inicializa AudioContext no gesto do usuário para garantir que o som toque no celular
+    try {
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      if (audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+    } catch (e) {}
   };
 
   const handleTriggerPRCelebration = (
@@ -1524,17 +1654,14 @@ function TreinosPage() {
                     })}
                   </div>
 
-                  {/* Rodapé do Exercício: Adicionar Série Rápida */}
+                  {/* Rodapé do Exercício: Prescrição do Treinador (Aluno não adiciona séries) */}
                   <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => handleAddWorkingSet(ex.id)}
-                      className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 py-1 px-2.5 rounded-xl hover:bg-primary/10 transition-colors cursor-pointer"
-                    >
-                      <Plus size={13} /> + Adicionar Série
-                    </button>
-                    <span className="text-[11px] font-mono text-muted-foreground">
-                      {completedCount} de {ex.sets.length} concluídas
+                    <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1.5">
+                      <Flame size={12} className="text-primary" />
+                      Prescrição Coach Studio
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-muted-foreground">
+                      {completedCount} de {ex.sets.length} séries concluídas
                     </span>
                   </div>
                 </div>

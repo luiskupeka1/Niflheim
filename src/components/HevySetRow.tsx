@@ -442,11 +442,11 @@ export function HevySetRow({
     if (isPreparatory || data.technique === 'NONE') return null;
 
     return (
-      <div className="mt-2.5 pt-2 border-t border-border/40 space-y-2">
+      <div className="mt-2.5 p-2.5 rounded-xl border border-primary/35 bg-[#11141e] shadow-sm space-y-2.5">
         {/* Header da Técnica com Indicação do Descanso Diferenciado */}
         <div className="flex items-center justify-between gap-1 text-[11px]">
-          <span className="font-bold text-primary flex items-center gap-1">
-            <Zap size={12} className="text-primary" />
+          <span className="font-black text-primary flex items-center gap-1">
+            <Zap size={12} className="text-primary shrink-0" />
             {data.technique === 'CLUSTER_SET' && `Cluster Set • ${effectiveIntraRest}s intra-bloco`}
             {data.technique === 'REST_PAUSE' && `Rest-Pause • ${effectiveIntraRest}s intra-pausa`}
             {data.technique === 'MYO_REPS' && `Myo-Reps • ${effectiveIntraRest}s intra-micro`}
@@ -455,8 +455,8 @@ export function HevySetRow({
           </span>
 
           {recentIntraRestTriggered && (
-            <span className="font-mono text-[10px] font-bold text-primary bg-primary/20 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
-              <Clock size={10} /> Pausa de {effectiveIntraRest}s iniciada!
+            <span className="font-mono text-[10px] font-black text-primary bg-primary/20 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1 border border-primary/30">
+              <Clock size={10} /> {effectiveIntraRest}s iniciados!
             </span>
           )}
         </div>
@@ -467,21 +467,21 @@ export function HevySetRow({
             {(data.clusterBlocks && data.clusterBlocks.length > 0 ? data.clusterBlocks : defaultClusterBlocks()).map((block, bIdx) => (
               <div
                 key={block.id}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs transition-all shadow-xs ${
                   block.completed
-                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
-                    : 'bg-background/80 border-border/70 text-foreground'
+                    ? 'bg-emerald-950/40 border-emerald-500/70 text-emerald-300 font-bold'
+                    : 'bg-[#181d2c] border-[#2c354c] text-white hover:border-primary/50'
                 }`}
               >
-                <span className="text-[10px] font-mono text-muted-foreground font-bold">#{bIdx + 1}:</span>
-                <span className="font-mono font-bold text-xs">{block.reps} reps</span>
+                <span className="text-[10px] font-mono text-primary font-black">#{bIdx + 1}:</span>
+                <span className={`font-mono font-black text-xs ${block.completed ? 'text-emerald-200' : 'text-white'}`}>{block.reps} reps</span>
                 <button
                   type="button"
                   onClick={() => handleToggleClusterBlock(block.id)}
                   className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
                     block.completed
-                      ? 'bg-emerald-500 text-black shadow-xs font-black'
-                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                      ? 'bg-emerald-500 border border-emerald-400 text-black shadow-xs font-black'
+                      : 'bg-[#22293d] border border-[#374362] text-muted-foreground hover:bg-primary hover:text-black hover:border-primary'
                   }`}
                   title={block.completed ? 'Desmarcar bloco' : `Concluir bloco e iniciar ${effectiveIntraRest}s de pausa`}
                 >
@@ -495,28 +495,28 @@ export function HevySetRow({
         {/* 2. REST-PAUSE */}
         {data.technique === 'REST_PAUSE' && (
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-chart-3/40 bg-chart-3/10 text-xs font-bold text-chart-3">
-              <span className="text-[10px] uppercase font-mono">Ativação:</span>
-              <span className="font-mono">{currentReps} reps</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-chart-3/50 bg-chart-3/15 text-xs font-bold text-chart-3 shadow-xs">
+              <span className="text-[10px] uppercase font-mono font-black">Ativação:</span>
+              <span className="font-mono font-black text-white">{currentReps} reps</span>
             </div>
             {(data.restPauseSubSets && data.restPauseSubSets.length > 0 ? data.restPauseSubSets : defaultRestPauseBlocks()).map((rp, idx) => (
               <div
                 key={rp.id}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs transition-all shadow-xs ${
                   rp.completed
-                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
-                    : 'bg-background/80 border-border/70 text-foreground'
+                    ? 'bg-emerald-950/40 border-emerald-500/70 text-emerald-300 font-bold'
+                    : 'bg-[#181d2c] border-[#2c354c] text-white hover:border-primary/50'
                 }`}
               >
-                <span className="text-[10px] font-mono text-muted-foreground">Pausa #{idx + 1}:</span>
-                <span className="font-mono font-bold text-xs">{rp.reps} reps</span>
+                <span className="text-[10px] font-mono text-muted-foreground font-bold">Pausa #{idx + 1}:</span>
+                <span className={`font-mono font-black text-xs ${rp.completed ? 'text-emerald-200' : 'text-white'}`}>{rp.reps} reps</span>
                 <button
                   type="button"
                   onClick={() => handleToggleRestPauseSubSet(rp.id)}
                   className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
                     rp.completed
-                      ? 'bg-emerald-500 text-black shadow-xs font-black'
-                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                      ? 'bg-emerald-500 border border-emerald-400 text-black shadow-xs font-black'
+                      : 'bg-[#22293d] border border-[#374362] text-muted-foreground hover:bg-primary hover:text-black hover:border-primary'
                   }`}
                   title={rp.completed ? 'Desmarcar mini-série' : `Concluir mini-série e pausar ${effectiveIntraRest}s`}
                 >
@@ -530,28 +530,28 @@ export function HevySetRow({
         {/* 3. MYO-REPS */}
         {data.technique === 'MYO_REPS' && (
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl border border-primary/40 bg-primary/10 text-xs font-bold text-primary">
-              <span className="text-[10px] uppercase font-mono">Ativação:</span>
-              <span className="font-mono">{currentReps} reps</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-primary/50 bg-primary/15 text-xs font-bold text-primary shadow-xs">
+              <span className="text-[10px] uppercase font-mono font-black">Ativação:</span>
+              <span className="font-mono font-black text-white">{currentReps} reps</span>
             </div>
             {(data.myoMicroSets && data.myoMicroSets.length > 0 ? data.myoMicroSets : defaultMyoMicroSets()).map((micro, idx) => (
               <div
                 key={micro.id}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs transition-all shadow-xs ${
                   micro.completed
-                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
-                    : 'bg-background/80 border-border/70 text-foreground'
+                    ? 'bg-emerald-950/40 border-emerald-500/70 text-emerald-300 font-bold'
+                    : 'bg-[#181d2c] border-[#2c354c] text-white hover:border-primary/50'
                 }`}
               >
-                <span className="text-[10px] font-mono text-muted-foreground">Micro #{idx + 1}:</span>
-                <span className="font-mono font-bold text-xs">{micro.reps} reps</span>
+                <span className="text-[10px] font-mono text-muted-foreground font-bold">Micro #{idx + 1}:</span>
+                <span className={`font-mono font-black text-xs ${micro.completed ? 'text-emerald-200' : 'text-white'}`}>{micro.reps} reps</span>
                 <button
                   type="button"
                   onClick={() => handleToggleMyoMicroSet(micro.id)}
                   className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
                     micro.completed
-                      ? 'bg-emerald-500 text-black shadow-xs font-black'
-                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                      ? 'bg-emerald-500 border border-emerald-400 text-black shadow-xs font-black'
+                      : 'bg-[#22293d] border border-[#374362] text-muted-foreground hover:bg-primary hover:text-black hover:border-primary'
                   }`}
                   title={micro.completed ? 'Desmarcar micro-série' : `Concluir micro-série e pausar ${effectiveIntraRest}s`}
                 >
@@ -568,21 +568,21 @@ export function HevySetRow({
             {(data.muscleRoundBlocks && data.muscleRoundBlocks.length > 0 ? data.muscleRoundBlocks : defaultMuscleRoundBlocks()).map((round, rIdx) => (
               <div
                 key={round.id}
-                className={`flex items-center gap-1 px-2 py-1 rounded-xl border text-xs transition-all ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-xs transition-all shadow-xs ${
                   round.completed
-                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
-                    : 'bg-background/80 border-border/70 text-foreground'
+                    ? 'bg-emerald-950/40 border-emerald-500/70 text-emerald-300 font-bold'
+                    : 'bg-[#181d2c] border-[#2c354c] text-white hover:border-primary/50'
                 }`}
               >
-                <span className="text-[10px] font-mono text-muted-foreground font-bold">R{rIdx + 1}:</span>
-                <span className="font-mono font-bold text-xs">{round.reps}</span>
+                <span className="text-[10px] font-mono text-primary font-black">R{rIdx + 1}:</span>
+                <span className={`font-mono font-black text-xs ${round.completed ? 'text-emerald-200' : 'text-white'}`}>{round.reps}</span>
                 <button
                   type="button"
                   onClick={() => handleToggleMuscleRound(round.id)}
                   className={`size-5 rounded-md flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
                     round.completed
-                      ? 'bg-emerald-500 text-black shadow-xs font-black'
-                      : 'bg-muted/70 text-muted-foreground hover:bg-primary/20 hover:text-primary'
+                      ? 'bg-emerald-500 border border-emerald-400 text-black shadow-xs font-black'
+                      : 'bg-[#22293d] border border-[#374362] text-muted-foreground hover:bg-primary hover:text-black hover:border-primary'
                   }`}
                   title={round.completed ? 'Desmarcar round' : `Concluir round e pausar ${effectiveIntraRest}s`}
                 >
@@ -599,21 +599,21 @@ export function HevySetRow({
             {(data.dropSets && data.dropSets.length > 0 ? data.dropSets : defaultDropSets()).map((drop, idx) => (
               <div
                 key={drop.id}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-xs transition-all ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs transition-all shadow-xs ${
                   drop.completed
-                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-bold'
-                    : 'bg-background/80 border-destructive/40 text-foreground'
+                    ? 'bg-emerald-950/40 border-emerald-500/70 text-emerald-300 font-bold'
+                    : 'bg-[#181d2c] border-destructive/50 text-white'
                 }`}
               >
-                <span className="text-[10px] font-mono text-destructive font-bold">Drop #{idx + 1}:</span>
-                <span className="font-mono font-bold text-xs">{drop.weight} kg × {drop.reps} reps</span>
+                <span className="text-[10px] font-mono text-destructive font-black">Drop #{idx + 1}:</span>
+                <span className="font-mono font-black text-xs text-white">{drop.weight} kg × {drop.reps} reps</span>
                 <button
                   type="button"
                   onClick={() => handleToggleDropSet(drop.id)}
                   className={`size-6 rounded-lg flex items-center justify-center transition-all active:scale-90 cursor-pointer ${
                     drop.completed
-                      ? 'bg-emerald-500 text-black shadow-xs font-black'
-                      : 'bg-muted/70 text-muted-foreground hover:bg-destructive/20 hover:text-destructive'
+                      ? 'bg-emerald-500 border border-emerald-400 text-black shadow-xs font-black'
+                      : 'bg-[#22293d] border border-[#374362] text-muted-foreground hover:bg-destructive hover:text-white hover:border-destructive'
                   }`}
                   title={drop.completed ? 'Desmarcar drop' : 'Concluir drop'}
                 >
@@ -631,8 +631,8 @@ export function HevySetRow({
     <div 
       className={`py-2 px-2.5 rounded-2xl transition-all duration-200 select-none ${
         data.completed 
-          ? 'bg-emerald-500/[0.08] border border-emerald-500/25 shadow-xs' 
-          : 'hover:bg-muted/30 border border-transparent'
+          ? 'bg-emerald-950/20 border border-emerald-500/35 shadow-xs' 
+          : 'bg-[#12151f]/85 hover:bg-[#151924] border border-[#23293a] shadow-xs'
       }`}
     >
       {/* LINHA SUPERIOR PRINCIPAL (HEVY STYLE) */}
@@ -642,7 +642,7 @@ export function HevySetRow({
           <div className="flex items-center gap-1 flex-wrap">
             {renderSetLabel()}
           </div>
-          <div className="mt-0.5 truncate text-[11px] font-mono text-muted-foreground">
+          <div className="mt-0.5 truncate text-[11px] font-mono text-muted-foreground font-medium">
             {targetDescription()}
           </div>
         </div>
@@ -662,7 +662,7 @@ export function HevySetRow({
                 const num = val === '' ? 0 : parseFloat(val) || 0;
                 onUpdate({ ...data, weight: num });
               }}
-              className="!w-12 sm:!w-14 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="!w-12 sm:!w-14 !h-8 !p-0 rounded-xl border border-[#2b3348] !bg-[#161a26] text-center font-mono text-xs font-black text-white transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               title="Carga Levantada (kg)"
             />
             <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">KG</span>
@@ -680,7 +680,7 @@ export function HevySetRow({
                 const num = val === '' ? 0 : parseInt(val) || 0;
                 onUpdate({ ...data, reps: num });
               }}
-              className="!w-10 sm:!w-12 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              className="!w-10 sm:!w-12 !h-8 !p-0 rounded-xl border border-[#2b3348] !bg-[#161a26] text-center font-mono text-xs font-black text-white transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               title="Repetições Realizadas"
             />
             <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">REPS</span>
@@ -694,7 +694,7 @@ export function HevySetRow({
               className={`!h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer select-none shrink-0 ${
                 data.completed
                   ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30 font-black border border-emerald-400'
-                  : 'bg-muted/60 border border-border/80 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/10'
+                  : 'bg-[#1e2436] border border-[#323d5a] text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/10'
               }`}
               title={data.completed ? 'Série concluída! Toque para reabrir' : 'Toque para concluir série e computar XP'}
             >
