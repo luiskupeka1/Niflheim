@@ -1185,6 +1185,13 @@ function TreinosPage() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  const getYouTubeEmbedUrl = (url?: string): string | null => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+  };
+
   // Gera dados históricos de demonstração para o gráfico de sobrecarga progressiva
   const getProgressionDataForExercise = (exerciseName: string, currentWeight: number, targetWeight: number): ExerciseProgressionPoint[] => {
     const base = currentWeight || targetWeight || 40;
@@ -1317,50 +1324,29 @@ function TreinosPage() {
 
           {/* Mockup Visual da Tela do Treino (Dark Minimalist) */}
           {/* ⚡ CABEÇALHO DO PROGRAMA & BARRA DE MRV */}
-          <div className="rounded-2xl border border-[#232733] bg-[#161920] p-4 sm:p-5 space-y-3.5 shadow-md">
+          <div className="rounded-xl border border-[#222222] bg-[#121212] p-4 space-y-3 font-mono shadow-sm">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="text-[#FFD600] text-lg font-black">⚡</span>
-                <h2 className="text-base sm:text-lg font-black text-white tracking-wide uppercase">
-                  {sessionTitle} {programMuscleGroups ? `— ${programMuscleGroups.toUpperCase()}` : ''}
-                </h2>
+              <div className="text-sm sm:text-base font-black text-white tracking-wider uppercase">
+                {sessionTitle.split('—')[0].trim()}  •  {programMuscleGroups ? programMuscleGroups.toUpperCase() : 'PEITORAL & TRÍCEPS'}
               </div>
-              <span className="font-mono text-[11px] text-[#8F9BBA]">
-                {completedSetsCount}/{totalSetsCount} séries concluídas
+              <span className="text-[10px] text-[#8F9BBA]">
+                {completedSetsCount}/{totalSetsCount} SÉRIES
               </span>
             </div>
 
-            <div className="pt-2 border-t border-[#232733]/80 space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-mono font-bold">
-                <span className="text-[#00E5FF] flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                  📊 VOLUME DA SEMANA (MRV {primaryMuscle.toUpperCase()})
-                </span>
-                <span className="text-[10px] bg-[#00E5FF]/15 text-[#00E5FF] border border-[#00E5FF]/30 px-2 py-0.5 rounded-full font-bold uppercase">
+            <div className="pt-2 border-t border-[#222222] space-y-1">
+              <div className="text-[10px] font-black uppercase tracking-wider text-[#8F9BBA]">
+                RECOVERY / MRV
+              </div>
+              <div className="flex items-center justify-between text-xs font-bold flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-black">{primaryMuscle.toUpperCase()}</span>
+                  <span className="text-[#FFCC00] tracking-widest text-xs font-bold">[ {mrvBarString} ]</span>
+                  <span className="text-white text-xs">{primaryMuscleAssessment.effectiveWorkingSets}/{primaryMuscleAssessment.landmarks.mrv} SÉRIES</span>
+                </div>
+                <span className="text-[9px] bg-[#FFCC00]/15 text-[#FFCC00] border border-[#FFCC00]/30 px-2 py-0.5 rounded font-black uppercase">
                   {primaryMuscleAssessment.statusLabel || 'Zona Ideal'}
                 </span>
-              </div>
-
-              {/* ASCII / Minimalist Bar em Azul Elétrico */}
-              <div className="flex items-center gap-2 font-mono text-xs text-white">
-                <span className="text-[#00E5FF] font-bold tracking-widest text-sm">
-                  [ {mrvBarString} ]
-                </span>
-                <span className="text-[11px] text-[#8F9BBA]">
-                  <strong className="text-white font-bold">{primaryMuscleAssessment.effectiveWorkingSets}</strong>/{primaryMuscleAssessment.landmarks.mrv} Working Sets
-                </span>
-                <span className="text-[#00E5FF] text-[11px] font-bold hidden xs:inline">
-                  ({primaryMuscleAssessment.statusLabel || 'Zona Ideal'})
-                </span>
-              </div>
-
-              {/* Barra de Progresso Fina com Acento Azul Elétrico */}
-              <div className="h-1.5 w-full bg-[#0F1115] rounded-full overflow-hidden border border-[#232733]/60">
-                <div
-                  className="h-full bg-[#00E5FF] transition-all duration-300"
-                  style={{
-                    width: `${Math.min(100, Math.round((primaryMuscleAssessment.effectiveWorkingSets / (primaryMuscleAssessment.landmarks.mrv || 16)) * 100))}%`
-                  }}
-                />
               </div>
             </div>
           </div>
@@ -1370,88 +1356,124 @@ function TreinosPage() {
             {exercises.map((ex, exIndex) => {
               const allSetsDone = ex.sets.length > 0 && ex.sets.every((s) => s.completed);
               const completedCount = ex.sets.filter((s) => s.completed).length;
+              const embedUrl = getYouTubeEmbedUrl(ex.video_url);
 
               return (
                 <div 
                   key={ex.id}
-                  className={`rounded-2xl border transition-all p-3.5 sm:p-4 space-y-3 ${
+                  className={`rounded-xl border transition-all p-3.5 sm:p-4 space-y-3 font-mono ${
                     allSetsDone 
-                      ? 'border-[#00E5FF]/40 bg-[#161920] shadow-sm' 
-                      : 'border-[#232733] bg-[#161920]'
+                      ? 'border-[#FFCC00]/40 bg-[#121212] shadow-sm' 
+                      : 'border-[#222222] bg-[#121212]'
                   }`}
                 >
-                  {/* Linha Superior do Exercício */}
-                  <div className="border-b border-[#232733] pb-2.5 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-base sm:text-lg font-black text-white flex items-center gap-1.5 truncate">
-                          <span>🏋️</span>
-                          <span>{exIndex + 1}. {ex.name.toUpperCase()}</span>
+                  {/* Linha Superior do Exercício: 1. SUPINO RETO COM BARRA e botão [ ▶ ] */}
+                  <div className="border-b border-[#222222] pb-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm sm:text-base font-black text-white truncate tracking-wide">
+                          {exIndex + 1}. {ex.name.toUpperCase()}
                         </span>
                         {allSetsDone && (
-                          <span className="rounded-full bg-[#FFD600]/20 text-[#FFD600] border border-[#FFD600]/40 px-2 py-0.2 text-[9px] font-black uppercase flex items-center gap-0.5">
-                            <Check size={10} strokeWidth={3} /> Concluído
+                          <span className="rounded bg-[#FFCC00]/20 text-[#FFCC00] border border-[#FFCC00]/40 px-1.5 py-0.5 text-[9px] font-black uppercase">
+                            ✓ Concluído
                           </span>
                         )}
                       </div>
 
-                      {/* Ações Rápidas: Dicas e Gráfico */}
+                      {/* Botão [ ▶ ] Minimalista de Vídeo do YouTube e Ações */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
-                          onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
-                          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                            expandedTipsId === ex.id
-                              ? 'bg-[#FFD600] text-[#0F1115]'
-                              : 'bg-[#0F1115] border border-[#232733] text-[#8F9BBA] hover:text-white'
+                          onClick={() => setExpandedVideoId(expandedVideoId === ex.id ? null : ex.id)}
+                          className={`px-2.5 py-1 rounded text-xs font-black transition-all cursor-pointer ${
+                            expandedVideoId === ex.id
+                              ? 'bg-[#FFCC00] text-[#0B0B0B] border border-[#FFCC00]'
+                              : 'bg-[#181818] border border-[#333333] text-[#FFCC00] hover:border-[#FFCC00]'
                           }`}
-                          title="Ver orientações biomecânicas"
+                          title="Demonstração em Vídeo (YouTube)"
                         >
-                          <Info size={11} />
-                          <span>{expandedTipsId === ex.id ? 'Fechar Dicas' : 'Dicas'}</span>
+                          [ ▶ ]
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
+                          className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                            expandedTipsId === ex.id
+                              ? 'bg-white text-black border-white'
+                              : 'bg-[#181818] border border-[#333333] text-[#8F9BBA] hover:text-white'
+                          }`}
+                          title="Dicas de execução biomecânica"
+                        >
+                          Dicas
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)}
-                          className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                          className={`px-2 py-1 rounded text-[10px] font-bold border transition-all cursor-pointer ${
                             selectedExerciseForChart === ex.name
-                              ? 'bg-[#00E5FF] text-[#0F1115]'
-                              : 'bg-[#0F1115] border border-[#232733] text-[#8F9BBA] hover:text-white'
+                              ? 'bg-[#FFCC00] text-[#0B0B0B] border-[#FFCC00]'
+                              : 'bg-[#181818] border border-[#333333] text-[#8F9BBA] hover:text-white'
                           }`}
                           title="Gráfico de sobrecarga progressiva"
                         >
-                          <TrendingUp size={11} />
-                          <span>Progresso</span>
+                          Progresso
                         </button>
                       </div>
                     </div>
 
-                    {/* Link YouTube em Azul Elétrico #00E5FF conforme mockup */}
-                    <div className="text-xs font-mono">
-                      <a
-                        href={ex.video_url || 'https://youtu.be/rT7DgCr-3pg'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#00E5FF] hover:underline inline-flex items-center gap-1 font-bold truncate max-w-full"
-                      >
-                        <span>🔗 Execução no YouTube ({ex.video_url || 'https://youtu.be/...'})</span>
-                        <ExternalLink size={11} />
-                      </a>
-                    </div>
+                    {/* Link rápido de execução */}
+                    {ex.video_url && (
+                      <div className="text-[11px] text-[#8F9BBA] truncate">
+                        <a
+                          href={ex.video_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:text-[#FFCC00] transition-colors inline-flex items-center gap-1 truncate"
+                        >
+                          <span>🔗 {ex.video_url}</span>
+                          <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Dicas e Vídeo (Apenas exibidos quando o usuário clica) */}
+                  {/* Player de Vídeo Embutido (se expandido) */}
+                  {expandedVideoId === ex.id && (
+                    <div className="rounded-lg overflow-hidden border border-[#222222] bg-black p-2 space-y-2">
+                      {embedUrl ? (
+                        <div className="relative w-full aspect-video rounded overflow-hidden">
+                          <iframe
+                            src={`${embedUrl}?autoplay=1&mute=1`}
+                            title={`Demonstração ${ex.name}`}
+                            className="w-full h-full border-0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      ) : (
+                        <div className="p-3 text-xs text-[#8F9BBA] flex items-center justify-between">
+                          <span>Link de demonstração do exercício:</span>
+                          <a
+                            href={ex.video_url || 'https://youtu.be/rT7DgCr-3pg'}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#FFCC00] hover:underline font-bold"
+                          >
+                            Abrir no YouTube ↗
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Dicas e Orientações (se expandidas) */}
                   {expandedTipsId === ex.id && (
-                    <div className="rounded-xl border border-[#00E5FF]/30 bg-[#0F1115] p-3 space-y-2 animate-in fade-in duration-150">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-black text-[#00E5FF] flex items-center gap-1">
-                          <Play size={13} /> Orientação Biomecânica
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#8F9BBA] leading-relaxed">
-                        {ex.description || 'Controle a fase excêntrica de 2 a 3 segundos, amplitude segura e estabilidade articular.'}
-                      </p>
+                    <div className="rounded-lg border border-[#333333] bg-[#181818] p-3 text-xs text-[#8F9BBA] leading-relaxed">
+                      <span className="font-bold text-white block mb-1">Orientação Biomecânica:</span>
+                      {ex.description || 'Controle a fase excêntrica de 2 a 3 segundos, amplitude segura e estabilidade articular.'}
                     </div>
                   )}
 
@@ -1467,44 +1489,45 @@ function TreinosPage() {
                     />
                   )}
 
-                  {/* SÉRIES EMPILHADAS (HORIZONTAL MINIMALISTA CONFORME MOCKUP) */}
-                  <div className="space-y-2 pt-1">
+                  {/* SÉRIES EMPILHADAS COM SEPARADOR HORIZONTAL (divide-y divide-[#222222]) */}
+                  <div className="divide-y divide-[#222222]">
                     {ex.sets.map((set, sIdx) => {
                       const isPrep = set.baseType === 'WARMUP' || set.baseType === 'FEEDER' || set.baseType === 'PAP';
                       const workingIdx = isPrep ? undefined : ex.sets.slice(0, sIdx + 1).filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
 
                       return (
-                        <HevySetRow
-                          key={set.id}
-                          data={set}
-                          workingIndex={workingIdx}
-                          exerciseName={ex.name}
-                          targetWeight={ex.targetWeightKg}
-                          targetReps={ex.targetReps}
-                          targetRepsText={set.targetRepsText}
-                          restSeconds={set.restSeconds ?? (isPrep ? restWarmupSeconds : restWorkingSeconds)}
-                          intraRestSeconds={set.intraRestSeconds}
-                          onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
-                          onDelete={() => handleDeleteSet(ex.id, set.id)}
-                          onTriggerRestTimer={(sec) => triggerFloatingTimer(sec, `${ex.name} • Série #${sIdx + 1}`)}
-                          onTriggerXP={(pts) => reward(pts)}
-                          onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
-                        />
+                        <div key={set.id} className="pt-2 pb-2 first:pt-0 last:pb-0">
+                          <HevySetRow
+                            data={set}
+                            workingIndex={workingIdx}
+                            exerciseName={ex.name}
+                            targetWeight={ex.targetWeightKg}
+                            targetReps={ex.targetReps}
+                            targetRepsText={set.targetRepsText}
+                            restSeconds={set.restSeconds ?? (isPrep ? restWarmupSeconds : restWorkingSeconds)}
+                            intraRestSeconds={set.intraRestSeconds}
+                            onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
+                            onDelete={() => handleDeleteSet(ex.id, set.id)}
+                            onTriggerRestTimer={(sec) => triggerFloatingTimer(sec, `${ex.name} • Série #${sIdx + 1}`)}
+                            onTriggerXP={(pts) => reward(pts)}
+                            onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
+                          />
+                        </div>
                       );
                     })}
                   </div>
 
                   {/* Rodapé do Exercício: Adicionar Série Rápida */}
-                  <div className="flex items-center justify-between pt-1 border-t border-[#232733]/60 text-xs">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#222222] text-xs">
                     <button
                       type="button"
                       onClick={() => handleAddWorkingSet(ex.id)}
-                      className="text-xs font-bold text-[#FFD600] hover:text-[#FFD600]/80 flex items-center gap-1 py-1 px-2 rounded-lg hover:bg-[#FFD600]/10 transition-colors cursor-pointer"
+                      className="text-xs font-bold text-[#FFCC00] hover:text-[#FFCC00]/80 flex items-center gap-1 py-1 px-2 rounded hover:bg-[#FFCC00]/10 transition-colors cursor-pointer"
                     >
-                      <Plus size={13} /> + Série
+                      <Plus size={13} /> + Adicionar Série
                     </button>
                     <span className="text-[10px] font-mono text-[#8F9BBA]">
-                      {completedCount} de {ex.sets.length} concluídas
+                      {completedCount}/{ex.sets.length} CONCLUÍDAS
                     </span>
                   </div>
                 </div>
@@ -1514,38 +1537,39 @@ function TreinosPage() {
 
           {/* ⏱️ CRONÔMETRO DE DESCANSO DOCKED */}
           {restTime > 0 && (
-            <div className="rounded-xl border border-[#232733] bg-[#161920] p-3 flex flex-wrap items-center justify-between gap-3 shadow-lg">
-              <div className="flex items-center gap-2 font-mono text-xs font-black text-white">
-                <Clock size={16} className={`text-[#FFD600] ${timerActive ? 'animate-spin' : ''}`} />
-                <span>⏱️ CRONÔMETRO DE DESCANSO:</span>
-                <span className="text-[#FFD600] text-sm font-black tracking-widest">{formatTimer(restTime)}</span>
+            <div className="rounded-xl border border-[#222222] bg-[#121212] p-3 flex items-center justify-between font-mono text-xs shadow-lg">
+              <div className="flex items-center gap-2 font-black text-white">
+                <span>⏱️</span>
+                <span className="text-[#FFCC00] text-sm tracking-wider">{formatTimer(restTime)}</span>
+                <span className="text-[#8F9BBA] text-[11px] hidden sm:inline">│ DESCANSO</span>
               </div>
-              <div className="flex items-center gap-2 font-mono text-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-[#8F9BBA] mr-1">│</span>
                 <button
                   type="button"
                   onClick={() => setRestTime((prev) => Math.max(0, prev - 10))}
-                  className="rounded-lg bg-[#0F1115] border border-[#232733] hover:border-[#FFD600] text-white px-2.5 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  className="rounded bg-[#181818] border border-[#333333] hover:border-[#FFCC00] text-white px-2 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
                 >
                   [ -10s ]
                 </button>
                 <button
                   type="button"
                   onClick={() => setTimerActive(!timerActive)}
-                  className="rounded-lg bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 px-3 py-1 text-xs font-black transition-all active:scale-95 cursor-pointer"
+                  className="rounded bg-[#FFCC00] text-[#0B0B0B] hover:bg-[#FFCC00]/90 px-2.5 py-1 text-xs font-black transition-all active:scale-95 cursor-pointer"
                 >
-                  {timerActive ? '[ ⏸️ PAUSAR ]' : '[ ▶️ RETOMAR ]'}
+                  {timerActive ? '[ ⏸ ]' : '[ ▶ ]'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setRestTime((prev) => prev + 10)}
-                  className="rounded-lg bg-[#0F1115] border border-[#232733] hover:border-[#FFD600] text-white px-2.5 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                  className="rounded bg-[#181818] border border-[#333333] hover:border-[#FFCC00] text-white px-2 py-1 text-xs font-bold transition-all active:scale-95 cursor-pointer"
                 >
                   [ +10s ]
                 </button>
                 <button
                   type="button"
                   onClick={() => { setRestTime(0); setTimerActive(false); }}
-                  className="rounded-lg bg-[#0F1115] border border-[#232733] text-[#8F9BBA] hover:text-white px-2 py-1 text-xs transition-all cursor-pointer"
+                  className="text-[#8F9BBA] hover:text-white px-1 text-xs transition-all cursor-pointer ml-1"
                   title="Zerar cronômetro"
                 >
                   ✕
@@ -1554,14 +1578,13 @@ function TreinosPage() {
             </div>
           )}
 
-          {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (AMARELO VIBRANTE #FFD600 CONFORME MOCKUP) */}
+          {/* BOTÃO GRANDE DE CONCLUSÃO DO TREINO (AMARELO NEON #FFCC00 CONFORME MOCKUP) */}
           <button
             type="button"
             onClick={() => setIsFinishingWorkout(true)}
-            className="w-full rounded-xl bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 font-black text-base py-4 shadow-xl shadow-[#FFD600]/20 flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer"
+            className="w-full rounded-xl bg-[#FFCC00] text-[#0B0B0B] hover:bg-[#FFCC00]/90 font-mono font-black text-sm sm:text-base py-3.5 sm:py-4 shadow-xl shadow-[#FFCC00]/15 flex items-center justify-center gap-2 tracking-widest uppercase transition-all active:scale-[0.99] cursor-pointer"
           >
-            <span className="text-xl">🚀</span>
-            <span>CONCLUIR TREINO</span>
+            [  CONCLUIR TREINO  ]
           </button>
 
           {/* VOLUME CIENTÍFICO (MEV / MAV / MRV) ESCONDIDO EM ACORDEÃO PARA NÃO POLUIR */}

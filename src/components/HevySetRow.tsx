@@ -77,6 +77,7 @@ export function HevySetRow({
   }
 
   // Nome formatado da técnica
+  // Nome formatado da técnica
   const techniqueLabel = () => {
     if (data.technique === 'REST_PAUSE' || data.technique === 'CLUSTER_SET') return 'Rest-Pause';
     if (data.technique === 'MYO_REPS') return 'Myo-Reps';
@@ -85,52 +86,52 @@ export function HevySetRow({
     return null;
   };
 
-  // Label do Cabeçalho da Série: [S1] Warm-up Set, etc.
+  // Label do Cabeçalho da Série: • S1 | Aquecimento, • S2 | Aclimatação, • S3 | Working Set [ Rest-Pause ], etc.
   const renderSetLabel = () => {
     const sNum = workingIndex !== undefined ? `S${workingIndex}` : `S${data.setNumber}`;
 
     if (isWarmup) {
       return (
         <span className="font-mono text-xs font-bold text-[#8F9BBA]">
-          [{sNum}] Warm-up Set
+          • {sNum} | Aquecimento
         </span>
       );
     }
     if (isFeeder) {
       return (
-        <span className="font-mono text-xs font-bold text-[#00E5FF]">
-          [{sNum}] Feeder Set
+        <span className="font-mono text-xs font-bold text-[#8F9BBA]">
+          • {sNum} | Aclimatação
         </span>
       );
     }
     if (isPAP) {
       return (
-        <span className="font-mono text-xs font-bold text-[#00E5FF]">
-          [{sNum}] PAP (Potenciação Neural)
+        <span className="font-mono text-xs font-bold text-[#8F9BBA]">
+          • {sNum} | PAP (Potenciação)
         </span>
       );
     }
     if (isBackoff) {
       return (
-        <span className="font-mono text-xs font-bold text-[#FFD600]">
-          [{sNum}] Back-off Set
+        <span className="font-mono text-xs font-bold text-[#FFCC00]">
+          • {sNum} | Back-off Set
         </span>
       );
     }
     const tech = techniqueLabel();
     return (
       <span className="font-mono text-xs font-black text-white flex items-center gap-1.5 flex-wrap">
-        <span className="text-[#FFD600]">[{sNum}] Working Set ⭐</span>
+        <span className="text-white">• {sNum} | Working Set</span>
         {tech && (
-          <span className="text-[10px] text-[#8F9BBA] font-normal">
-            (Técnica: <strong className="text-white">{tech}</strong>)
+          <span className="text-[11px] font-bold text-[#FFCC00]">
+            [ {tech} ]
           </span>
         )}
       </span>
     );
   };
 
-  // Formatação do Target
+  // Formatação do Target conforme especificação: 12 reps × 20 kg • 60s
   const targetDescription = () => {
     const tech = techniqueLabel();
     let repsDisplay = `${effectiveTargetReps} reps`;
@@ -144,19 +145,14 @@ export function HevySetRow({
       repsDisplay = '(6×2 reps)';
     }
 
+    const weightDisplay = effectiveTargetWeight > 0 ? `${effectiveTargetWeight} kg` : 'Carga livre';
+
     return (
-      <div className="text-[11px] font-mono text-[#8F9BBA] mt-0.5 space-y-0.5">
-        <div>
-          Target: <span className="text-white font-bold">{repsDisplay}</span> @ <span className="text-white font-bold">{effectiveTargetWeight > 0 ? `${effectiveTargetWeight} kg` : 'Carga livre'}</span>
-          {!tech && (
-            <span className="ml-2 text-[#8F9BBA]">| Descanso: <strong className="text-white">{effectiveRest}s</strong></span>
-          )}
-        </div>
-        {tech && (
-          <div className="text-[10px] text-[#00E5FF]">
-            Pausa Intra-bloco: <strong>{effectiveIntraRest}s</strong> | Descanso Final: <strong>{effectiveRest}s</strong>
-          </div>
-        )}
+      <div className="text-[11px] font-mono text-[#8F9BBA] mt-0.5 flex flex-wrap items-center gap-x-2">
+        <span>
+          <strong className="text-white font-normal">{repsDisplay}</strong> × <strong className="text-white font-normal">{weightDisplay}</strong>  •  {effectiveRest}s
+          {tech && <span className="text-[#FFCC00] ml-1.5">({effectiveIntraRest}s intra)</span>}
+        </span>
       </div>
     );
   };
@@ -207,22 +203,20 @@ export function HevySetRow({
 
   return (
     <div 
-      className={`rounded-xl border p-3 transition-all duration-200 select-none ${
-        data.completed
-          ? 'bg-[#161920] border-[#FFD600]/40 shadow-sm'
-          : 'bg-[#161920]/80 border-[#232733] hover:border-[#2E3445]'
+      className={`py-3 px-1 transition-all duration-200 select-none ${
+        data.completed ? 'opacity-95' : 'opacity-100'
       }`}
     >
-      {/* 1. TOPO DO CARD: IDENTIFICAÇÃO E TARGET */}
-      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-        <div>
+      {/* 1. LINHA DA SÉRIE E TARGET */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="space-y-0.5">
           {renderSetLabel()}
           {targetDescription()}
         </div>
 
-        {/* Inputs de Carga e Reps Reais (Compactos e Minimalistas) */}
-        <div className="flex items-center gap-2 self-start sm:self-auto mt-1 sm:mt-0 font-mono text-xs">
-          <div className="flex items-center gap-1 bg-[#0F1115] border border-[#232733] px-2 py-1 rounded-lg">
+        {/* Inputs Compactos para o Aluno Ajustar o Peso e Reps Levantados */}
+        <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
+          <div className="flex items-center gap-1 bg-[#0B0B0B] border border-[#222222] px-2 py-0.5 rounded-lg">
             <span className="text-[10px] text-[#8F9BBA]">KG:</span>
             <input
               type="number"
@@ -240,7 +234,7 @@ export function HevySetRow({
             />
           </div>
 
-          <div className="flex items-center gap-1 bg-[#0F1115] border border-[#232733] px-2 py-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-[#0B0B0B] border border-[#222222] px-2 py-0.5 rounded-lg">
             <span className="text-[10px] text-[#8F9BBA]">REPS:</span>
             <input
               type="number"
@@ -259,40 +253,29 @@ export function HevySetRow({
         </div>
       </div>
 
-      {/* 2. BOTÃO DE CONCLUSÃO COM STATUS DE XP DINÂMICO */}
-      <div className="mt-3 pt-2 border-t border-[#232733]/60 flex flex-wrap items-center justify-between gap-2">
+      {/* 2. BOTÃO DE AÇÃO MINIMALISTA CONFORME O MOCKUP */}
+      <div className="mt-2.5 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={handleToggle}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer active:scale-95 ${
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono font-black transition-all cursor-pointer active:scale-95 ${
             data.completed
-              ? 'bg-[#FFD600] text-[#0F1115] shadow-md shadow-[#FFD600]/20'
-              : 'bg-[#232733]/80 border border-[#2E3445] text-white hover:border-[#FFD600] hover:text-[#FFD600]'
+              ? 'bg-[#FFCC00] text-[#0B0B0B] shadow-md shadow-[#FFCC00]/20'
+              : 'bg-[#181818] border border-[#282828] text-white hover:border-[#FFCC00] hover:text-[#FFCC00]'
           }`}
         >
-          <span className="font-mono text-xs">{data.completed ? '[✓]' : '[ ]'}</span>
-          <span>{data.completed ? 'Concluído' : 'MARCAR COMO FEITO'}</span>
-        </button>
-
-        {/* FEEDBACK DE XP: Concedido apenas para Working Sets / Back-off */}
-        {data.completed && !isPreparatory && (
-          <div className="flex items-center gap-1 text-[11px] font-black text-[#FFD600] animate-in fade-in duration-200">
-            <Sparkles size={12} className="animate-spin" />
-            <span>+{calculatedXP} XP ({xpReason})</span>
-          </div>
-        )}
-
-        {/* Warmup / Feeder (0 XP informativo) */}
-        {data.completed && isPreparatory && (
-          <span className="text-[10px] font-mono text-[#8F9BBA]">
-            Aquecimento sem pontuação (0 XP)
+          <span>{data.completed ? '[✓]' : '[ ]'}</span>
+          <span>
+            {data.completed 
+              ? (isPreparatory ? 'Concluído' : `FINALIZAR SÉRIE  ➔  +${calculatedXP} XP`) 
+              : 'FINALIZAR SÉRIE'}
           </span>
-        )}
+        </button>
 
         {/* Pop-up flutuante de XP imediato */}
         {justCompleted && !isPreparatory && calculatedXP > 0 && (
           <div className="fixed top-20 right-6 z-50 pointer-events-none animate-in fade-in zoom-in slide-in-from-top-4 duration-300">
-            <div className="rounded-xl bg-[#FFD600] text-[#0F1115] px-3.5 py-2 font-black text-xs shadow-2xl flex items-center gap-1.5">
+            <div className="rounded-xl bg-[#FFCC00] text-[#0B0B0B] px-3.5 py-2 font-black text-xs shadow-2xl flex items-center gap-1.5 font-mono">
               <Sparkles size={15} />
               <span>+{calculatedXP} XP • {xpReason}</span>
             </div>
