@@ -2843,7 +2843,8 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                       const currentRest = ex.targetRestSeconds || restWorkingSeconds;
                       const muscleBreakdown = weeklyAllocatedSetsPerMuscle[ex.muscle] || { direct: 0, residual: 0, total: 0 };
                       const muscleCeiling = muscleCeilings[ex.muscle] ?? 14;
-                      const isAtCeiling = muscleBreakdown.total >= muscleCeiling;
+                      const muscleAllocated = muscleBreakdown.total;
+                      const isAtCeiling = muscleAllocated >= muscleCeiling;
 
                       return (
                         <div key={ex.id} className="rounded-2xl border border-border/80 bg-background/50 p-4 sm:p-5 transition-all space-y-4">
