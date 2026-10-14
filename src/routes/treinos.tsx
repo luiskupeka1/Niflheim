@@ -80,6 +80,7 @@ export interface ExerciseItem {
   id: string;
   name: string;
   muscle: MuscleGroup;
+  secondaryMuscles?: MuscleGroup[]; // Sinergistas residuais (0.5 série indireta)
   category: BiomechanicalCategory;
   equipment: string;
   targetWeightKg?: number; // Carga programada/meta
@@ -100,6 +101,7 @@ export interface WorkoutTemplateItem {
     targetWeightKg?: number;
     targetReps?: number;
     targetRestSeconds?: number;
+    secondaryMuscles?: MuscleGroup[];
     sets: AdvancedSetRowData[];
   }[];
 }
@@ -118,6 +120,39 @@ export interface WeeklyScheduleDay {
   workoutId?: string;
 }
 
+export interface CustomMuscleItem {
+  id: string;
+  name: string;
+  mev: number;
+  mavMin: number;
+  mavMax: number;
+  mrv: number;
+  ceiling: number;
+}
+
+export interface MuscleVolumeBreakdown {
+  direct: number;
+  residual: number;
+  total: number;
+}
+
+export const DEFAULT_CUSTOM_MUSCLES: CustomMuscleItem[] = [
+  { id: 'mus-peito', name: 'Peito', mev: 8, mavMin: 12, mavMax: 18, mrv: 22, ceiling: 16 },
+  { id: 'mus-costas', name: 'Costas', mev: 10, mavMin: 14, mavMax: 22, mrv: 26, ceiling: 18 },
+  { id: 'mus-quadriceps', name: 'Quadríceps', mev: 8, mavMin: 12, mavMax: 18, mrv: 20, ceiling: 16 },
+  { id: 'mus-isquiotibiais', name: 'Isquiotibiais', mev: 6, mavMin: 10, mavMax: 16, mrv: 20, ceiling: 14 },
+  { id: 'mus-gluteos', name: 'Glúteos', mev: 4, mavMin: 8, mavMax: 12, mrv: 16, ceiling: 12 },
+  { id: 'mus-panturrilhas', name: 'Panturrilhas', mev: 8, mavMin: 12, mavMax: 16, mrv: 20, ceiling: 14 },
+  { id: 'mus-ombros-ant', name: 'Ombros Anteriores', mev: 0, mavMin: 6, mavMax: 10, mrv: 12, ceiling: 8 },
+  { id: 'mus-ombros-lat', name: 'Ombros Laterais', mev: 8, mavMin: 14, mavMax: 22, mrv: 26, ceiling: 18 },
+  { id: 'mus-ombros-post', name: 'Ombros Posteriores', mev: 6, mavMin: 12, mavMax: 18, mrv: 22, ceiling: 14 },
+  { id: 'mus-biceps', name: 'Bíceps', mev: 6, mavMin: 10, mavMax: 16, mrv: 20, ceiling: 14 },
+  { id: 'mus-triceps', name: 'Tríceps', mev: 6, mavMin: 10, mavMax: 16, mrv: 20, ceiling: 14 },
+  { id: 'mus-trapezio', name: 'Trapézio', mev: 4, mavMin: 8, mavMax: 14, mrv: 18, ceiling: 12 },
+  { id: 'mus-antebracos', name: 'Antebraços', mev: 4, mavMin: 8, mavMax: 14, mrv: 18, ceiling: 12 },
+  { id: 'mus-abdomen', name: 'Abdômen', mev: 4, mavMin: 8, mavMax: 16, mrv: 20, ceiling: 14 },
+];
+
 const DAYS_OF_WEEK: { full: string; short: string; dayIndex: number }[] = [
   { full: 'Segunda-feira', short: 'SEG', dayIndex: 1 },
   { full: 'Terça-feira', short: 'TER', dayIndex: 2 },
@@ -128,32 +163,32 @@ const DAYS_OF_WEEK: { full: string; short: string; dayIndex: number }[] = [
   { full: 'Domingo', short: 'DOM', dayIndex: 0 },
 ];
 
-const EXERCISE_LIBRARY: Omit<ExerciseItem, 'sets'>[] = [
+const EXERCISE_LIBRARY: (Omit<ExerciseItem, 'sets'> & { secondaryMuscles?: MuscleGroup[] })[] = [
   // PUSH
-  { id: 'ex-1', name: 'Supino Reto com Barra', muscle: 'Peito', category: 'Push', equipment: 'Barra', targetWeightKg: 80, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=rT7DgCr-3pg', description: 'Escápulas retraídas, arco torácico neutro, desça até o esterno.' },
-  { id: 'ex-2', name: 'Supino Inclinado com Halteres', muscle: 'Peito', category: 'Push', equipment: 'Halteres', targetWeightKg: 28, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=8iPEnn-ltC8', description: 'Banco a 30-45 graus, controle a fase excêntrica de 2-3s.' },
-  { id: 'ex-3', name: 'Crucifixo Inclinado na Polia', muscle: 'Peito', category: 'Push', equipment: 'Polia', targetWeightKg: 15, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=taI4XduLpTw', description: 'Tensão constante em todo o arco de adução dos braços.' },
-  { id: 'ex-4', name: 'Desenvolvimento com Halteres', muscle: 'Ombros Anteriores', category: 'Push', equipment: 'Halteres', targetWeightKg: 22, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=qEwKCR5JCog', description: 'Cotovelos a 45º no plano escapular, empurre até extensão quase total.' },
-  { id: 'ex-5', name: 'Elevação Lateral com Halteres', muscle: 'Ombros Laterais', category: 'Push', equipment: 'Halteres', targetWeightKg: 12, targetReps: 15, video_url: 'https://www.youtube.com/watch?v=3VcKaXpzqRo', description: 'Braços ligeiramente abduzidos à frente, cotovelos lideram o movimento.' },
-  { id: 'ex-6', name: 'Tríceps na Polia com Barra', muscle: 'Tríceps', category: 'Push', equipment: 'Polia', targetWeightKg: 35, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=2-LAMcpzODU', description: 'Cotovelos alinhados e travados ao lado do tronco.' },
-  { id: 'ex-7', name: 'Tríceps Testa com Barra W', muscle: 'Tríceps', category: 'Push', equipment: 'Barra', targetWeightKg: 30, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=d_KZxkH_4aE', description: 'Foco na cabeça longa do tríceps com extensão controlada.' },
+  { id: 'ex-1', name: 'Supino Reto com Barra', muscle: 'Peito', secondaryMuscles: ['Tríceps', 'Ombros Anteriores'], category: 'Push', equipment: 'Barra', targetWeightKg: 80, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=rT7DgCr-3pg', description: 'Escápulas retraídas, arco torácico neutro, desça até o esterno.' },
+  { id: 'ex-2', name: 'Supino Inclinado com Halteres', muscle: 'Peito', secondaryMuscles: ['Tríceps', 'Ombros Anteriores'], category: 'Push', equipment: 'Halteres', targetWeightKg: 28, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=8iPEnn-ltC8', description: 'Banco a 30-45 graus, controle a fase excêntrica de 2-3s.' },
+  { id: 'ex-3', name: 'Crucifixo Inclinado na Polia', muscle: 'Peito', secondaryMuscles: [], category: 'Push', equipment: 'Polia', targetWeightKg: 15, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=taI4XduLpTw', description: 'Tensão constante em todo o arco de adução dos braços.' },
+  { id: 'ex-4', name: 'Desenvolvimento com Halteres', muscle: 'Ombros Anteriores', secondaryMuscles: ['Tríceps', 'Ombros Laterais'], category: 'Push', equipment: 'Halteres', targetWeightKg: 22, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=qEwKCR5JCog', description: 'Cotovelos a 45º no plano escapular, empurre até extensão quase total.' },
+  { id: 'ex-5', name: 'Elevação Lateral com Halteres', muscle: 'Ombros Laterais', secondaryMuscles: [], category: 'Push', equipment: 'Halteres', targetWeightKg: 12, targetReps: 15, video_url: 'https://www.youtube.com/watch?v=3VcKaXpzqRo', description: 'Braços ligeiramente abduzidos à frente, cotovelos lideram o movimento.' },
+  { id: 'ex-6', name: 'Tríceps na Polia com Barra', muscle: 'Tríceps', secondaryMuscles: [], category: 'Push', equipment: 'Polia', targetWeightKg: 35, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=2-LAMcpzODU', description: 'Cotovelos alinhados e travados ao lado do tronco.' },
+  { id: 'ex-7', name: 'Tríceps Testa com Barra W', muscle: 'Tríceps', secondaryMuscles: [], category: 'Push', equipment: 'Barra', targetWeightKg: 30, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=d_KZxkH_4aE', description: 'Foco na cabeça longa do tríceps com extensão controlada.' },
 
   // PULL
-  { id: 'ex-8', name: 'Puxada Frontal na Polia', muscle: 'Costas', category: 'Pull', equipment: 'Polia', targetWeightKg: 65, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=CAwf7n6Luuc', description: 'Depressão das escápulas antes de puxar os cotovelos para baixo.' },
-  { id: 'ex-9', name: 'Remada Curvada com Barra', muscle: 'Costas', category: 'Pull', equipment: 'Barra', targetWeightKg: 75, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=vT2GjY_Umpw', description: 'Coluna neutra, cotovelos rentes ao tronco puxando em direção ao quadril.' },
-  { id: 'ex-10', name: 'Remada Unilateral com Halter', muscle: 'Costas', category: 'Pull', equipment: 'Halteres', targetWeightKg: 32, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=pYcpY20QaE8', description: 'Grande alongamento dorsal na descida e contração no topo.' },
-  { id: 'ex-11', name: 'Crucifixo Invertido no Peck Deck', muscle: 'Ombros Posteriores', category: 'Pull', equipment: 'Máquina', targetWeightKg: 40, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=H530fW3kWKg', description: 'Isolamento da porção posterior do deltoide.' },
-  { id: 'ex-12', name: 'Rosca Direta com Barra W', muscle: 'Bíceps', category: 'Pull', equipment: 'Barra', targetWeightKg: 16, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=ykJmrZ5v0Oo', description: 'Supinação mantida, contração de pico no topo sem elevar os cotovelos.' },
-  { id: 'ex-13', name: 'Rosca Inclinada com Halteres', muscle: 'Bíceps', category: 'Pull', equipment: 'Halteres', targetWeightKg: 14, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=soxrZlIl35U', description: 'Alongamento máximo da cabeça longa do bíceps.' },
+  { id: 'ex-8', name: 'Puxada Frontal na Polia', muscle: 'Costas', secondaryMuscles: ['Bíceps', 'Ombros Posteriores'], category: 'Pull', equipment: 'Polia', targetWeightKg: 65, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=CAwf7n6Luuc', description: 'Depressão das escápulas antes de puxar os cotovelos para baixo.' },
+  { id: 'ex-9', name: 'Remada Curvada com Barra', muscle: 'Costas', secondaryMuscles: ['Bíceps', 'Ombros Posteriores'], category: 'Pull', equipment: 'Barra', targetWeightKg: 75, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=vT2GjY_Umpw', description: 'Coluna neutra, cotovelos rentes ao tronco puxando em direção ao quadril.' },
+  { id: 'ex-10', name: 'Remada Unilateral com Halter', muscle: 'Costas', secondaryMuscles: ['Bíceps'], category: 'Pull', equipment: 'Halteres', targetWeightKg: 32, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=pYcpY20QaE8', description: 'Grande alongamento dorsal na descida e contração no topo.' },
+  { id: 'ex-11', name: 'Crucifixo Invertido no Peck Deck', muscle: 'Ombros Posteriores', secondaryMuscles: [], category: 'Pull', equipment: 'Máquina', targetWeightKg: 40, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=H530fW3kWKg', description: 'Isolamento da porção posterior do deltoide.' },
+  { id: 'ex-12', name: 'Rosca Direta com Barra W', muscle: 'Bíceps', secondaryMuscles: [], category: 'Pull', equipment: 'Barra', targetWeightKg: 16, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=ykJmrZ5v0Oo', description: 'Supinação mantida, contração de pico no topo sem elevar os cotovelos.' },
+  { id: 'ex-13', name: 'Rosca Inclinada com Halteres', muscle: 'Bíceps', secondaryMuscles: [], category: 'Pull', equipment: 'Halteres', targetWeightKg: 14, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=soxrZlIl35U', description: 'Alongamento máximo da cabeça longa do bíceps.' },
 
   // LEGS
-  { id: 'ex-14', name: 'Agachamento Livre com Barra', muscle: 'Quadríceps', category: 'Legs', equipment: 'Barra', targetWeightKg: 100, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=ultWZbUMPL8', description: 'Pés na largura dos ombros, profundidade abaixo da paralela.' },
-  { id: 'ex-15', name: 'Leg Press 45º', muscle: 'Quadríceps', category: 'Legs', equipment: 'Máquina', targetWeightKg: 200, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=IZxyjW7MPJQ', description: 'Costas bem apoiadas, amplitude máxima sem retroversão pélvica.' },
-  { id: 'ex-16', name: 'Cadeira Extensora', muscle: 'Quadríceps', category: 'Legs', equipment: 'Máquina', targetWeightKg: 55, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=YyvSfVADMvc', description: 'Excelente para técnicas de alta intensidade como Myo-Reps e Drops.' },
-  { id: 'ex-17', name: 'Mesa Flexora', muscle: 'Isquiotibiais', category: 'Legs', equipment: 'Máquina', targetWeightKg: 45, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=1Tq3QdYUuHs', description: 'Quadril colado no banco, controle a fase excêntrica.' },
-  { id: 'ex-18', name: 'Stiff com Barra', muscle: 'Isquiotibiais', category: 'Legs', equipment: 'Barra', targetWeightKg: 80, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=1uDiW5--rAE', description: 'Hinge de quadril, joelhos levemente destravados, coluna reta.' },
-  { id: 'ex-19', name: 'Elevação Pélvica com Barra', muscle: 'Glúteos', category: 'Legs', equipment: 'Barra', targetWeightKg: 110, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=SEdqd1n0cvg', description: 'Pausa de 1 segundo de contração máxima no topo.' },
-  { id: 'ex-20', name: 'Gêmeos Sentado', muscle: 'Panturrilhas', category: 'Legs', equipment: 'Máquina', targetWeightKg: 45, targetReps: 15, video_url: 'https://www.youtube.com/watch?v=JbyjNymZOt0', description: 'Foco no músculo sóleo, pausa de 2 segundos no ponto de máximo alongamento.' },
+  { id: 'ex-14', name: 'Agachamento Livre com Barra', muscle: 'Quadríceps', secondaryMuscles: ['Glúteos'], category: 'Legs', equipment: 'Barra', targetWeightKg: 100, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=ultWZbUMPL8', description: 'Pés na largura dos ombros, profundidade abaixo da paralela.' },
+  { id: 'ex-15', name: 'Leg Press 45º', muscle: 'Quadríceps', secondaryMuscles: ['Glúteos'], category: 'Legs', equipment: 'Máquina', targetWeightKg: 200, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=IZxyjW7MPJQ', description: 'Costas bem apoiadas, amplitude máxima sem retroversão pélvica.' },
+  { id: 'ex-16', name: 'Cadeira Extensora', muscle: 'Quadríceps', secondaryMuscles: [], category: 'Legs', equipment: 'Máquina', targetWeightKg: 55, targetReps: 12, video_url: 'https://www.youtube.com/watch?v=YyvSfVADMvc', description: 'Excelente para técnicas de alta intensidade como Myo-Reps e Drops.' },
+  { id: 'ex-17', name: 'Mesa Flexora', muscle: 'Isquiotibiais', secondaryMuscles: [], category: 'Legs', equipment: 'Máquina', targetWeightKg: 45, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=1Tq3QdYUuHs', description: 'Quadril colado no banco, controle a fase excêntrica.' },
+  { id: 'ex-18', name: 'Stiff com Barra', muscle: 'Isquiotibiais', secondaryMuscles: ['Glúteos'], category: 'Legs', equipment: 'Barra', targetWeightKg: 80, targetReps: 8, video_url: 'https://www.youtube.com/watch?v=1uDiW5--rAE', description: 'Hinge de quadril, joelhos levemente destravados, coluna reta.' },
+  { id: 'ex-19', name: 'Elevação Pélvica com Barra', muscle: 'Glúteos', secondaryMuscles: ['Isquiotibiais'], category: 'Legs', equipment: 'Barra', targetWeightKg: 110, targetReps: 10, video_url: 'https://www.youtube.com/watch?v=SEdqd1n0cvg', description: 'Pausa de 1 segundo de contração máxima no topo.' },
+  { id: 'ex-20', name: 'Gêmeos Sentado', muscle: 'Panturrilhas', secondaryMuscles: [], category: 'Legs', equipment: 'Máquina', targetWeightKg: 45, targetReps: 15, video_url: 'https://www.youtube.com/watch?v=JbyjNymZOt0', description: 'Foco no músculo sóleo, pausa de 2 segundos no ponto de máximo alongamento.' },
 ];
 
 const DEFAULT_SPLITS: WorkoutSplit[] = [
@@ -478,8 +513,14 @@ function TreinosPage() {
   const [exerciseFilterCategory, setExerciseFilterCategory] = useState<string>('Todos');
   const [customExerciseName, setCustomExerciseName] = useState('');
   const [customExerciseMuscle, setCustomExerciseMuscle] = useState<MuscleGroup>('Peito');
+  const [customExerciseSecondaryMuscles, setCustomExerciseSecondaryMuscles] = useState<MuscleGroup[]>([]);
   const [customTargetWeight, setCustomTargetWeight] = useState<number>(40);
   const [customTargetReps, setCustomTargetReps] = useState<number>(10);
+
+  // Modal para criar/adicionar novo treino no Coach Studio
+  const [isNewWorkoutModalOpen, setIsNewWorkoutModalOpen] = useState(false);
+  const [newWorkoutTitleInput, setNewWorkoutTitleInput] = useState('');
+  const [newWorkoutCategoryInput, setNewWorkoutCategoryInput] = useState<BiomechanicalCategory>('Push');
 
   // Agenda Semanal - Modais e Notificações
   const [isWeeklyScheduleModalOpen, setIsWeeklyScheduleModalOpen] = useState(false);
@@ -492,37 +533,108 @@ function TreinosPage() {
   // Sub-abas do Painel do Coach: LIMITES (Configuração de Tetos e Recomendações) vs ROTINA (Montador Diário)
   const [coachSubTab, setCoachSubTab] = useState<'LIMITES' | 'ROTINA'>('ROTINA');
 
-  const DEFAULT_MUSCLE_CEILINGS: Record<MuscleGroup, number> = {
-    'Peito': 14,
-    'Costas': 16,
-    'Quadríceps': 14,
-    'Isquiotibiais': 12,
-    'Glúteos': 12,
-    'Panturrilhas': 14,
-    'Ombros Anteriores': 8,
-    'Ombros Laterais': 18,
-    'Ombros Posteriores': 14,
-    'Bíceps': 14,
-    'Tríceps': 14,
-  };
-
-  const [muscleCeilings, setMuscleCeilings] = useState<Record<MuscleGroup, number>>(() => {
+  const [muscleGroupsList, setMuscleGroupsList] = useState<CustomMuscleItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const stored = localStorage.getItem('NIFLHEIM_MUSCLE_CEILINGS');
+        const stored = localStorage.getItem('NIFLHEIM_CUSTOM_MUSCLE_GROUPS');
         if (stored) return JSON.parse(stored);
       } catch (e) {}
     }
-    return DEFAULT_MUSCLE_CEILINGS;
+    return DEFAULT_CUSTOM_MUSCLES;
   });
 
-  const handleUpdateMuscleCeiling = (muscle: MuscleGroup, ceiling: number) => {
-    const updated = { ...muscleCeilings, [muscle]: Math.max(1, ceiling) };
-    setMuscleCeilings(updated);
+  const saveMuscleGroupsList = (newList: CustomMuscleItem[]) => {
+    setMuscleGroupsList(newList);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('NIFLHEIM_MUSCLE_CEILINGS', JSON.stringify(updated));
+      localStorage.setItem('NIFLHEIM_CUSTOM_MUSCLE_GROUPS', JSON.stringify(newList));
     }
-    showScheduleToast(`🎯 Teto de ${muscle} ajustado para ${ceiling} séries semanais`);
+  };
+
+  const muscleCeilings = useMemo(() => {
+    const map: Record<string, number> = {};
+    muscleGroupsList.forEach((m) => {
+      map[m.name] = m.ceiling;
+    });
+    return map;
+  }, [muscleGroupsList]);
+
+  // Modais e Estados de CRUD de Grupos Musculares
+  const [isAddMuscleModalOpen, setIsAddMuscleModalOpen] = useState(false);
+  const [editingMuscleItem, setEditingMuscleItem] = useState<CustomMuscleItem | null>(null);
+  const [newMuscleForm, setNewMuscleForm] = useState<{
+    name: string;
+    mev: number;
+    mavMin: number;
+    mavMax: number;
+    mrv: number;
+    ceiling: number;
+  }>({
+    name: '',
+    mev: 6,
+    mavMin: 10,
+    mavMax: 16,
+    mrv: 20,
+    ceiling: 14,
+  });
+
+  const handleAddMuscleGroup = () => {
+    const cleanName = newMuscleForm.name.trim();
+    if (!cleanName) {
+      alert('Informe o nome do grupamento muscular.');
+      return;
+    }
+    const exists = muscleGroupsList.some((m) => m.name.toLowerCase() === cleanName.toLowerCase());
+    if (exists) {
+      alert(`O grupamento muscular "${cleanName}" já existe.`);
+      return;
+    }
+
+    const newMuscle: CustomMuscleItem = {
+      id: `mus-${crypto.randomUUID()}`,
+      name: cleanName,
+      mev: Math.max(0, newMuscleForm.mev),
+      mavMin: Math.max(1, newMuscleForm.mavMin),
+      mavMax: Math.max(newMuscleForm.mavMin, newMuscleForm.mavMax),
+      mrv: Math.max(newMuscleForm.mavMax, newMuscleForm.mrv),
+      ceiling: Math.max(1, newMuscleForm.ceiling),
+    };
+
+    const updated = [...muscleGroupsList, newMuscle];
+    saveMuscleGroupsList(updated);
+    setIsAddMuscleModalOpen(false);
+    setNewMuscleForm({ name: '', mev: 6, mavMin: 10, mavMax: 16, mrv: 20, ceiling: 14 });
+    showScheduleToast(`🎯 Novo grupamento "${cleanName}" adicionado com sucesso!`);
+  };
+
+  const handleSaveEditMuscle = () => {
+    if (!editingMuscleItem || !editingMuscleItem.name.trim()) return;
+    const cleanName = editingMuscleItem.name.trim();
+    const updated = muscleGroupsList.map((m) => (m.id === editingMuscleItem.id ? { ...editingMuscleItem, name: cleanName } : m));
+    saveMuscleGroupsList(updated);
+    setEditingMuscleItem(null);
+    showScheduleToast(`✓ Grupamento "${cleanName}" atualizado com sucesso!`);
+  };
+
+  const handleDeleteMuscleGroup = (muscleId: string) => {
+    const target = muscleGroupsList.find((m) => m.id === muscleId);
+    if (!target) return;
+    if (muscleGroupsList.length <= 1) {
+      alert('Você deve manter pelo menos um grupamento muscular no sistema.');
+      return;
+    }
+    if (!window.confirm(`Tem certeza que deseja excluir o grupamento muscular "${target.name}"? Todos os limites dele serão removidos.`)) {
+      return;
+    }
+    const updated = muscleGroupsList.filter((m) => m.id !== muscleId);
+    saveMuscleGroupsList(updated);
+    showScheduleToast(`🗑️ Grupamento "${target.name}" removido.`);
+  };
+
+  const handleUpdateMuscleCeiling = (muscleName: string, ceiling: number) => {
+    const val = Math.max(1, ceiling);
+    const updated = muscleGroupsList.map((m) => (m.name === muscleName ? { ...m, ceiling: val } : m));
+    saveMuscleGroupsList(updated);
+    showScheduleToast(`🎯 Teto de ${muscleName} ajustado para ${val} séries semanais`);
   };
 
   const [nutritionScore, setNutritionScore] = useState(4);
@@ -977,20 +1089,39 @@ function TreinosPage() {
     }
   };
 
-  // Contabilidade semanal de Working Sets alocadas por grupo muscular
+  // Contabilidade semanal de Working Sets alocadas por grupo muscular (Diretas 1.0x + Residuais 0.5x)
   const weeklyAllocatedSetsPerMuscle = useMemo(() => {
-    const map: Record<MuscleGroup, number> = {
-      'Peito': 0,
-      'Costas': 0,
-      'Quadríceps': 0,
-      'Isquiotibiais': 0,
-      'Glúteos': 0,
-      'Panturrilhas': 0,
-      'Ombros Anteriores': 0,
-      'Ombros Laterais': 0,
-      'Ombros Posteriores': 0,
-      'Bíceps': 0,
-      'Tríceps': 0,
+    const map: Record<string, MuscleVolumeBreakdown> = {};
+
+    // Inicializa todos os grupamentos cadastrados
+    muscleGroupsList.forEach((m) => {
+      map[m.name] = { direct: 0, residual: 0, total: 0 };
+    });
+
+    const tallyExerciseSets = (
+      primaryMuscle: string,
+      secondaryMuscles: string[] | undefined,
+      workingCount: number
+    ) => {
+      if (!workingCount || workingCount <= 0) return;
+
+      // 1. Músculo Primário (1.0x por série de trabalho)
+      if (!map[primaryMuscle]) {
+        map[primaryMuscle] = { direct: 0, residual: 0, total: 0 };
+      }
+      map[primaryMuscle].direct += workingCount;
+      map[primaryMuscle].total += workingCount * 1.0;
+
+      // 2. Músculos Secundários / Sinergistas (0.5x série residual)
+      if (secondaryMuscles && Array.isArray(secondaryMuscles)) {
+        secondaryMuscles.forEach((sec) => {
+          if (!map[sec]) {
+            map[sec] = { direct: 0, residual: 0, total: 0 };
+          }
+          map[sec].residual += workingCount;
+          map[sec].total += workingCount * 0.5;
+        });
+      }
     };
 
     weeklySchedule.forEach((day, dayIdx) => {
@@ -998,9 +1129,7 @@ function TreinosPage() {
       if (dayIdx === selectedCoachDayIndex && workoutMode === 'MONTAR') {
         exercises.forEach((ex) => {
           const workingCount = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
-          if (map[ex.muscle] !== undefined) {
-            map[ex.muscle] += workingCount;
-          }
+          tallyExerciseSets(ex.muscle, ex.secondaryMuscles, workingCount);
         });
         return;
       }
@@ -1018,17 +1147,16 @@ function TreinosPage() {
       if (matchWorkout) {
         matchWorkout.exercises.forEach((item) => {
           const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId);
-          const muscle = lib?.muscle;
+          const muscle = lib?.muscle || 'Peito';
+          const secondaries = item.secondaryMuscles || lib?.secondaryMuscles || [];
           const workingCount = item.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
-          if (muscle && map[muscle] !== undefined) {
-            map[muscle] += workingCount;
-          }
+          tallyExerciseSets(muscle, secondaries, workingCount);
         });
       }
     });
 
     return map;
-  }, [weeklySchedule, selectedCoachDayIndex, exercises, splits, workoutMode]);
+  }, [weeklySchedule, selectedCoachDayIndex, exercises, splits, workoutMode, muscleGroupsList]);
 
   // Motor de Inteligência de Volume & Recuperação baseado em Dados dos Questionários
   const volumeRecommendationData = useMemo(() => {
@@ -1039,20 +1167,21 @@ function TreinosPage() {
     const isProgressionDown = recoveryProgression === 'PROGRESSION_DOWN';
     const isProgressionUp = recoveryProgression === 'PROGRESSION_UP';
 
-    const muscleTips: Record<MuscleGroup, {
+    const muscleTips: Record<string, {
       status: 'OTIMO' | 'ESTAVEL' | 'ALERTA_DELOAD';
       action: 'AUMENTAR' | 'MANTER' | 'DIMINUIR';
       badgeText: string;
       reason: string;
       suggestedDelta: number;
-    }> = {} as any;
+    }> = {};
 
-    (Object.keys(MUSCLE_VOLUME_LANDMARKS) as MuscleGroup[]).forEach((m) => {
-      const allocated = weeklyAllocatedSetsPerMuscle[m] ?? 0;
-      const ceiling = muscleCeilings[m] ?? 14;
+    muscleGroupsList.forEach((m) => {
+      const breakdown = weeklyAllocatedSetsPerMuscle[m.name] || { direct: 0, residual: 0, total: 0 };
+      const allocated = breakdown.total;
+      const ceiling = m.ceiling;
 
       if (hasArticularPain || isProgressionDown || avgDoms >= 4 || avgSleep <= 2) {
-        muscleTips[m] = {
+        muscleTips[m.name] = {
           status: 'ALERTA_DELOAD',
           action: 'DIMINUIR',
           badgeText: '📉 Reduzir 2 Séries (Deload)',
@@ -1062,7 +1191,7 @@ function TreinosPage() {
           suggestedDelta: -2,
         };
       } else if (isProgressionUp && avgSleep >= 4 && avgDoms <= 3 && !hasArticularPain && allocated < ceiling) {
-        muscleTips[m] = {
+        muscleTips[m.name] = {
           status: 'OTIMO',
           action: 'AUMENTAR',
           badgeText: '🚀 Seguro Progredir +1 Série',
@@ -1070,7 +1199,7 @@ function TreinosPage() {
           suggestedDelta: +1,
         };
       } else {
-        muscleTips[m] = {
+        muscleTips[m.name] = {
           status: 'ESTAVEL',
           action: 'MANTER',
           badgeText: '⚖️ Manter Volume Atual',
@@ -1088,18 +1217,21 @@ function TreinosPage() {
       isProgressionDown,
       hasArticularPain,
     };
-  }, [fatigueLogs, recoverySleep, recoveryJointPain, recoveryProgression, weeklyAllocatedSetsPerMuscle, muscleCeilings]);
+  }, [fatigueLogs, recoverySleep, recoveryJointPain, recoveryProgression, weeklyAllocatedSetsPerMuscle, muscleGroupsList]);
 
-  // Adição de Working Set com Controle Estrito de Teto Máximo
+  // Adição de Working Set com Controle Estrito de Teto Máximo e Volume Residual
   const handleAddWorkingSet = (exerciseId: string) => {
     const ex = exercises.find((e) => e.id === exerciseId);
     if (!ex) return;
 
-    const currentAllocated = weeklyAllocatedSetsPerMuscle[ex.muscle] ?? 0;
+    const breakdown = weeklyAllocatedSetsPerMuscle[ex.muscle] || { direct: 0, residual: 0, total: 0 };
+    const currentAllocated = breakdown.total;
     const ceiling = muscleCeilings[ex.muscle] ?? 14;
 
-    if (currentAllocated >= ceiling) {
-      showScheduleToast(`⛔ Teto semanal de ${ex.muscle} atingido (${currentAllocated}/${ceiling} séries)! Aumente o limite na aba "Limites de Volume".`);
+    if (currentAllocated + 1 > ceiling) {
+      showScheduleToast(
+        `⛔ Teto de ${ex.muscle} atingido (${currentAllocated}/${ceiling} séries efetivas! Diretas: ${breakdown.direct} | Residuais: ${breakdown.residual} x0.5). Aumente o limite na aba "Limites de Volume".`
+      );
       return;
     }
 
@@ -1220,7 +1352,7 @@ function TreinosPage() {
     );
   };
 
-  // Carregar Treino Selecionado
+  // Carregar Treino Selecionado com suporte a Músculos Primários e Sinergistas Residuais
   const handleLoadWorkout = (workout: WorkoutTemplateItem) => {
     setSessionTitle(workout.title);
     setSessionCategory(workout.category);
@@ -1229,6 +1361,7 @@ function TreinosPage() {
         id: item.exerciseId,
         name: 'Exercício Personalizado',
         muscle: 'Peito' as MuscleGroup,
+        secondaryMuscles: [] as MuscleGroup[],
         category: workout.category,
         equipment: 'Livre',
         targetWeightKg: item.targetWeightKg ?? 40,
@@ -1237,6 +1370,7 @@ function TreinosPage() {
       };
       return {
         ...lib,
+        secondaryMuscles: item.secondaryMuscles || lib.secondaryMuscles || [],
         targetWeightKg: item.targetWeightKg ?? lib.targetWeightKg,
         targetReps: item.targetReps ?? lib.targetReps,
         sets: item.sets.map((s) => ({ ...s, completed: false })),
@@ -1246,10 +1380,10 @@ function TreinosPage() {
   };
 
   // Alterar associação da semana com busca em todos os splits e sincronização imediata
-  const handleUpdateScheduleDay = (dayIndex: number, workoutTitle: string) => {
+  const handleUpdateScheduleDay = (dayIndex: number, workoutTitle: string, workoutId?: string) => {
     let matchedWorkout: WorkoutTemplateItem | undefined;
     for (const s of splits) {
-      const found = s.workouts.find((w) => w.title === workoutTitle);
+      const found = s.workouts.find((w) => (workoutId && w.id === workoutId) || w.title === workoutTitle);
       if (found) {
         matchedWorkout = found;
         break;
@@ -1261,7 +1395,7 @@ function TreinosPage() {
       updated[dayIndex] = {
         ...updated[dayIndex],
         workoutTitle,
-        workoutId: matchedWorkout?.id,
+        workoutId: matchedWorkout?.id || workoutId,
       };
       return updated;
     });
@@ -1346,11 +1480,87 @@ function TreinosPage() {
     }
   };
 
-  // Adicionar da Biblioteca com Carga Meta
-  const handleAddFromLibrary = (libEx: Omit<ExerciseItem, 'sets'>) => {
+  // CRUD DE TREINOS DO COACH STUDIO
+  const handleCreateNewWorkoutForDay = (title: string, category: BiomechanicalCategory) => {
+    const cleanTitle = title.trim();
+    if (!cleanTitle) {
+      alert('Informe o título do treino.');
+      return;
+    }
+
+    const newWorkout: WorkoutTemplateItem = {
+      id: `wkt-${crypto.randomUUID()}`,
+      title: cleanTitle,
+      category,
+      description: `Treino personalizado criado em ${weeklySchedule[selectedCoachDayIndex]?.shortDay}`,
+      exercises: [],
+    };
+
+    setSplits((prev) =>
+      prev.map((s) => (s.id === activeSplit.id ? { ...s, workouts: [...s.workouts, newWorkout] } : s))
+    );
+
+    handleLoadWorkout(newWorkout);
+    handleUpdateScheduleDay(selectedCoachDayIndex, cleanTitle, newWorkout.id);
+    setIsNewWorkoutModalOpen(false);
+    setNewWorkoutTitleInput('');
+    showScheduleToast(`⚡ Novo treino "${cleanTitle}" criado e atribuído ao dia!`);
+  };
+
+  const handleDuplicateCurrentWorkout = () => {
+    const duplicatedTitle = `${sessionTitle} (Cópia)`;
+    const newWorkout: WorkoutTemplateItem = {
+      id: `wkt-${crypto.randomUUID()}`,
+      title: duplicatedTitle,
+      category: sessionCategory,
+      description: `Cópia do treino ${sessionTitle}`,
+      exercises: exercises.map((ex) => ({
+        exerciseId: ex.id,
+        targetWeightKg: ex.targetWeightKg,
+        targetReps: ex.targetReps,
+        targetRestSeconds: ex.targetRestSeconds,
+        secondaryMuscles: ex.secondaryMuscles,
+        sets: ex.sets.map((s) => ({ ...s, id: crypto.randomUUID(), completed: false })),
+      })),
+    };
+
+    setSplits((prev) =>
+      prev.map((s) => (s.id === activeSplit.id ? { ...s, workouts: [...s.workouts, newWorkout] } : s))
+    );
+
+    handleLoadWorkout(newWorkout);
+    handleUpdateScheduleDay(selectedCoachDayIndex, duplicatedTitle, newWorkout.id);
+    showScheduleToast(`📋 Treino duplicado como "${duplicatedTitle}"!`);
+  };
+
+  const handleDeleteCurrentWorkout = () => {
+    if (activeSplit.workouts.length <= 1) {
+      alert('Você deve manter pelo menos um treino na rotina.');
+      return;
+    }
+
+    if (!window.confirm(`Tem certeza que deseja excluir o treino "${sessionTitle}" da rotina?`)) {
+      return;
+    }
+
+    const remainingWorkouts = activeSplit.workouts.filter((w) => w.title !== sessionTitle);
+    setSplits((prev) =>
+      prev.map((s) => (s.id === activeSplit.id ? { ...s, workouts: remainingWorkouts } : s))
+    );
+
+    // Redefine o dia atual para Descanso
+    handleUpdateScheduleDay(selectedCoachDayIndex, 'Descanso / Recuperação');
+    setExercises([]);
+    setSessionTitle('Descanso / Recuperação');
+    showScheduleToast(`🗑️ Treino removido da rotina!`);
+  };
+
+  // Adicionar da Biblioteca com Carga Meta e Sinergistas Residuais
+  const handleAddFromLibrary = (libEx: (typeof EXERCISE_LIBRARY)[0]) => {
     const newEx: ExerciseItem = {
       ...libEx,
       id: crypto.randomUUID(),
+      secondaryMuscles: libEx.secondaryMuscles || [],
       targetWeightKg: customTargetWeight || libEx.targetWeightKg || 40,
       targetReps: customTargetReps || libEx.targetReps || 10,
       sets: [
@@ -1359,7 +1569,7 @@ function TreinosPage() {
           setNumber: 1,
           baseType: 'WARMUP',
           technique: 'NONE',
-          weight: Math.round((customTargetWeight || 40) * 0.5),
+          weight: Math.round(((customTargetWeight || libEx.targetWeightKg || 40) * 0.5) * 2) / 2,
           reps: 12,
           rir: 4,
           completed: false,
@@ -1380,15 +1590,18 @@ function TreinosPage() {
     };
     setExercises((prev) => [...prev, newEx]);
     setIsAddExerciseModalOpen(false);
+    showScheduleToast(`✓ "${libEx.name}" incluído no treino!`);
   };
 
-  // Adicionar Personalizado Livre
+  // Adicionar Personalizado Livre com Músculo Primário e Sinergistas Residuais
   const handleAddCustomExercise = () => {
     if (!customExerciseName.trim()) return;
+    const cleanName = customExerciseName.trim();
     const newEx: ExerciseItem = {
       id: crypto.randomUUID(),
-      name: customExerciseName.trim(),
+      name: cleanName,
       muscle: customExerciseMuscle,
+      secondaryMuscles: customExerciseSecondaryMuscles,
       category: sessionCategory,
       equipment: 'Livre',
       targetWeightKg: customTargetWeight,
@@ -1410,10 +1623,12 @@ function TreinosPage() {
     };
     setExercises((prev) => [...prev, newEx]);
     setCustomExerciseName('');
+    setCustomExerciseSecondaryMuscles([]);
     setIsAddExerciseModalOpen(false);
+    showScheduleToast(`✓ Exercício "${cleanName}" criado com sucesso!`);
   };
 
-  // Salvar Treino na Rotina
+  // Salvar Treino na Rotina com Músculos Primários e Sinergistas
   const handleSaveCurrentWorkoutToSplit = () => {
     const updatedWorkout: WorkoutTemplateItem = {
       id: crypto.randomUUID(),
@@ -1424,6 +1639,7 @@ function TreinosPage() {
         exerciseId: e.id,
         targetWeightKg: e.targetWeightKg,
         targetReps: e.targetReps,
+        secondaryMuscles: e.secondaryMuscles,
         sets: e.sets,
       })),
     };
@@ -1439,7 +1655,7 @@ function TreinosPage() {
       })
     );
     reward(30);
-    alert(`Treino "${sessionTitle}" salvo com sucesso na rotina!`);
+    showScheduleToast(`💾 Treino "${sessionTitle}" salvo com sucesso na rotina!`);
   };
 
   // Finalizar e salvar sessão completa com questionário de recuperação (Parte 3)
@@ -2141,50 +2357,91 @@ function TreinosPage() {
                 </div>
               </div>
 
-              {/* Tabela Horizontal de Configuração de Tetos por Grupo Muscular */}
+              {/* Tabela Horizontal de Configuração de Tetos por Grupo Muscular com CRUD */}
               <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border/50 pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/50 pb-3">
                   <div>
                     <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
-                      Teto Máximo Semanal por Grupo Muscular (Working Sets)
+                      Grupamentos Musculares & Tetos Semanais (Volume Direto + Residual)
                     </h3>
                     <p className="text-[10px] sm:text-[11px] text-muted-foreground">
-                      Ajuste o teto de séries de cada músculo. O montador de treinos não permitirá ultrapassar esse limite.
+                      Controle científico baseado em Brad Schoenfeld & Mike Israetel: Séries Diretas (1.0x) + Séries Residuais/Sinergistas (0.5x).
                     </p>
                   </div>
+
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAddMuscleModalOpen(true)}
+                    className="bg-primary text-primary-foreground font-black text-xs rounded-xl hover:bg-primary/90 cursor-pointer self-start sm:self-auto shrink-0 shadow-sm"
+                  >
+                    <Plus size={13} className="mr-1" /> + Adicionar Grupamento Muscular
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {(Object.keys(MUSCLE_VOLUME_LANDMARKS) as MuscleGroup[]).map((muscle) => {
-                    const allocated = weeklyAllocatedSetsPerMuscle[muscle] ?? 0;
-                    const ceiling = muscleCeilings[muscle] ?? 14;
-                    const tip = volumeRecommendationData.muscleTips[muscle];
+                  {muscleGroupsList.map((m) => {
+                    const breakdown = weeklyAllocatedSetsPerMuscle[m.name] || { direct: 0, residual: 0, total: 0 };
+                    const allocated = breakdown.total;
+                    const ceiling = m.ceiling;
+                    const tip = volumeRecommendationData.muscleTips[m.name] || {
+                      status: 'ESTAVEL',
+                      action: 'MANTER',
+                      badgeText: '⚖️ Manter Volume Atual',
+                      reason: 'Volume balanceado.',
+                      suggestedDelta: 0,
+                    };
                     const isExceeded = allocated >= ceiling;
                     const progressPct = Math.min(100, Math.round((allocated / ceiling) * 100));
 
                     return (
                       <div
-                        key={muscle}
+                        key={m.id}
                         className={`rounded-2xl border p-3.5 space-y-3 transition-all ${
                           isExceeded
                             ? 'border-destructive/60 bg-destructive/10'
-                            : 'border-border/70 bg-background/60'
+                            : 'border-border/70 bg-background/60 hover:border-border'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h4 className="text-sm font-black text-foreground">{muscle}</h4>
-                            <span className="text-[10px] text-muted-foreground font-mono">
-                              Alocadas na Semana: <strong className={isExceeded ? 'text-destructive font-black' : 'text-primary font-bold'}>{allocated}</strong> / {ceiling} séries
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-black text-foreground">{m.name}</h4>
+                              <button
+                                type="button"
+                                onClick={() => setEditingMuscleItem(m)}
+                                title={`Editar marcos e limites de ${m.name}`}
+                                className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                              >
+                                <Edit3 size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMuscleGroup(m.id)}
+                                title={`Excluir grupamento ${m.name}`}
+                                className="p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+
+                            {/* Detalhamento Científico: Diretas + Residuais */}
+                            <div className="text-[10px] text-muted-foreground font-mono space-y-0.5 mt-1">
+                              <div>
+                                Volume Efetivo: <strong className={isExceeded ? 'text-destructive font-black' : 'text-primary font-bold'}>{allocated}</strong> / {ceiling} séries
+                              </div>
+                              <div className="text-[9px] text-muted-foreground/80 flex items-center gap-1.5 flex-wrap">
+                                <span className="bg-primary/10 text-primary px-1.5 py-0.2 rounded">🎯 {breakdown.direct} diretas (1.0x)</span>
+                                <span className="bg-[#00E5FF]/10 text-[#00E5FF] px-1.5 py-0.2 rounded">⚡ {breakdown.residual} residuais (0.5x = +{breakdown.residual * 0.5}s)</span>
+                              </div>
+                            </div>
                           </div>
 
                           {/* Seletor Interativo de Teto */}
-                          <div className="flex items-center gap-1.5 bg-card px-2 py-1 rounded-xl border border-border/80">
+                          <div className="flex items-center gap-1 bg-card px-2 py-1 rounded-xl border border-border/80 shrink-0">
                             <span className="text-[9px] font-black text-muted-foreground uppercase">TETO:</span>
                             <button
                               type="button"
-                              onClick={() => handleUpdateMuscleCeiling(muscle, ceiling - 1)}
+                              onClick={() => handleUpdateMuscleCeiling(m.name, ceiling - 1)}
                               className="size-5 rounded flex items-center justify-center bg-muted/60 hover:bg-muted text-foreground text-xs font-black cursor-pointer"
                             >
                               -
@@ -2194,7 +2451,7 @@ function TreinosPage() {
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleUpdateMuscleCeiling(muscle, ceiling + 1)}
+                              onClick={() => handleUpdateMuscleCeiling(m.name, ceiling + 1)}
                               className="size-5 rounded flex items-center justify-center bg-muted/60 hover:bg-muted text-foreground text-xs font-black cursor-pointer"
                             >
                               +
@@ -2213,9 +2470,9 @@ function TreinosPage() {
                             />
                           </div>
                           <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground">
-                            <span>MEV: {MUSCLE_VOLUME_LANDMARKS[muscle].mev}s</span>
-                            <span>Restam: <strong className={isExceeded ? 'text-destructive' : 'text-foreground'}>{Math.max(0, ceiling - allocated)} séries livres</strong></span>
-                            <span>MRV: {MUSCLE_VOLUME_LANDMARKS[muscle].mrv}s</span>
+                            <span>MEV: {m.mev}s</span>
+                            <span>Restam: <strong className={isExceeded ? 'text-destructive' : 'text-foreground'}>{Math.max(0, ceiling - allocated)} livres</strong></span>
+                            <span>MRV: {m.mrv}s</span>
                           </div>
                         </div>
 
@@ -2239,7 +2496,7 @@ function TreinosPage() {
                           {tip.suggestedDelta !== 0 && (
                             <button
                               type="button"
-                              onClick={() => handleUpdateMuscleCeiling(muscle, ceiling + tip.suggestedDelta)}
+                              onClick={() => handleUpdateMuscleCeiling(m.name, ceiling + tip.suggestedDelta)}
                               className="shrink-0 rounded-lg px-2 py-1 bg-primary/15 hover:bg-primary/25 text-primary text-[10px] font-black transition-all cursor-pointer"
                             >
                               Aplicar {tip.suggestedDelta > 0 ? '+1' : '-2'}
@@ -2311,36 +2568,71 @@ function TreinosPage() {
 
               {/* TELA EXCLUSIVA DO DIA SELECIONADO */}
               <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-4 shadow-sm">
-                {/* Header Horizontal do Dia */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border/50 pb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-primary/20 text-primary px-2 py-0.5 text-[10px] font-black uppercase">
+                {/* Header Horizontal do Dia & Gerenciamento do Treino */}
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-border/50 pb-3">
+                  <div className="space-y-1.5 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="rounded-full bg-primary/20 text-primary px-2.5 py-0.5 text-[10px] font-black uppercase">
                         {weeklySchedule[selectedCoachDayIndex]?.dayOfWeek}
                       </span>
-                      <h3 className="text-base sm:text-lg font-black text-foreground">
-                        {sessionTitle}
-                      </h3>
+                      <input
+                        type="text"
+                        value={sessionTitle}
+                        onChange={(e) => setSessionTitle(e.target.value)}
+                        placeholder="Nome do Treino (ex: Push A - Hipertrofia)"
+                        className="text-base sm:text-lg font-black text-foreground bg-transparent border-b border-dashed border-border/60 hover:border-primary focus:border-primary focus:outline-none transition-colors px-1 py-0.5 max-w-full"
+                        title="Clique para editar o nome do treino diretamente"
+                      />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Grupamentos: <strong className="text-foreground">{programMuscleGroups}</strong>
+                    <p className="text-xs text-muted-foreground">
+                      Grupamentos: <strong className="text-foreground">{programMuscleGroups}</strong> • Rotina: <strong className="text-primary">{activeSplit.name}</strong>
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  {/* Ações de CRUD do Treino & Exercício */}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      onClick={() => setIsNewWorkoutModalOpen(true)}
+                      className="bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 font-black text-xs rounded-xl cursor-pointer"
+                      title="Criar novo treino na rotina para este dia"
+                    >
+                      <Plus size={13} className="mr-1" /> + Novo Treino
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDuplicateCurrentWorkout}
+                      className="text-xs text-foreground font-bold border-border hover:bg-muted rounded-xl cursor-pointer"
+                      title="Duplicar treino atual"
+                    >
+                      <Layers size={13} className="mr-1" /> Duplicar
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleDeleteCurrentWorkout}
+                      className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl cursor-pointer"
+                      title="Excluir treino atual da rotina"
+                    >
+                      <Trash2 size={13} className="mr-1" /> Excluir
+                    </Button>
+
                     <Button
                       size="sm"
                       onClick={() => setIsAddExerciseModalOpen(true)}
-                      className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs rounded-xl cursor-pointer"
+                      className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs rounded-xl cursor-pointer shadow-sm"
                     >
-                      <Plus size={13} className="mr-1" /> + Adicionar Exercício
+                      <Plus size={13} className="mr-1" /> + Exercício
                     </Button>
 
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={handleSaveCurrentWorkoutToSplit}
-                      className="text-xs text-primary font-bold border-primary/40 hover:bg-primary/10 rounded-xl cursor-pointer"
+                      className="text-xs text-primary font-black border-primary/50 hover:bg-primary/10 rounded-xl cursor-pointer"
                     >
                       <Save size={13} className="mr-1" /> Salvar Treino
                     </Button>
@@ -2388,17 +2680,22 @@ function TreinosPage() {
                   </div>
                 </div>
 
-                {/* Resumo Dinâmico dos Músculos deste Treino vs Teto Semanal */}
+                {/* Resumo Dinâmico dos Músculos deste Treino vs Teto Semanal (Volume Direto + Residual) */}
                 <div className="rounded-xl border border-border/60 bg-background/40 p-3 space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Target size={12} className="text-primary" /> Balanço de Séries no Microciclo (Teto Rígido):
+                    <Target size={12} className="text-primary" /> Balanço de Séries no Microciclo (Volume Efetivo Direto + Residual vs Teto):
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    {Array.from(new Set(exercises.map((e) => e.muscle))).map((muscle) => {
-                      const allocated = weeklyAllocatedSetsPerMuscle[muscle] ?? 0;
+                    {Array.from(
+                      new Set([
+                        ...exercises.map((e) => e.muscle),
+                        ...exercises.flatMap((e) => e.secondaryMuscles || []),
+                      ])
+                    ).map((muscle) => {
+                      const breakdown = weeklyAllocatedSetsPerMuscle[muscle] || { direct: 0, residual: 0, total: 0 };
                       const ceiling = muscleCeilings[muscle] ?? 14;
-                      const isAtLimit = allocated >= ceiling;
-                      const remaining = Math.max(0, ceiling - allocated);
+                      const isAtLimit = breakdown.total >= ceiling;
+                      const remaining = Math.max(0, ceiling - breakdown.total);
 
                       return (
                         <div
@@ -2409,14 +2706,19 @@ function TreinosPage() {
                               : 'border-primary/40 bg-card text-foreground'
                           }`}
                         >
-                          <span>{muscle}:</span>
-                          <strong className={isAtLimit ? 'text-destructive font-black' : 'text-primary'}>
-                            {allocated}/{ceiling} séries
-                          </strong>
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded-full uppercase font-black ${
+                          <div>
+                            <span className="text-muted-foreground">{muscle}: </span>
+                            <strong className={isAtLimit ? 'text-destructive font-black' : 'text-primary font-black'}>
+                              {breakdown.total}/{ceiling}s
+                            </strong>
+                            <span className="text-[9px] text-muted-foreground block font-normal">
+                              {breakdown.direct}d + {breakdown.residual}r (0.5x)
+                            </span>
+                          </div>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-black shrink-0 ${
                             isAtLimit ? 'bg-destructive text-white' : 'bg-primary/20 text-primary'
                           }`}>
-                            {isAtLimit ? 'Teto Atingido' : `Restam ${remaining}`}
+                            {isAtLimit ? 'Teto Atingido' : `Livre: ${remaining}`}
                           </span>
                         </div>
                       );
@@ -2445,9 +2747,9 @@ function TreinosPage() {
                       const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
                       const workingSets = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
                       const currentRest = ex.targetRestSeconds || restWorkingSeconds;
-                      const muscleAllocated = weeklyAllocatedSetsPerMuscle[ex.muscle] ?? 0;
+                      const muscleBreakdown = weeklyAllocatedSetsPerMuscle[ex.muscle] || { direct: 0, residual: 0, total: 0 };
                       const muscleCeiling = muscleCeilings[ex.muscle] ?? 14;
-                      const isAtCeiling = muscleAllocated >= muscleCeiling;
+                      const isAtCeiling = muscleBreakdown.total >= muscleCeiling;
 
                       return (
                         <div key={ex.id} className="rounded-2xl border border-border/80 bg-background/50 p-4 sm:p-5 transition-all space-y-4">
@@ -2481,9 +2783,16 @@ function TreinosPage() {
                                   <h3 className="text-sm sm:text-base font-black text-foreground">
                                     {ex.name}
                                   </h3>
-                                  <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0">
-                                    {ex.muscle}
+                                  <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0" title="Músculo Primário (1.0x por série)">
+                                    🎯 {ex.muscle}
                                   </span>
+
+                                  {/* Sinergistas Residuais */}
+                                  {ex.secondaryMuscles && ex.secondaryMuscles.length > 0 && (
+                                    <span className="rounded-full bg-[#00E5FF]/15 px-2 py-0.5 text-[9px] font-bold text-[#00E5FF] shrink-0" title="Sinergistas que recebem 0.5 série residual">
+                                      ⚡ Residuais: {ex.secondaryMuscles.join(', ')} (+0.5x)
+                                    </span>
+                                  )}
 
                                   {/* Badge de Teto do Músculo */}
                                   <span className={`rounded-full px-2 py-0.5 text-[9px] font-mono font-bold uppercase shrink-0 ${
@@ -2491,7 +2800,7 @@ function TreinosPage() {
                                       ? 'bg-destructive/20 text-destructive border border-destructive/40'
                                       : 'bg-secondary text-muted-foreground'
                                   }`}>
-                                    {isAtCeiling ? `⚠️ Teto de ${ex.muscle} Atingido (${muscleAllocated}/${muscleCeiling})` : `${ex.muscle}: ${muscleAllocated}/${muscleCeiling}s`}
+                                    {isAtCeiling ? `⚠️ Teto de ${ex.muscle} Atingido (${muscleBreakdown.total}/${muscleCeiling}s)` : `${ex.muscle}: ${muscleBreakdown.total}/${muscleCeiling}s`}
                                   </span>
                                 </div>
 
@@ -2903,11 +3212,17 @@ function TreinosPage() {
               </div>
             </div>
 
-            {/* Criar / Colar Exercício Rápido */}
-            <div className="rounded-xl border border-border/80 bg-background/60 p-3 space-y-2">
-              <span className="text-[11px] font-bold uppercase text-primary block">
-                + Criar Exercício Rápido Personalizado
-              </span>
+            {/* Criar / Colar Exercício Rápido com Músculo Primário e Sinergistas Residuais */}
+            <div className="rounded-xl border border-border/80 bg-background/60 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase text-primary block">
+                  + Criar Exercício Rápido Personalizado
+                </span>
+                <span className="text-[9px] text-muted-foreground font-mono">
+                  Primário = 1.0x série | Sinergistas = 0.5x residual
+                </span>
+              </div>
+
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="text"
@@ -2921,8 +3236,8 @@ function TreinosPage() {
                   onChange={(e) => setCustomExerciseMuscle(e.target.value as MuscleGroup)}
                   className="rounded border border-border bg-background px-2 py-1.5 text-xs font-semibold"
                 >
-                  {(Object.keys(MUSCLE_VOLUME_LANDMARKS) as MuscleGroup[]).map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                  {muscleGroupsList.map((m) => (
+                    <option key={m.id} value={m.name}>🎯 Primário: {m.name}</option>
                   ))}
                 </select>
                 <Button
@@ -2933,6 +3248,40 @@ function TreinosPage() {
                 >
                   Adicionar
                 </Button>
+              </div>
+
+              {/* Músculos Sinergistas / Residuais (0.5 série cada) */}
+              <div className="space-y-1.5 pt-1 border-t border-border/40">
+                <span className="text-[10px] font-bold text-muted-foreground block">
+                  Selecione os Sinergistas Residuais (receberão 0.5 série no cálculo de volume semanal):
+                </span>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                  {muscleGroupsList
+                    .filter((m) => m.name !== customExerciseMuscle)
+                    .map((m) => {
+                      const isSelected = customExerciseSecondaryMuscles.includes(m.name as MuscleGroup);
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setCustomExerciseSecondaryMuscles((prev) =>
+                              isSelected
+                                ? prev.filter((item) => item !== m.name)
+                                : [...prev, m.name as MuscleGroup]
+                            );
+                          }}
+                          className={`rounded-lg px-2 py-0.5 text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#00E5FF] text-black shadow-sm ring-1 ring-[#00E5FF]'
+                              : 'bg-card text-muted-foreground hover:text-foreground border border-border/60'
+                          }`}
+                        >
+                          {isSelected ? '✓ ' : '+ '} {m.name} (0.5x)
+                        </button>
+                      );
+                    })}
+                </div>
               </div>
             </div>
 
@@ -2964,11 +3313,16 @@ function TreinosPage() {
                     className="flex items-center justify-between rounded-lg border border-border/60 bg-card/60 p-3 hover:border-primary/50 transition-all"
                   >
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-xs text-foreground">{libEx.name}</span>
                         <span className="rounded bg-primary/20 px-1 py-0.5 text-[9px] font-bold text-primary">
-                          {libEx.muscle}
+                          🎯 {libEx.muscle}
                         </span>
+                        {libEx.secondaryMuscles && libEx.secondaryMuscles.length > 0 && (
+                          <span className="rounded bg-[#00E5FF]/15 px-1 py-0.5 text-[9px] font-bold text-[#00E5FF]">
+                            ⚡ Residuais: {libEx.secondaryMuscles.join(', ')}
+                          </span>
+                        )}
                         <span className="text-[10px] text-muted-foreground font-mono">
                           {libEx.equipment}
                         </span>
@@ -2988,6 +3342,287 @@ function TreinosPage() {
                   </div>
                 ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL CRIAR NOVO TREINO NO DIA (COACH STUDIO) */}
+      {isNewWorkoutModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="panel max-w-md w-full p-6 space-y-4 border border-primary/40 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-black flex items-center gap-2 text-foreground">
+                <Plus size={18} className="text-primary" /> Novo Treino na Rotina
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsNewWorkoutModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Nome do Treino (ex: Push B - Hipertrofia Clavicular):
+              </label>
+              <input
+                type="text"
+                value={newWorkoutTitleInput}
+                onChange={(e) => setNewWorkoutTitleInput(e.target.value)}
+                placeholder="Ex: Push B - Peito e Tríceps"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-foreground focus:border-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground mb-1">
+                Categoria Biomecânica:
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['Push', 'Pull', 'Legs'] as BiomechanicalCategory[]).map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setNewWorkoutCategoryInput(cat)}
+                    className={`py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      newWorkoutCategoryInput === cat
+                        ? 'bg-primary text-primary-foreground shadow-md'
+                        : 'bg-card border border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button
+              onClick={() => handleCreateNewWorkoutForDay(newWorkoutTitleInput, newWorkoutCategoryInput)}
+              disabled={!newWorkoutTitleInput.trim()}
+              className="w-full bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs py-2.5 rounded-xl cursor-pointer"
+            >
+              Criar Treino & Iniciar Montagem
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ADICIONAR NOVO GRUPAMENTO MUSCULAR (CRUD DE VOLUME) */}
+      {isAddMuscleModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="panel max-w-md w-full p-6 space-y-4 border border-primary/40 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-black flex items-center gap-2 text-foreground">
+                <Target size={18} className="text-primary" /> Adicionar Grupamento Muscular
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddMuscleModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Nome do Grupamento Muscular:
+                </label>
+                <input
+                  type="text"
+                  value={newMuscleForm.name}
+                  onChange={(e) => setNewMuscleForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ex: Lombar, Adutores, Abdômen..."
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-foreground focus:border-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MEV (Mínimo Efetivo):
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="40"
+                    value={newMuscleForm.mev}
+                    onChange={(e) => setNewMuscleForm((prev) => ({ ...prev, mev: parseInt(e.target.value) || 0 }))}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MRV (Teto Biológico):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={newMuscleForm.mrv}
+                    onChange={(e) => setNewMuscleForm((prev) => ({ ...prev, mrv: parseInt(e.target.value) || 0 }))}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MAV Mín (Zona Ideal):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="40"
+                    value={newMuscleForm.mavMin}
+                    onChange={(e) => setNewMuscleForm((prev) => ({ ...prev, mavMin: parseInt(e.target.value) || 0 }))}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MAV Máx (Zona Ideal):
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="40"
+                    value={newMuscleForm.mavMax}
+                    onChange={(e) => setNewMuscleForm((prev) => ({ ...prev, mavMax: parseInt(e.target.value) || 0 }))}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Teto Semanal Máximo (Bloqueia o Montador):
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={newMuscleForm.ceiling}
+                  onChange={(e) => setNewMuscleForm((prev) => ({ ...prev, ceiling: parseInt(e.target.value) || 0 }))}
+                  className="w-full rounded-xl border border-primary/60 bg-background px-3 py-2 font-mono font-black text-sm text-primary"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleAddMuscleGroup}
+              disabled={!newMuscleForm.name.trim()}
+              className="w-full bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs py-2.5 rounded-xl cursor-pointer"
+            >
+              Cadastrar Grupamento & Limites
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR GRUPAMENTO MUSCULAR EXISTENTE */}
+      {editingMuscleItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="panel max-w-md w-full p-6 space-y-4 border border-primary/40 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-black flex items-center gap-2 text-foreground">
+                <Edit3 size={18} className="text-primary" /> Editar {editingMuscleItem.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingMuscleItem(null)}
+                className="text-muted-foreground hover:text-foreground text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Nome do Músculo:
+                </label>
+                <input
+                  type="text"
+                  value={editingMuscleItem.name}
+                  onChange={(e) => setEditingMuscleItem((prev) => prev ? { ...prev, name: e.target.value } : null)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-bold text-foreground focus:border-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MEV:
+                  </label>
+                  <input
+                    type="number"
+                    value={editingMuscleItem.mev}
+                    onChange={(e) => setEditingMuscleItem((prev) => prev ? { ...prev, mev: parseInt(e.target.value) || 0 } : null)}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MRV:
+                  </label>
+                  <input
+                    type="number"
+                    value={editingMuscleItem.mrv}
+                    onChange={(e) => setEditingMuscleItem((prev) => prev ? { ...prev, mrv: parseInt(e.target.value) || 0 } : null)}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MAV Mín:
+                  </label>
+                  <input
+                    type="number"
+                    value={editingMuscleItem.mavMin}
+                    onChange={(e) => setEditingMuscleItem((prev) => prev ? { ...prev, mavMin: parseInt(e.target.value) || 0 } : null)}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground mb-1">
+                    MAV Máx:
+                  </label>
+                  <input
+                    type="number"
+                    value={editingMuscleItem.mavMax}
+                    onChange={(e) => setEditingMuscleItem((prev) => prev ? { ...prev, mavMax: parseInt(e.target.value) || 0 } : null)}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-1.5 font-mono font-bold text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-muted-foreground mb-1">
+                  Teto Semanal Máximo (Séries):
+                </label>
+                <input
+                  type="number"
+                  value={editingMuscleItem.ceiling}
+                  onChange={(e) => setEditingMuscleItem((prev) => prev ? { ...prev, ceiling: parseInt(e.target.value) || 0 } : null)}
+                  className="w-full rounded-xl border border-primary/60 bg-background px-3 py-2 font-mono font-black text-sm text-primary"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSaveEditMuscle}
+              className="w-full bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs py-2.5 rounded-xl cursor-pointer"
+            >
+              Salvar Alterações do Músculo
+            </Button>
           </div>
         </div>
       )}

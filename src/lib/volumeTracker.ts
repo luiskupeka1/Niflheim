@@ -11,7 +11,7 @@
  * - CLUSTER_SET conta como 1.2 séries.
  */
 
-export type MuscleGroup =
+export type StandardMuscleGroup =
   | 'Peito'
   | 'Costas'
   | 'Quadríceps'
@@ -22,7 +22,12 @@ export type MuscleGroup =
   | 'Ombros Laterais'
   | 'Ombros Posteriores'
   | 'Bíceps'
-  | 'Tríceps';
+  | 'Tríceps'
+  | 'Trapézio'
+  | 'Antebraços'
+  | 'Abdômen';
+
+export type MuscleGroup = StandardMuscleGroup | (string & {});
 
 export type BiomechanicalCategory = 'Push' | 'Pull' | 'Legs' | 'Upper' | 'Lower' | 'FullBody';
 
@@ -33,6 +38,7 @@ export type IntensityTechnique = 'NONE' | 'MYO_REPS' | 'CLUSTER_SET' | 'REST_PAU
 export interface SetVolumeData {
   id: string;
   muscle: MuscleGroup;
+  secondaryMuscles?: MuscleGroup[];
   baseType: BaseSetType;
   intensityTechnique: IntensityTechnique;
   weight: number;
@@ -50,7 +56,7 @@ export interface MuscleVolumeThresholds {
 }
 
 /** Tabela de Referência Baseada na Literatura (Mike Israetel / Brad Schoenfeld) */
-export const MUSCLE_VOLUME_LANDMARKS: Record<MuscleGroup, MuscleVolumeThresholds> = {
+export const MUSCLE_VOLUME_LANDMARKS: Record<string, MuscleVolumeThresholds> = {
   'Peito': { mev: 8, mavMin: 12, mavMax: 20, mrv: 22 },
   'Costas': { mev: 10, mavMin: 14, mavMax: 22, mrv: 25 },
   'Quadríceps': { mev: 8, mavMin: 12, mavMax: 18, mrv: 20 },
@@ -62,13 +68,18 @@ export const MUSCLE_VOLUME_LANDMARKS: Record<MuscleGroup, MuscleVolumeThresholds
   'Ombros Posteriores': { mev: 6, mavMin: 12, mavMax: 20, mrv: 22 },
   'Bíceps': { mev: 6, mavMin: 10, mavMax: 18, mrv: 20 },
   'Tríceps': { mev: 6, mavMin: 10, mavMax: 16, mrv: 18 },
+  'Trapézio': { mev: 4, mavMin: 8, mavMax: 14, mrv: 18 },
+  'Antebraços': { mev: 4, mavMin: 8, mavMax: 14, mrv: 18 },
+  'Abdômen': { mev: 0, mavMin: 8, mavMax: 16, mrv: 20 },
 };
 
 export type VolumeStatus = 'BELOW_MEV' | 'MEV' | 'MAV' | 'MRV_NEAR' | 'JUNK_VOLUME';
 
 export interface MuscleWeeklyAssessment {
   muscle: MuscleGroup;
-  effectiveWorkingSets: number;
+  effectiveWorkingSets: number; // directSets + (residualSets * 0.5)
+  directSets: number;
+  residualSets: number;
   rawSetCount: number;
   totalTonnageKg: number;
   status: VolumeStatus;
@@ -108,34 +119,51 @@ export function getFunctionalSetWeight(
 
 /**
  * Processa as séries semanais e calcula o balanço MEV / MAV / MRV
+ * levando em conta Séries Diretas (1.0) e Séries Residuais (0.5)
  */
 export function calculateWeeklyMuscleVolume(sets: SetVolumeData[]): MuscleWeeklyAssessment[] {
-  const muscleMap = new Map<MuscleGroup, { effectiveSets: number; rawCount: number; tonnage: number }>();
+  const muscleMap = new Map<string, { directSets: number; residualSets: number; rawCount: number; tonnage: number }>();
 
-  // Inicializa todos os grupos musculares
-  (Object.keys(MUSCLE_VOLUME_LANDMARKS) as MuscleGroup[]).forEach((m) => {
-    muscleMap.set(m, { effectiveSets: 0, rawCount: 0, tonnage: 0 });
+  // Inicializa todos os grupos musculares da tabela de referência
+  Object.keys(MUSCLE_VOLUME_LANDMARKS).forEach((m) => {
+    muscleMap.set(m, { directSets: 0, residualSets: 0, rawCount: 0, tonnage: 0 });
   });
 
   // Agrega as séries válidas completadas
   for (const s of sets) {
     if (!s.completed) continue;
-    const current = muscleMap.get(s.muscle) ?? { effectiveSets: 0, rawCount: 0, tonnage: 0 };
     const functionalWeight = getFunctionalSetWeight(s.baseType, s.intensityTechnique);
     const setTonnage = s.weight * s.reps;
 
+    // 1. Músculo Primário: ganha 1.0 série direta
+    const currentPrimary = muscleMap.get(s.muscle) ?? { directSets: 0, residualSets: 0, rawCount: 0, tonnage: 0 };
     muscleMap.set(s.muscle, {
-      effectiveSets: current.effectiveSets + functionalWeight,
-      rawCount: current.rawCount + 1,
-      tonnage: current.tonnage + setTonnage,
+      directSets: currentPrimary.directSets + functionalWeight,
+      residualSets: currentPrimary.residualSets,
+      rawCount: currentPrimary.rawCount + 1,
+      tonnage: currentPrimary.tonnage + setTonnage,
     });
+
+    // 2. Músculos Secundários / Sinergistas: ganham volume residual (0.5 cada)
+    if (s.secondaryMuscles && s.secondaryMuscles.length > 0) {
+      for (const sec of s.secondaryMuscles) {
+        const currentSec = muscleMap.get(sec) ?? { directSets: 0, residualSets: 0, rawCount: 0, tonnage: 0 };
+        muscleMap.set(sec, {
+          directSets: currentSec.directSets,
+          residualSets: currentSec.residualSets + functionalWeight,
+          rawCount: currentSec.rawCount,
+          tonnage: currentSec.tonnage,
+        });
+      }
+    }
   }
 
   const results: MuscleWeeklyAssessment[] = [];
 
   muscleMap.forEach((val, muscle) => {
-    const landmarks = MUSCLE_VOLUME_LANDMARKS[muscle];
-    const effective = Math.round(val.effectiveSets * 10) / 10;
+    const landmarks = MUSCLE_VOLUME_LANDMARKS[muscle] ?? { mev: 6, mavMin: 10, mavMax: 16, mrv: 20 };
+    // Volume Efetivo = Diretas (1.0) + Residuais (0.5)
+    const effective = Math.round((val.directSets + (val.residualSets * 0.5)) * 10) / 10;
     let status: VolumeStatus = 'BELOW_MEV';
     let statusLabel = 'Abaixo do MEV';
     let recommendation = 'Aumente o volume semanal para atingir estímulo hipertrófico mínimo.';
@@ -161,6 +189,8 @@ export function calculateWeeklyMuscleVolume(sets: SetVolumeData[]): MuscleWeekly
     results.push({
       muscle,
       effectiveWorkingSets: effective,
+      directSets: Math.round(val.directSets * 10) / 10,
+      residualSets: Math.round(val.residualSets * 10) / 10,
       rawSetCount: val.rawCount,
       totalTonnageKg: Math.round(val.tonnage),
       status,
