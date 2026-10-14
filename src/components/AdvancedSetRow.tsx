@@ -246,32 +246,32 @@ export function AdvancedSetRow({
     onUpdate({ ...data, baseType: 'WORKING', technique: 'NONE' });
   };
 
-  // Render do Badge BaseSetType
+  // Render do Badge BaseSetType com nomenclaturas claras em inglês
   const renderBaseBadge = () => {
     switch (data.baseType) {
       case 'WARMUP':
         return (
           <span 
-            title="Aquecimento Articular / Ativação (Não conta no MEV/MAV)"
-            className="flex size-7 items-center justify-center rounded-lg bg-muted/80 border border-muted-foreground/30 font-mono text-[11px] font-black text-muted-foreground"
+            title="Warm-up: Aquecimento Articular / Ativação (Não conta no MEV/MAV)"
+            className="flex h-7 px-2 items-center justify-center rounded-lg bg-muted/80 border border-muted-foreground/30 font-mono text-[10px] font-black text-muted-foreground shrink-0"
           >
-            W
+            Warm-up
           </span>
         );
       case 'FEEDER':
         return (
           <span 
-            title="Preparatória / Feeder de Reconhecimento de Carga (1-3 reps de calibração neural)"
-            className="flex size-7 items-center justify-center rounded-lg bg-amber-500/20 border border-amber-500/40 font-mono text-[11px] font-black text-amber-500"
+            title="Feeder: Preparatória / Calibração Neural de Carga"
+            className="flex h-7 px-2 items-center justify-center rounded-lg bg-amber-500/20 border border-amber-500/40 font-mono text-[10px] font-black text-amber-400 shrink-0"
           >
-            F
+            Feeder
           </span>
         );
       case 'PAP':
         return (
           <span 
-            title="PAP (Potenciação Pós-Ativação): 1-2 reps com sobrecarga máxima para acordar o SNC e aumentar produção de força"
-            className="flex h-7 px-1.5 items-center justify-center rounded-lg bg-purple-500/20 border border-purple-500/50 font-mono text-[10px] font-black text-purple-400"
+            title="PAP (Potenciação Pós-Ativação): Ativação neural pré-working set"
+            className="flex h-7 px-2 items-center justify-center rounded-lg bg-purple-500/20 border border-purple-500/50 font-mono text-[10px] font-black text-purple-400 shrink-0"
           >
             PAP
           </span>
@@ -279,20 +279,20 @@ export function AdvancedSetRow({
       case 'BACKOFF':
         return (
           <span 
-            title="Back-off Set (B)"
-            className="flex size-7 items-center justify-center rounded-lg bg-chart-2/20 border border-chart-2/40 font-mono text-[11px] font-black text-chart-2"
+            title="Back-off Set: Série de redução de carga e alto volume"
+            className="flex h-7 px-2 items-center justify-center rounded-lg bg-chart-2/20 border border-chart-2/40 font-mono text-[10px] font-black text-chart-2 shrink-0"
           >
-            B
+            Back-off
           </span>
         );
       case 'WORKING':
       default:
         return (
           <span 
-            title={`Série de Trabalho Efetiva #${workingIndex ?? data.setNumber}`}
-            className="flex size-7 items-center justify-center rounded-lg bg-primary font-mono text-xs font-black text-primary-foreground shadow-sm"
+            title={`Série de Trabalho (Work Set #${workingIndex ?? data.setNumber})`}
+            className="flex h-7 px-2 items-center justify-center rounded-lg bg-primary font-mono text-[10px] font-black text-primary-foreground shadow-sm shrink-0"
           >
-            {workingIndex !== undefined ? `#${workingIndex}` : `#${data.setNumber}`}
+            Work #{workingIndex ?? data.setNumber}
           </span>
         );
     }

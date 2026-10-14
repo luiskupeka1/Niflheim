@@ -86,42 +86,44 @@ export function HevySetRow({
     return null;
   };
 
-  // Label do Cabeçalho da Série com badges arredondadas e modernas
+  // Label do Cabeçalho da Série com nomenclaturas claras em inglês (Work, Feeder, PAP, Warm-up)
   const renderSetLabel = () => {
-    const sNum = workingIndex !== undefined ? `S${workingIndex}` : `S${data.setNumber}`;
+    const workNum = workingIndex !== undefined ? workingIndex : data.setNumber;
 
     if (isWarmup) {
       return (
-        <span className="inline-flex items-center text-[11px] font-bold text-muted-foreground bg-muted/60 border border-border/50 px-2 py-0.5 rounded-full">
-          {sNum} • Aquecimento
+        <span className="inline-flex items-center text-[10px] sm:text-[11px] font-bold text-muted-foreground bg-muted/60 border border-border/50 px-2 py-0.5 rounded-full">
+          Warm-up • Aquecimento
         </span>
       );
     }
     if (isFeeder) {
       return (
-        <span className="inline-flex items-center text-[11px] font-bold text-muted-foreground bg-muted/60 border border-border/50 px-2 py-0.5 rounded-full">
-          {sNum} • Aclimatação
+        <span className="inline-flex items-center text-[10px] sm:text-[11px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+          Feeder
         </span>
       );
     }
     if (isPAP) {
       return (
-        <span className="inline-flex items-center text-[11px] font-bold text-sky-400 bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 rounded-full">
-          {sNum} • PAP
+        <span className="inline-flex items-center text-[10px] sm:text-[11px] font-bold text-sky-400 bg-sky-500/15 border border-sky-500/30 px-2 py-0.5 rounded-full">
+          PAP
         </span>
       );
     }
     if (isBackoff) {
       return (
-        <span className="inline-flex items-center text-[11px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
-          {sNum} • Back-off
+        <span className="inline-flex items-center text-[10px] sm:text-[11px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-full">
+          Back-off
         </span>
       );
     }
     const tech = techniqueLabel();
     return (
       <span className="inline-flex items-center gap-1.5 flex-wrap">
-        <span className="text-xs font-black text-foreground">{sNum}</span>
+        <span className="text-xs font-black text-foreground">
+          Work {workNum}
+        </span>
         {tech && (
           <span className="text-[10px] font-bold text-primary bg-primary/15 border border-primary/30 px-2 py-0.5 rounded-full">
             {tech}
