@@ -201,24 +201,24 @@ export function HevySetRow({
 
   return (
     <div 
-      className={`py-2 px-2.5 rounded-2xl transition-all duration-200 select-none flex items-center justify-between gap-2.5 ${
+      className={`py-2 px-2 rounded-xl transition-all duration-200 select-none flex items-center justify-between gap-1.5 sm:gap-2.5 ${
         data.completed 
           ? 'bg-emerald-500/[0.08] border border-emerald-500/25 shadow-xs' 
           : 'hover:bg-muted/30 border border-transparent'
       }`}
     >
       {/* 1. ESQUERDA: IDENTIFICADOR DA SÉRIE E META */}
-      <div className="flex-1 min-w-0 pr-1">
-        <div className="flex items-center gap-1.5 flex-wrap">
+      <div className="flex-1 min-w-0 pr-1 overflow-hidden">
+        <div className="flex items-center gap-1 flex-wrap">
           {renderSetLabel()}
         </div>
-        <div className="mt-0.5 truncate">
+        <div className="mt-0.5 truncate text-[11px] font-mono text-muted-foreground">
           {targetDescription()}
         </div>
       </div>
 
       {/* 2. DIREITA: INPUTS COMPACTOS ARREDONDADOS E BOTÃO CHECK */}
-      <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
         <div className="flex flex-col items-center">
           <input
             type="number"
@@ -232,14 +232,10 @@ export function HevySetRow({
               const num = val === '' ? 0 : parseFloat(val) || 0;
               onUpdate({ ...data, weight: num });
             }}
-            className={`w-13 sm:w-16 h-8.5 rounded-xl border text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-              data.completed
-                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400'
-                : 'bg-background/80 border-border/80 text-foreground'
-            }`}
+            className="!w-12 sm:!w-14 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             title="Carga Levantada (kg)"
           />
-          <span className="text-[9px] font-black text-muted-foreground uppercase mt-0.5">KG</span>
+          <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">KG</span>
         </div>
 
         <div className="flex flex-col items-center">
@@ -254,14 +250,10 @@ export function HevySetRow({
               const num = val === '' ? 0 : parseInt(val) || 0;
               onUpdate({ ...data, reps: num });
             }}
-            className={`w-11 sm:w-13 h-8.5 rounded-xl border text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-              data.completed
-                ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400'
-                : 'bg-background/80 border-border/80 text-foreground'
-            }`}
+            className="!w-10 sm:!w-12 !h-8 !p-0 rounded-xl border border-border/80 !bg-background text-center font-mono text-xs font-bold transition-all focus:border-primary focus:ring-1 focus:ring-primary/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             title="Repetições Realizadas"
           />
-          <span className="text-[9px] font-black text-muted-foreground uppercase mt-0.5">REPS</span>
+          <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">REPS</span>
         </div>
 
         {/* Botão de Conclusão Moderno e Arredondado (Hevy Style) */}
@@ -269,19 +261,19 @@ export function HevySetRow({
           <button
             type="button"
             onClick={handleToggle}
-            className={`h-8.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-90 cursor-pointer select-none ${
+            className={`!h-8 px-2.5 rounded-xl flex items-center justify-center gap-1 transition-all active:scale-90 cursor-pointer select-none shrink-0 ${
               data.completed
                 ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30 font-black border border-emerald-400'
                 : 'bg-muted/60 border border-border/80 text-muted-foreground hover:border-primary hover:text-primary hover:bg-primary/10'
             }`}
             title={data.completed ? 'Série concluída! Toque para reabrir' : 'Toque para concluir série e computar XP'}
           >
-            <Check size={16} strokeWidth={data.completed ? 3.5 : 2} />
+            <Check size={14} strokeWidth={data.completed ? 3.5 : 2} />
             {data.completed && !isPreparatory && calculatedXP > 0 && (
-              <span className="text-[10px] font-black tracking-tight">+{calculatedXP}</span>
+              <span className="text-[9px] sm:text-[10px] font-black tracking-tight">+{calculatedXP}</span>
             )}
           </button>
-          <span className="text-[9px] font-black text-muted-foreground uppercase mt-0.5">OK</span>
+          <span className="text-[8px] sm:text-[9px] font-black text-muted-foreground uppercase mt-0.5">OK</span>
         </div>
       </div>
 

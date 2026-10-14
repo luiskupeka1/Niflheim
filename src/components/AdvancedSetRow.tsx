@@ -311,6 +311,109 @@ export function AdvancedSetRow({
     return 'WORKING_NORMAL';
   };
 
+  if (mode === 'PLAN') {
+    return (
+      <div className="rounded-xl border border-border/60 bg-card/50 p-2.5 sm:p-3 space-y-2.5 transition-all shadow-xs">
+        {/* Linha 1: Badge + Seletor de Tipo/Técnica + Lixeira */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {renderBaseBadge()}
+            {isPreparatory ? (
+              <select
+                value={data.baseType}
+                onChange={(e) => handleSelectSetMode(e.target.value)}
+                className="rounded-xl border border-border/70 bg-background/90 px-2 py-1 text-[11px] font-bold text-muted-foreground focus:border-primary truncate w-full max-w-[190px]"
+              >
+                <option value="WARMUP">Aquecimento (W)</option>
+                <option value="FEEDER">Feeder / Calibração (F)</option>
+                <option value="PAP">PAP (Potenciação)</option>
+              </select>
+            ) : (
+              <select
+                value={currentSelectValue()}
+                onChange={(e) => handleSelectSetMode(e.target.value)}
+                className="rounded-xl border border-primary/40 bg-background px-2 py-1 text-[11px] font-black text-foreground focus:border-primary truncate w-full max-w-[190px]"
+              >
+                <option value="WORKING_NORMAL">Série Normal</option>
+                <option value="BACKOFF">Back-off Set (B)</option>
+                <option value="REST_PAUSE">Rest-Pause (Pausa 15s)</option>
+                <option value="MYO_REPS">Myo-Reps (Ativação)</option>
+                <option value="CLUSTER_SET">Cluster Set (Blocos)</option>
+                <option value="DROP_SET">Drop Set (Redução)</option>
+              </select>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onDelete}
+            title="Remover série"
+            className="p-1 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg shrink-0"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+
+        {/* Linha 2: Metas (Carga, Reps, Descanso) compactas e touch friendly no mobile */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/30 text-xs">
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-black text-muted-foreground uppercase">Carga:</span>
+            <input
+              type="number"
+              step="0.5"
+              min="0"
+              value={data.targetWeight ?? data.weight ?? 0}
+              placeholder="0"
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value) || 0;
+                onUpdate({ ...data, targetWeight: val, weight: val });
+              }}
+              className="!w-14 !h-7 !p-0 !bg-background border border-border/80 rounded-lg text-center font-mono text-xs font-bold text-foreground focus:border-primary"
+            />
+            <span className="text-[10px] text-muted-foreground">kg</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-black text-muted-foreground uppercase">Reps:</span>
+            <input
+              type="number"
+              min="1"
+              value={data.targetReps ?? data.reps ?? 10}
+              placeholder="10"
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 0;
+                onUpdate({ ...data, targetReps: val, reps: val });
+              }}
+              className="!w-12 !h-7 !p-0 !bg-background border border-border/80 rounded-lg text-center font-mono text-xs font-bold text-foreground focus:border-primary"
+            />
+            <span className="text-[10px] text-muted-foreground">reps</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-black text-muted-foreground uppercase">Descanso:</span>
+            <input
+              type="number"
+              min="10"
+              max="600"
+              step="5"
+              value={data.restSeconds ?? (isPreparatory ? restWarmupSeconds : restWorkingSeconds)}
+              placeholder="60"
+              onFocus={(e) => e.target.select()}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 60;
+                onUpdate({ ...data, restSeconds: val });
+              }}
+              className="!w-14 !h-7 !p-0 !bg-background border border-border/80 rounded-lg text-center font-mono text-xs font-bold text-foreground focus:border-primary"
+            />
+            <span className="text-[10px] text-muted-foreground">s</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className={`rounded-2xl border transition-all p-3 space-y-3 ${

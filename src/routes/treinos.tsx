@@ -1213,51 +1213,51 @@ function TreinosPage() {
             <button
               type="button"
               onClick={() => setWorkoutMode('FAZER')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
                 workoutMode === 'FAZER'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Dumbbell size={14} /> Fazer Treino
+              <Dumbbell size={13} /> Fazer Treino
             </button>
             <button
               type="button"
               onClick={handleRequestAdminMode}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
                 workoutMode === 'MONTAR'
                   ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {isAdminUnlocked ? <SlidersHorizontal size={14} /> : <Lock size={14} className="text-amber-400" />}
+              {isAdminUnlocked ? <SlidersHorizontal size={13} /> : <Lock size={13} className="text-amber-400" />}
               <span>Montar Treino</span>
-              {!isAdminUnlocked && <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1 py-0.2 rounded font-mono">ADM</span>}
+              {!isAdminUnlocked && <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1 py-0.2 rounded font-mono">ADM</span>}
             </button>
           </div>
 
           {isAdminUnlocked && (
-            <div className="flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 border border-primary/25 px-2.5 py-1 rounded-xl">
-              <ShieldCheck size={14} />
-              <span>Admin Ativo</span>
+            <div className="flex items-center gap-1 text-[11px] font-bold text-primary bg-primary/10 border border-primary/25 px-2 py-0.5 rounded-xl">
+              <ShieldCheck size={13} />
+              <span>Admin</span>
               <button
                 type="button"
                 onClick={handleLockAdmin}
                 title="Bloquear painel de administrador"
-                className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                className="ml-1 text-muted-foreground hover:text-destructive transition-colors text-xs font-bold"
               >
-                (Sair)
+                ✕
               </button>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsNightCheckinOpen(true)}
-            className="text-xs h-8 px-2.5 border-border/80 rounded-xl"
+            className="text-xs h-8 px-2.5 border-border/80 rounded-xl flex-1 sm:flex-initial"
           >
             <Moon size={13} className="text-primary mr-1" /> Noturno
           </Button>
@@ -1265,9 +1265,9 @@ function TreinosPage() {
           <Button
             size="sm"
             onClick={() => setIsFinishingWorkout(true)}
-            className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs h-8 px-3 rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+            className="bg-emerald-500 hover:bg-emerald-600 text-black font-black text-xs h-8 px-3 rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-initial"
           >
-            <CheckCircle2 size={15} /> 🏁 Concluir ({completedSetsCount}/{totalSetsCount})
+            <CheckCircle2 size={14} /> 🏁 Concluir ({completedSetsCount}/{totalSetsCount})
           </Button>
         </div>
       </div>
@@ -1276,9 +1276,9 @@ function TreinosPage() {
       {/* =================== MODO 1: FAZER TREINO (ESTILO HEVY) =================== */}
       {/* ========================================================================= */}
       {workoutMode === 'FAZER' && (
-        <div className="space-y-5 animate-in fade-in duration-200">
+        <div className="space-y-4 sm:space-y-5 animate-in fade-in duration-200">
           {/* BARRA HORIZONTAL COMPACTA DOS 7 DIAS DA SEMANA (ESTILO HEVY) */}
-          <div className="rounded-2xl border border-border/70 bg-card/60 p-2 sm:p-2.5 shadow-sm">
+          <div className="rounded-2xl border border-border/70 bg-card/60 p-1.5 sm:p-2.5 shadow-sm overflow-hidden">
             <div className="grid grid-cols-7 gap-1 sm:gap-2">
               {weeklySchedule.map((day, idx) => {
                 const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
@@ -1290,7 +1290,7 @@ function TreinosPage() {
                     key={day.dayOfWeek}
                     type="button"
                     onClick={() => handleSelectDay(day)}
-                    className={`rounded-xl p-1.5 sm:p-2 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-w-0 ${
+                    className={`rounded-xl p-1 sm:p-2 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-w-0 overflow-hidden ${
                       isToday
                         ? 'border border-primary bg-primary/20 ring-1 ring-primary'
                         : isLoaded
@@ -1301,15 +1301,15 @@ function TreinosPage() {
                     }`}
                   >
                     <div className="flex items-center gap-0.5">
-                      <span className="font-mono text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground">
+                      <span className="font-mono text-[8px] xs:text-[9px] sm:text-[10px] font-black uppercase text-muted-foreground">
                         {day.shortDay}
                       </span>
                       {isToday && (
-                        <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="size-1 sm:size-1.5 rounded-full bg-primary animate-pulse" />
                       )}
                     </div>
                     <span 
-                      className={`text-[9px] sm:text-[11px] font-extrabold truncate w-full mt-0.5 ${
+                      className={`text-[8px] xs:text-[9px] sm:text-[11px] font-extrabold truncate w-full mt-0.5 block ${
                         isLoaded ? 'text-primary' : 'text-muted-foreground'
                       }`}
                       title={day.workoutTitle}
@@ -1383,62 +1383,63 @@ function TreinosPage() {
                   }`}
                 >
                   {/* Linha Superior do Exercício */}
-                  <div className="flex items-center justify-between gap-3 border-b border-border/50 pb-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-base sm:text-lg font-black text-foreground truncate tracking-tight">
+                  <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5 sm:pb-3">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="text-sm sm:text-base font-black text-foreground truncate tracking-tight">
                         {exIndex + 1}. {ex.name}
                       </span>
                       {allSetsDone && (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-black uppercase flex items-center gap-1 shrink-0">
-                          <Check size={11} strokeWidth={3} /> Feito
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 text-[9px] sm:text-[10px] font-black uppercase flex items-center gap-0.5 shrink-0">
+                          <Check size={10} strokeWidth={3} /> Feito
                         </span>
                       )}
                     </div>
 
                     {/* Ações Minimalistas: Play de Vídeo Redondinho, Dicas e Progresso */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       {/* Botão Play do Vídeo Retrátil */}
                       <button
                         type="button"
                         onClick={() => setExpandedVideoId(expandedVideoId === ex.id ? null : ex.id)}
-                        className={`size-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                        className={`size-7 sm:size-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                           expandedVideoId === ex.id
                             ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30'
                             : 'bg-primary/10 border border-primary/25 text-primary hover:bg-primary/20 hover:scale-105'
                         }`}
                         title="Ver vídeo de execução (YouTube)"
                       >
-                        <Play size={13} className={expandedVideoId === ex.id ? 'fill-current' : 'fill-primary'} />
+                        <Play size={12} className={expandedVideoId === ex.id ? 'fill-current' : 'fill-primary'} />
                       </button>
 
                       {/* Dicas */}
                       <button
                         type="button"
                         onClick={() => setExpandedTipsId(expandedTipsId === ex.id ? null : ex.id)}
-                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-[11px] font-bold border transition-all cursor-pointer ${
                           expandedTipsId === ex.id
                             ? 'bg-foreground text-background border-foreground'
                             : 'bg-muted/50 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted'
                         }`}
                         title="Dicas de execução biomecânica"
                       >
-                        <Info size={12} className="inline mr-1" />
-                        Dicas
+                        <Info size={11} className="inline mr-0.5 sm:mr-1" />
+                        <span>Dicas</span>
                       </button>
 
                       {/* Gráfico Progresso */}
                       <button
                         type="button"
                         onClick={() => setSelectedExerciseForChart(selectedExerciseForChart === ex.name ? null : ex.name)}
-                        className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border transition-all cursor-pointer ${
+                        className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-xl text-[10px] sm:text-[11px] font-bold border transition-all cursor-pointer ${
                           selectedExerciseForChart === ex.name
                             ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                             : 'bg-muted/50 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted'
                         }`}
                         title="Histórico de Sobrecarga"
                       >
-                        <TrendingUp size={12} className="inline mr-1" />
-                        Evolução
+                        <TrendingUp size={11} className="inline mr-0.5 sm:mr-1" />
+                        <span className="hidden xs:inline">Evolução</span>
+                        <span className="xs:hidden">PR</span>
                       </button>
                     </div>
                   </div>
@@ -2012,15 +2013,15 @@ function TreinosPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="text-base sm:text-lg font-black text-foreground truncate max-w-[190px] xs:max-w-[260px] sm:max-w-none">
+                          <h3 className="text-base sm:text-lg font-black text-foreground truncate max-w-[170px] xs:max-w-[240px] sm:max-w-none">
                             {ex.name}
                           </h3>
                           <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0">
                             {ex.muscle}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <span className="text-[10px] font-bold text-[#00E5FF] flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1.5 mt-2 w-full">
+                          <span className="text-[10px] font-bold text-primary flex items-center gap-1 shrink-0">
                             <Play size={10} /> YouTube:
                           </span>
                           <input
@@ -2031,7 +2032,7 @@ function TreinosPage() {
                               setExercises((prev) => prev.map((item) => item.id === ex.id ? { ...item, video_url: newUrl } : item));
                             }}
                             placeholder="https://youtu.be/..."
-                            className="flex-1 min-w-[180px] rounded-lg border border-border/80 bg-background px-2 py-0.5 text-xs text-foreground font-mono focus:border-primary"
+                            className="w-full min-w-0 rounded-xl border border-border/80 bg-background px-2 py-1 text-xs text-foreground font-mono focus:border-primary"
                           />
                         </div>
                       </div>
@@ -2050,27 +2051,31 @@ function TreinosPage() {
                   </div>
 
                   {/* Configuração de Carga Meta e Reps Meta */}
-                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="rounded-xl border border-primary/25 bg-primary/5 p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                     <span className="font-bold text-primary flex items-center gap-1">
-                      <Target size={13} /> Metas Prescritas para o Aluno:
+                      <Target size={13} /> Metas Prescritas:
                     </span>
-                    <div className="flex items-center gap-2 font-mono">
-                      <span>Carga Alvo:</span>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={ex.targetWeightKg ?? 40}
-                        onChange={(e) => handleUpdateExerciseTarget(ex.id, parseFloat(e.target.value) || 0, ex.targetReps ?? 10)}
-                        className="w-16 rounded-lg border border-border bg-background px-2 py-1 text-center font-bold"
-                      />
-                      <span>kg</span>
-                      <span className="ml-2">Reps:</span>
-                      <input
-                        type="number"
-                        value={ex.targetReps ?? 10}
-                        onChange={(e) => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, parseInt(e.target.value) || 0)}
-                        className="w-14 rounded-lg border border-border bg-background px-2 py-1 text-center font-bold"
-                      />
+                    <div className="flex items-center gap-2 font-mono self-start sm:self-auto">
+                      <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase">CARGA:</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={ex.targetWeightKg ?? 40}
+                          onChange={(e) => handleUpdateExerciseTarget(ex.id, parseFloat(e.target.value) || 0, ex.targetReps ?? 10)}
+                          className="!w-12 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
+                        />
+                        <span className="text-[10px] text-muted-foreground">kg</span>
+                      </div>
+                      <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase">REPS:</span>
+                        <input
+                          type="number"
+                          value={ex.targetReps ?? 10}
+                          onChange={(e) => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, parseInt(e.target.value) || 0)}
+                          className="!w-10 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -2078,11 +2083,11 @@ function TreinosPage() {
                   <div className="space-y-4">
                     {/* Séries Preparatórias */}
                     <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 sm:p-4 space-y-2.5">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
                           <Clock size={13} className="text-amber-500" /> Séries Preparatórias
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           <Button
                             variant="ghost"
                             size="sm"
