@@ -67,14 +67,24 @@ import {
 import { checkMrvDeload, type FatigueLogItem } from '@/lib/checkMrvDeload';
 
 export const Route = createFileRoute('/treinos')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    mode: typeof search?.mode === 'string' ? search.mode : undefined,
+    admin: typeof search?.admin === 'string' ? search.admin : undefined,
+  }),
   head: () => ({
     meta: [
       { title: 'NIFLHEIM — Treinos & Hipertrofia Avançada' },
       { name: 'description', content: 'Divisão semanal (Segunda a Domingo), sobrecarga progressiva, cluster sets e controle de volume MEV/MRV.' },
     ],
   }),
-  component: TreinosPage,
+  component: TreinosRouteComponent,
 });
+
+function TreinosRouteComponent() {
+  const search = Route.useSearch() as { mode?: string; admin?: string };
+  const isAdm = search?.mode === 'admin' || search?.admin === 'true';
+  return <TreinosPage defaultMode={isAdm ? 'MONTAR' : undefined} forceAdmin={isAdm} />;
+}
 
 export interface ExerciseItem {
   id: string;
@@ -365,13 +375,14 @@ const LOCAL_STORAGE_ACTIVE_SESSION_KEY = 'niflheim_active_workout_session_v4';
 const LOCAL_STORAGE_ADMIN_KEY = 'niflheim_admin_unlocked_v1';
 const LOCAL_STORAGE_ADMIN_TOKEN_KEY = 'niflheim_adm_jwt_token';
 
-function TreinosPage() {
+export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER' | 'MONTAR'; forceAdmin?: boolean } = {}) {
   const { user, data, save, reward } = useLifestyle();
   const today = localDay();
   const todayDayIndex = new Date().getDay(); // 0 = Domingo, 1 = Segunda...
 
   // Modo de visualização: 'FAZER' (Visão do Usuário / Estilo Hevy) vs 'MONTAR' (Painel do Administrador)
   const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(() => {
+    if (forceAdmin || defaultMode === 'MONTAR') return true;
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
       const isUrlAdmin = searchParams.get('mode') === 'admin' || searchParams.get('admin') === 'true' || window.location.hash.includes('admin');
@@ -382,6 +393,7 @@ function TreinosPage() {
   });
 
   const [workoutMode, setWorkoutMode] = useState<'FAZER' | 'MONTAR'>(() => {
+    if (defaultMode) return defaultMode;
     if (typeof window !== 'undefined') {
       const searchParams = new URLSearchParams(window.location.search);
       const isUrlAdmin = searchParams.get('mode') === 'admin' || searchParams.get('admin') === 'true' || window.location.hash.includes('admin');
@@ -520,19 +532,31 @@ function TreinosPage() {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed?.exercises) && parsed.exercises.length > 0) {
-            return parsed.exercises;
+            return parsed.exercises.map((item: any) => ({
+              ...item,
+              secondaryMuscles: Array.isArray(item?.secondaryMuscles) ? item.secondaryMuscles : [],
+              sets: Array.isArray(item?.sets) ? item.sets : [],
+            }));
           }
         }
       } catch (e) {}
     }
     const tpl = DEFAULT_SPLITS[0].workouts[0];
     return tpl.exercises.map((item) => {
-      const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId)!;
+      const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId) || {
+        id: item.exerciseId,
+        name: 'Exercício',
+        muscle: 'Peito' as MuscleGroup,
+        category: 'Push' as BiomechanicalCategory,
+        equipment: 'Barra',
+        sets: [],
+      };
       return {
         ...lib,
         targetWeightKg: item.targetWeightKg ?? lib.targetWeightKg,
         targetReps: item.targetReps ?? lib.targetReps,
-        sets: item.sets,
+        secondaryMuscles: item.secondaryMuscles ?? lib.secondaryMuscles ?? [],
+        sets: Array.isArray(item.sets) ? item.sets : [],
       };
     });
   });
@@ -1186,32 +1210,38 @@ function TreinosPage() {
       }
     };
 
-    weeklySchedule.forEach((day, dayIdx) => {
+    (weeklySchedule || []).forEach((day, dayIdx) => {
+      if (!day) return;
       // Se o dia for o atualmente aberto na edição no modo MONTAR, usa os exercícios em memória
       if (dayIdx === selectedCoachDayIndex && workoutMode === 'MONTAR') {
-        exercises.forEach((ex) => {
-          const workingCount = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
-          tallyExerciseSets(ex.muscle, ex.secondaryMuscles, workingCount);
+        (exercises || []).forEach((ex) => {
+          if (!ex) return;
+          const exSets = Array.isArray(ex.sets) ? ex.sets : [];
+          const workingCount = exSets.filter((s) => s?.baseType === 'WORKING' || s?.baseType === 'BACKOFF').length;
+          tallyExerciseSets(ex.muscle || 'Peito', ex.secondaryMuscles, workingCount);
         });
         return;
       }
 
       // Caso contrário, busca na rotina ativa cadastrada
       let matchWorkout: WorkoutTemplateItem | undefined;
-      for (const split of splits) {
-        const found = split.workouts.find((w) => (day.workoutId && w.id === day.workoutId) || w.title === day.workoutTitle);
+      for (const split of (splits || [])) {
+        if (!split || !Array.isArray(split.workouts)) continue;
+        const found = split.workouts.find((w) => (day.workoutId && w?.id === day.workoutId) || (w?.title && day.workoutTitle && w.title.toLowerCase() === day.workoutTitle.toLowerCase()));
         if (found) {
           matchWorkout = found;
           break;
         }
       }
 
-      if (matchWorkout) {
+      if (matchWorkout && Array.isArray(matchWorkout.exercises)) {
         matchWorkout.exercises.forEach((item) => {
+          if (!item) return;
           const lib = EXERCISE_LIBRARY.find((e) => e.id === item.exerciseId);
           const muscle = lib?.muscle || 'Peito';
           const secondaries = item.secondaryMuscles || lib?.secondaryMuscles || [];
-          const workingCount = item.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF').length;
+          const itemSets = Array.isArray(item.sets) ? item.sets : [];
+          const workingCount = itemSets.filter((s) => s?.baseType === 'WORKING' || s?.baseType === 'BACKOFF').length;
           tallyExerciseSets(muscle, secondaries, workingCount);
         });
       }
@@ -4194,9 +4224,9 @@ function TreinosPage() {
             {/* Lista dos 7 Dias da Semana */}
             <div className="space-y-3">
               {weeklySchedule.map((day, idx) => {
-                const isToday = DAYS_OF_WEEK[idx].dayIndex === todayDayIndex;
-                const isKnown = splits.some(s => s.workouts.some(w => w.title === day.workoutTitle)) ||
-                  ['Descanso / Recuperação', 'Descanso / Recuperação Ativa', 'Cardio & Mobilidade', 'Treino Livre / Aeróbico'].includes(day.workoutTitle);
+                const isToday = DAYS_OF_WEEK[idx]?.dayIndex === todayDayIndex;
+                const isKnown = (splits || []).some(s => (s?.workouts || []).some(w => w?.title === day?.workoutTitle)) ||
+                  ['Descanso / Recuperação', 'Descanso / Recuperação Ativa', 'Cardio & Mobilidade', 'Treino Livre / Aeróbico'].includes(day?.workoutTitle || '');
 
                 return (
                   <div
@@ -4232,9 +4262,9 @@ function TreinosPage() {
                             ★ {day.workoutTitle}
                           </option>
                         )}
-                        {splits.map((s) => (
+                        {(splits || []).map((s) => (
                           <optgroup key={s.id} label={`Rotina: ${s.name}`}>
-                            {s.workouts.map((w) => (
+                            {(s?.workouts || []).map((w) => (
                               <option key={w.id} value={w.title}>
                                 {w.title}
                               </option>
@@ -4309,7 +4339,7 @@ function TreinosPage() {
                 Escolha Rápida (1 Toque):
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {activeSplit.workouts.map((w) => (
+                {(activeSplit?.workouts || []).map((w) => (
                   <button
                     key={w.id}
                     type="button"

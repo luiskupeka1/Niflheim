@@ -38,8 +38,23 @@ function NotFoundComponent() {
 }
 
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
-  console.error(error);
+  console.error('Niflheim Root Error Boundary caught error:', error);
   const router = useRouter();
+
+  const handleResetApp = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('niflheim_active_workout_session_v4');
+        localStorage.removeItem('niflheim_workout_splits_v3');
+        localStorage.removeItem('niflheim_weekly_schedule_v3');
+        localStorage.removeItem('NIFLHEIM_CUSTOM_MUSCLE_GROUPS');
+        localStorage.removeItem('NIFLHEIM_CUSTOM_MUSCLE_CEILINGS');
+        window.location.href = '/treinos';
+      }
+    } catch {
+      window.location.reload();
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -50,6 +65,13 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
+
+        {error && (
+          <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400 font-mono text-left overflow-auto max-h-36">
+            {(error as any)?.message || String(error)}
+          </div>
+        )}
+
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -59,6 +81,12 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Try again
+          </button>
+          <button
+            onClick={handleResetApp}
+            className="inline-flex items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-300 transition-colors hover:bg-amber-500/20"
+          >
+            Resetar cache & recarregar
           </button>
           <a
             href="/"
