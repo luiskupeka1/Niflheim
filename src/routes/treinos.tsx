@@ -32,6 +32,7 @@ import {
   TrendingUp,
   BarChart3,
   Edit3,
+  Sliders,
   SlidersHorizontal,
   Check,
   Lock,
