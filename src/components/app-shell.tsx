@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useLifestyle } from './lifestyle-provider';
 import { level,streak } from '@/lib/metrics';
 import { Button } from './ui/button';
-const nav=[{to:'/' as const,label:'Visão geral',icon:LayoutDashboard},{to:'/nutricao' as const,label:'Nutrição',icon:Utensils},{to:'/treinos' as const,label:'Treinos',icon:Dumbbell},{to:'/rotina' as const,label:'Rotina',icon:CheckSquare},{to:'/notas' as const,label:'Notas',icon:NotebookPen},{to:'/perfil' as const,label:'Meu perfil',icon:UserRound}];
+const nav=[{to:'/' as const,label:'Início',icon:LayoutDashboard},{to:'/nutricao' as const,label:'Nutrição',icon:Utensils},{to:'/treinos' as const,label:'Treinos',icon:Dumbbell},{to:'/rotina' as const,label:'Rotina',icon:CheckSquare},{to:'/notas' as const,label:'Notas',icon:NotebookPen},{to:'/perfil' as const,label:'Perfil',icon:UserRound}];
 export function AppShell({children}:{children:ReactNode}){
   const {user,data}=useLifestyle(),location=useLocation();
   if(location.pathname==='/auth'||location.pathname==='/reset-password')return children;

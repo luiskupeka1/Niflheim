@@ -42,9 +42,7 @@ import {
   Minus,
   TrendingDown,
   AlertCircle,
-  Smartphone,
-  Bell,
-  Download
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLifestyle } from '@/components/lifestyle-provider';
@@ -429,15 +427,10 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
 
   const [expandedTipsId, setExpandedTipsId] = useState<string | null>(null);
   const [isVolumeTrackerExpanded, setIsVolumeTrackerExpanded] = useState(false);
-  const [isMobileAppModalOpen, setIsMobileAppModalOpen] = useState(false);
-  const [notificationPerm, setNotificationPerm] = useState<'default' | 'granted' | 'denied'>('default');
 
-  // Inicializar lembretes diários recorrentes (Treino matinal e Recuperação noturna)
+  // Inicializar lembretes diários recorrentes nativos (Treino matinal e Recuperação noturna)
   useEffect(() => {
     scheduleDailyHabitReminders().catch(() => {});
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setNotificationPerm(Notification.permission);
-    }
   }, []);
 
   // Rotinas e Divisões
@@ -1887,16 +1880,6 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
               {isAdminUnlocked ? <SlidersHorizontal size={13} /> : <Lock size={13} className="text-amber-400" />}
               <span>Montar Treino</span>
               {!isAdminUnlocked && <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1 py-0.2 rounded font-mono">ADM</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsMobileAppModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer text-[#FFD600] hover:text-[#FFD600]/80 hover:bg-[#FFD600]/10 border border-[#FFD600]/30"
-              title="Baixar APK Android e Configurar Pop-ups & Lembretes"
-            >
-              <Smartphone size={13} className="text-[#FFD600]" />
-              <span>Baixar APK</span>
-              <span className="text-[9px] bg-[#FFD600]/20 text-[#FFD600] px-1 py-0.2 rounded font-mono">App</span>
             </button>
           </div>
 
@@ -4643,121 +4626,6 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* 📱 MODAL: BAIXAR APK ANDROID & CONFIGURAR POP-UPS E LEMBRETES             */}
-      {/* ========================================================================= */}
-      {isMobileAppModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md animate-in fade-in">
-          <div className="max-w-md w-full rounded-2xl border border-[#232733] bg-[#0F1115] p-5 sm:p-6 space-y-4 shadow-2xl text-white max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#232733] pb-3">
-              <div className="flex items-center gap-2">
-                <div className="size-8 rounded-lg bg-[#FFD600]/20 text-[#FFD600] flex items-center justify-center">
-                  <Smartphone size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black uppercase text-white tracking-wider">
-                    NIFLHEIM Mobile APK
-                  </h3>
-                  <span className="text-[10px] text-[#8F9BBA]">Pop-ups, Vibração & Lembretes no Celular</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsMobileAppModalOpen(false)}
-                className="text-[#8F9BBA] hover:text-white text-xs font-black p-1 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* SEÇÃO 1: STATUS DE POP-UPS E NOTIFICAÇÕES */}
-            <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-xs font-black text-primary">
-                  <Bell size={14} />
-                  <span>Notificações & Pop-ups de Descanso</span>
-                </div>
-                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                  notificationPerm === 'granted'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                }`}>
-                  {notificationPerm === 'granted' ? 'ATIVO' : 'PENDENTE'}
-                </span>
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Permite disparar alerta sonoro, pop-up na tela e vibração no celular no exato instante em que o cronômetro de descanso terminar (mesmo com a tela bloqueada ou app em 2º plano).
-              </p>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  const res = await requestAppNotificationsPermission();
-                  if (res.granted) {
-                    setNotificationPerm('granted');
-                    await triggerAppVibration(true);
-                    playAlertBeep();
-                    showScheduleToast('🔔 Permissão concedida! Notificações e som ativados.');
-                  } else {
-                    showScheduleToast('⚠️ Permissão de notificações bloqueada ou não concedida.');
-                  }
-                }}
-                className="w-full bg-primary text-primary-foreground font-black text-xs rounded-xl cursor-pointer hover:bg-primary/90 gap-1.5"
-              >
-                <Bell size={13} /> Ativar & Testar Pop-ups no Aparelho
-              </Button>
-            </div>
-
-            {/* SEÇÃO 2: DOWNLOAD DO APK ANDROID NATIVO */}
-            <div className="rounded-xl border border-[#232733] bg-[#161920] p-3 space-y-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-black text-white">
-                <Download size={14} className="text-[#FFD600]" />
-                <span>Aplicativo Nativo Android (.apk)</span>
-              </div>
-              <p className="text-[11px] text-[#8F9BBA] leading-relaxed">
-                Compilado diretamente pelo GitHub Actions com suporte nativo a alarmes, vibração tátil e tela cheia imersiva (sem barras de navegador).
-              </p>
-
-              <a
-                href="https://github.com/luiskupeka1/Niflheim/releases"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#FFD600] text-black font-black text-xs hover:bg-[#FFD600]/90 transition-all shadow-lg shadow-[#FFD600]/20"
-              >
-                <Download size={14} /> Baixar Arquivo APK (GitHub Releases)
-              </a>
-
-              <div className="text-[10px] text-[#8F9BBA] bg-black/40 p-2 rounded-lg font-mono space-y-0.5">
-                <div>1. Clique acima e baixe o <strong>app-debug.apk</strong></div>
-                <div>2. Abra o arquivo baixado e toque em <strong>Instalar</strong></div>
-                <div>3. Abra o NIFLHEIM e aproveite os lembretes nativos!</div>
-              </div>
-            </div>
-
-            {/* SEÇÃO 3: LEMBRETES AUTOMÁTICOS AGENDADOS */}
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1.5 text-xs">
-              <span className="font-bold text-foreground flex items-center gap-1.5">
-                <Clock size={13} className="text-[#00E5FF]" /> Lembretes Automáticos:
-              </span>
-              <ul className="text-[11px] text-muted-foreground space-y-1">
-                <li>• <strong>08:00</strong> — Lembrete matinal da rotina de treino do dia.</li>
-                <li>• <strong>21:30</strong> — Questionário noturno de recuperação e calibração de volume.</li>
-                <li>• <strong>Em treino</strong> — Alarme de descanso com vibração física a cada série.</li>
-              </ul>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-[#232733]">
-              <button
-                type="button"
-                onClick={() => setIsMobileAppModalOpen(false)}
-                className="rounded-xl border border-[#232733] bg-[#161920] px-4 py-2 text-xs font-bold text-[#8F9BBA] hover:text-white transition-colors"
-              >
-                Fechar
-              </button>
-            </div>
           </div>
         </div>
       )}
