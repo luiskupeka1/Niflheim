@@ -106,28 +106,28 @@ function PerfilPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8 w-full max-w-full overflow-hidden">
       {/* Top Banner de Gamificação */}
-      <div className="rounded-2xl border border-primary/30 bg-gradient-to-r from-card to-primary/10 p-6 md:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <span className="grid size-16 place-items-center rounded-2xl bg-primary text-primary-foreground font-black text-2xl shadow-lg">
+      <div className="rounded-2xl border border-primary/30 bg-gradient-to-r from-card to-primary/10 p-4 sm:p-6 md:p-8 min-w-0 max-w-full overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-4 sm:gap-6 min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            <span className="grid size-14 sm:size-16 place-items-center rounded-2xl bg-primary text-primary-foreground font-black text-xl sm:text-2xl shadow-lg shrink-0">
               {lvl.level}
             </span>
-            <div>
+            <div className="min-w-0 flex-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-primary flex items-center gap-1">
-                <Sparkles size={12} /> Nível de Evolução Geral
+                <Sparkles size={12} className="shrink-0" /> Nível de Evolução Geral
               </span>
-              <h1 className="text-2xl font-black text-foreground">
+              <h1 className="text-xl sm:text-2xl font-black text-foreground truncate">
                 Lvl {lvl.level} · {name || 'Guerreiro NIFLHEIM'}
               </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">
                 {lvl.progress} / 500 XP para o próximo nível · {days} dias seguidos de ofensiva 🔥
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Button
               onClick={handleSaveProfile}
               className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs flex items-center gap-1.5"
@@ -137,11 +137,12 @@ function PerfilPage() {
           </div>
         </div>
 
-        <progress
-          className="xp-progress mt-6 h-2 w-full rounded-full"
-          value={lvl.progress}
-          max={500}
-        />
+        <div className="mt-4 sm:mt-6 h-2.5 w-full max-w-full rounded-full bg-secondary/80 overflow-hidden border border-border/40 p-0.5">
+          <div 
+            className="h-full bg-primary rounded-full transition-all duration-300"
+            style={{ width: `${Math.min(100, Math.max(0, (lvl.progress / 500) * 100))}%` }}
+          />
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -310,20 +311,20 @@ function PerfilPage() {
         </div>
 
         {/* Sliders Deslizantes de Macronutrientes */}
-        <div className="panel p-6 space-y-6">
+        <div className="panel p-5 sm:p-6 space-y-6 overflow-hidden min-w-0">
           <SectionHeading title="Ajuste Fino de Macros (Sliders Manuais)" />
           <p className="text-xs text-muted-foreground">
             Ajuste fino com sliders deslizantes em gramas e gramas/kg corporais.
           </p>
 
-          <div className="space-y-5">
+          <div className="space-y-5 min-w-0">
             {/* Proteínas */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-semibold">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 text-xs font-semibold">
                 <span className="text-protein flex items-center gap-1.5">
                   Proteínas: <b>{proteinGrams}g</b>
                 </span>
-                <span className="text-muted-foreground font-mono">
+                <span className="text-muted-foreground font-mono text-[11px]">
                   {(proteinGrams / weight).toFixed(1)}g / kg · {proteinGrams * 4} kcal
                 </span>
               </div>
@@ -334,22 +335,22 @@ function PerfilPage() {
                 step="5"
                 value={proteinGrams}
                 onChange={(e) => setProteinGrams(parseInt(e.target.value))}
-                className="w-full accent-protein"
+                className="w-full accent-protein max-w-full"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-1">
                 <span>50g</span>
-                <span className="text-primary font-bold">Faixa ideal: 2.0 - 2.5g/kg</span>
+                <span className="text-primary font-bold text-center truncate px-1">Faixa: 2.0 - 2.5g/kg</span>
                 <span>350g</span>
               </div>
             </div>
 
             {/* Gorduras */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-semibold">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 text-xs font-semibold">
                 <span className="text-fat flex items-center gap-1.5">
                   Gorduras: <b>{fatGrams}g</b>
                 </span>
-                <span className="text-muted-foreground font-mono">
+                <span className="text-muted-foreground font-mono text-[11px]">
                   {(fatGrams / weight).toFixed(1)}g / kg · {fatGrams * 9} kcal
                 </span>
               </div>
@@ -360,22 +361,22 @@ function PerfilPage() {
                 step="2"
                 value={fatGrams}
                 onChange={(e) => setFatGrams(parseInt(e.target.value))}
-                className="w-full accent-fat"
+                className="w-full accent-fat max-w-full"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-1">
                 <span>20g</span>
-                <span className="text-primary font-bold">Faixa ideal: 0.8 - 1.0g/kg</span>
+                <span className="text-primary font-bold text-center truncate px-1">Faixa: 0.8 - 1.0g/kg</span>
                 <span>180g</span>
               </div>
             </div>
 
             {/* Carboidratos */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-semibold">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-baseline justify-between gap-1 text-xs font-semibold">
                 <span className="text-carbs flex items-center gap-1.5">
                   Carboidratos: <b>{carbGrams}g</b>
                 </span>
-                <span className="text-muted-foreground font-mono">
+                <span className="text-muted-foreground font-mono text-[11px]">
                   {(carbGrams / weight).toFixed(1)}g / kg · {carbGrams * 4} kcal
                 </span>
               </div>
@@ -386,28 +387,28 @@ function PerfilPage() {
                 step="10"
                 value={carbGrams}
                 onChange={(e) => setCarbGrams(parseInt(e.target.value))}
-                className="w-full accent-carbs"
+                className="w-full accent-carbs max-w-full"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground gap-1">
                 <span>50g</span>
-                <span className="text-muted-foreground">Equilíbrio do saldo energético</span>
+                <span className="text-muted-foreground text-center truncate px-1">Saldo energético</span>
                 <span>600g</span>
               </div>
             </div>
 
             {/* Total Geral de Calorias com base nos Sliders */}
-            <div className="rounded-xl border border-primary/50 bg-primary/10 p-5 flex items-center justify-between">
+            <div className="rounded-xl border border-primary/50 bg-primary/10 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   Calorias Totais Calculadas
                 </span>
-                <div className="font-display text-3xl font-black text-primary">
+                <div className="font-display text-2xl sm:text-3xl font-black text-primary">
                   {currentTotalKcal.toLocaleString('pt-BR')} <span className="text-sm font-normal text-foreground">kcal</span>
                 </div>
               </div>
               <Button
                 onClick={handleSaveProfile}
-                className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs"
+                className="bg-primary text-primary-foreground font-bold hover:bg-primary/90 text-xs rounded-xl cursor-pointer"
               >
                 Salvar Metas
               </Button>

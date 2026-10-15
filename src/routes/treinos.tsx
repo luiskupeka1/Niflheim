@@ -2622,478 +2622,349 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
           )}
 
           {/* ========================================================================= */}
-          {/* PARTE 2: MONTADOR DIÁRIO DA ROTINA (UMA TELA POR DIA - ZERO POLUIÇÃO)     */}
+          {/* PARTE 2: MONTADOR DIÁRIO DA ROTINA (MINIMALISTA, HORIZONTAL E RÁPIDO)     */}
           {/* ========================================================================= */}
           {coachSubTab === 'ROTINA' && (
-            <div className="space-y-5 animate-in fade-in duration-150">
-              {/* Barra Horizontal de Navegação por Dia da Semana (Passo Único) */}
-              <div className="rounded-2xl border border-border bg-card/80 p-3 sm:p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Calendar size={13} className="text-primary" /> Selecione o Dia para Prescrever:
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Exibindo apenas a tela do dia selecionado
-                  </span>
+            <div className="space-y-3.5 animate-in fade-in duration-150">
+              {/* 1. SELETOR HORIZONTAL DOS 7 DIAS (COMPACTO) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                {weeklySchedule.map((day, idx) => {
+                  const isSelected = selectedCoachDayIndex === idx;
+                  const isToday = DAYS_OF_WEEK[idx]?.dayIndex === todayDayIndex;
+                  const dayWorkoutTitle = day?.workoutTitle || 'Descanso / Recuperação';
+                  const isRest = dayWorkoutTitle.toLowerCase().includes('descanso');
+
+                  return (
+                    <button
+                      key={day?.dayOfWeek || idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedCoachDayIndex(idx);
+                        handleSelectDay(day);
+                      }}
+                      className={`flex-1 min-w-[44px] py-2 px-1.5 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center min-w-0 ${
+                        isSelected
+                          ? 'bg-primary text-primary-foreground font-black shadow-md ring-1 ring-primary'
+                          : isToday
+                          ? 'bg-primary/10 border border-primary/50 text-foreground'
+                          : isRest
+                          ? 'bg-background/40 border border-border/40 text-muted-foreground hover:bg-card'
+                          : 'bg-card/70 border border-border/60 text-foreground hover:bg-card'
+                      }`}
+                    >
+                      <span className="text-[11px] font-mono font-black uppercase">
+                        {day?.shortDay || DAYS_OF_WEEK[idx]?.short || 'DIA'}
+                      </span>
+                      <span className="text-[9px] truncate max-w-full font-bold opacity-80 mt-0.5">
+                        {isRest ? 'Off' : dayWorkoutTitle.split('—')[0].trim().slice(0, 7)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 2. BARRA DE CABEÇALHO DO TREINO & AÇÕES RÁPIDAS */}
+              <div className="rounded-2xl border border-border/80 bg-card/80 p-3 sm:p-4 space-y-3 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className="rounded-lg bg-primary/20 text-primary px-2 py-0.5 text-[10px] font-black uppercase shrink-0">
+                      {weeklySchedule[selectedCoachDayIndex]?.shortDay || 'DIA'}
+                    </span>
+                    <input
+                      type="text"
+                      value={sessionTitle}
+                      onChange={(e) => setSessionTitle(e.target.value)}
+                      placeholder="Nome do Treino (ex: Push A - Hipertrofia)"
+                      className="text-base sm:text-lg font-black text-foreground bg-transparent border-b border-dashed border-border/60 hover:border-primary focus:border-primary focus:outline-none transition-colors px-1 py-0.5 flex-1 min-w-0"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAddExerciseModalOpen(true)}
+                      className="bg-primary text-primary-foreground font-black text-xs rounded-xl h-8 px-3 cursor-pointer shadow-sm"
+                    >
+                      <Plus size={13} className="mr-1" /> Exercício
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSaveCurrentWorkoutToSplit}
+                      className="text-xs text-primary font-black border-primary/50 hover:bg-primary/10 rounded-xl h-8 px-3 cursor-pointer"
+                    >
+                      <Save size={13} className="mr-1" /> Salvar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleDuplicateCurrentWorkout}
+                      className="text-xs text-muted-foreground hover:text-foreground rounded-xl h-8 px-2 cursor-pointer"
+                      title="Duplicar treino"
+                    >
+                      <Layers size={13} />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleDeleteCurrentWorkout}
+                      className="text-xs text-muted-foreground hover:text-destructive rounded-xl h-8 px-2 cursor-pointer"
+                      title="Excluir treino"
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-                  {weeklySchedule.map((day, idx) => {
-                    const isSelected = selectedCoachDayIndex === idx;
-                    const isToday = DAYS_OF_WEEK[idx]?.dayIndex === todayDayIndex;
-                    const dayWorkoutTitle = day?.workoutTitle || 'Descanso / Recuperação';
-                    const isRest = dayWorkoutTitle.toLowerCase().includes('descanso');
+                {/* Linha Horizontal Compacta: Divisão + Treino Atribuído */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin text-xs pt-1 border-t border-border/40">
+                  <span className="text-[10px] font-black uppercase text-muted-foreground shrink-0 flex items-center gap-1">
+                    <Layers size={11} className="text-primary" /> Divisão:
+                  </span>
+                  {splits.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveSplitId(s.id);
+                        if (s.workouts && s.workouts.length > 0) {
+                          handleLoadWorkout(s.workouts[0]);
+                          handleUpdateScheduleDay(selectedCoachDayIndex, s.workouts[0].title, s.workouts[0].id);
+                        }
+                      }}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        s.id === activeSplitId
+                          ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                          : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateSplitModalOpen(true)}
+                    className="rounded-lg px-2 py-1 text-[11px] font-bold text-primary hover:bg-primary/10 transition-colors shrink-0 cursor-pointer"
+                  >
+                    + Divisão
+                  </button>
 
+                  <span className="text-border shrink-0 opacity-50">|</span>
+
+                  <span className="text-[10px] font-black uppercase text-muted-foreground shrink-0">Treino:</span>
+                  {(activeSplit?.workouts || []).map((w) => {
+                    const isCurrent = weeklySchedule[selectedCoachDayIndex]?.workoutTitle === w.title;
                     return (
                       <button
-                        key={day?.dayOfWeek || idx}
+                        key={w.id}
                         type="button"
                         onClick={() => {
-                          setSelectedCoachDayIndex(idx);
-                          handleSelectDay(day);
+                          handleUpdateScheduleDay(selectedCoachDayIndex, w.title, w.id);
+                          handleLoadWorkout(w);
                         }}
-                        className={`rounded-xl p-2 text-center transition-all cursor-pointer flex flex-col items-center justify-center min-w-0 ${
-                          isSelected
-                            ? 'border-2 border-primary bg-primary/20 ring-1 ring-primary shadow-sm'
-                            : isToday
-                            ? 'border border-primary/50 bg-card/90'
-                            : isRest
-                            ? 'border border-border/40 bg-background/30 hover:bg-background/60'
-                            : 'border border-border/60 bg-card/60 hover:bg-card hover:border-primary/40'
+                        className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                          isCurrent
+                            ? 'bg-[#00E5FF] text-black shadow-xs font-black'
+                            : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50'
                         }`}
                       >
-                        <span className={`font-mono text-xs font-black uppercase ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {day?.shortDay || DAYS_OF_WEEK[idx]?.short || 'DIA'}
-                        </span>
-                        <span className="text-[9px] truncate max-w-full font-bold text-foreground mt-0.5" title={dayWorkoutTitle}>
-                          {isRest ? 'Descanso' : dayWorkoutTitle.split('—')[0].trim()}
-                        </span>
-                        {isSelected && (
-                          <span className="size-1 rounded-full bg-primary mt-1" />
-                        )}
+                        ⚡ {w.title.split('—')[0].trim()}
                       </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateScheduleDay(selectedCoachDayIndex, 'Descanso / Recuperação')}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                      weeklySchedule[selectedCoachDayIndex]?.workoutTitle.toLowerCase().includes('descanso')
+                        ? 'bg-primary/20 text-primary border border-primary/40 font-black'
+                        : 'bg-muted/40 text-muted-foreground hover:bg-muted border border-border/50'
+                    }`}
+                  >
+                    💤 Descanso
+                  </button>
+                </div>
+
+                {/* Ticker Horizontal de Volume Semanal (Direto + Residual) */}
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1 px-2 rounded-xl bg-background/50 border border-border/50 text-[11px] scrollbar-thin">
+                  <span className="font-black text-[9px] uppercase tracking-wider text-muted-foreground shrink-0 flex items-center gap-1">
+                    <Target size={11} className="text-primary" /> Volume:
+                  </span>
+                  {Array.from(
+                    new Set([
+                      ...exercises.map((e) => e.muscle),
+                      ...exercises.flatMap((e) => e.secondaryMuscles || []),
+                    ])
+                  ).map((muscle) => {
+                    const breakdown = weeklyAllocatedSetsPerMuscle[muscle] || { direct: 0, residual: 0, total: 0 };
+                    const ceiling = muscleCeilings[muscle] ?? 14;
+                    const isAtLimit = breakdown.total >= ceiling;
+                    return (
+                      <span
+                        key={muscle}
+                        className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] shrink-0 border ${
+                          isAtLimit
+                            ? 'border-destructive/60 bg-destructive/15 text-destructive font-black'
+                            : 'border-border/60 bg-card/60 text-foreground font-semibold'
+                        }`}
+                        title={`Diretas: ${breakdown.direct} | Residuais: ${breakdown.residual}x0.5`}
+                      >
+                        <span>{muscle}:</span>
+                        <strong className={isAtLimit ? 'text-destructive' : 'text-primary'}>
+                          {breakdown.total}/{ceiling}s
+                        </strong>
+                        {breakdown.residual > 0 && (
+                          <span className="text-[9px] text-muted-foreground">({breakdown.direct}d+{breakdown.residual}r)</span>
+                        )}
+                      </span>
                     );
                   })}
                 </div>
               </div>
 
-              {/* TELA EXCLUSIVA DO DIA SELECIONADO */}
-              <div className="rounded-2xl border border-border bg-card/70 p-4 sm:p-5 space-y-4 shadow-sm">
-                {/* Header Horizontal do Dia & Gerenciamento do Treino */}
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-border/50 pb-3">
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="rounded-full bg-primary/20 text-primary px-2.5 py-0.5 text-[10px] font-black uppercase">
-                        {weeklySchedule[selectedCoachDayIndex]?.dayOfWeek || 'Dia do Treino'}
-                      </span>
-                      <input
-                        type="text"
-                        value={sessionTitle}
-                        onChange={(e) => setSessionTitle(e.target.value)}
-                        placeholder="Nome do Treino (ex: Push A - Hipertrofia)"
-                        className="text-base sm:text-lg font-black text-foreground bg-transparent border-b border-dashed border-border/60 hover:border-primary focus:border-primary focus:outline-none transition-colors px-1 py-0.5 max-w-full"
-                        title="Clique para editar o nome do treino diretamente"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Grupamentos: <strong className="text-foreground">{programMuscleGroups}</strong> • Rotina: <strong className="text-primary">{activeSplit?.name || 'Rotina Principal'}</strong>
-                    </p>
-                  </div>
-
-                  {/* Ações de CRUD do Treino & Exercício */}
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      onClick={() => setIsNewWorkoutModalOpen(true)}
-                      className="bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 font-black text-xs rounded-xl cursor-pointer"
-                      title="Criar novo treino na rotina para este dia"
-                    >
-                      <Plus size={13} className="mr-1" /> + Novo Treino
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleDuplicateCurrentWorkout}
-                      className="text-xs text-foreground font-bold border-border hover:bg-muted rounded-xl cursor-pointer"
-                      title="Duplicar treino atual"
-                    >
-                      <Layers size={13} className="mr-1" /> Duplicar
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleDeleteCurrentWorkout}
-                      className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl cursor-pointer"
-                      title="Excluir treino atual da rotina"
-                    >
-                      <Trash2 size={13} className="mr-1" /> Excluir
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      onClick={() => setIsAddExerciseModalOpen(true)}
-                      className="bg-primary text-primary-foreground font-black hover:bg-primary/90 text-xs rounded-xl cursor-pointer shadow-sm"
-                    >
-                      <Plus size={13} className="mr-1" /> + Exercício
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleSaveCurrentWorkoutToSplit}
-                      className="text-xs text-primary font-black border-primary/50 hover:bg-primary/10 rounded-xl cursor-pointer"
-                    >
-                      <Save size={13} className="mr-1" /> Salvar Treino
-                    </Button>
-                  </div>
-                </div>
-
-                {/* ===================================================================== */}
-                {/* ETAPA 2: SELEÇÃO DA DIVISÃO / TIPO DE TREINO (PPL, ABC, ETC) E TREINO */}
-                {/* ===================================================================== */}
-                <div className="rounded-2xl border border-border/80 bg-background/50 p-3 sm:p-4 space-y-3 shadow-xs">
-                  {/* Linha de Divisões (Splits) */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-                    <div className="flex items-center gap-1.5">
-                      <Layers size={14} className="text-primary shrink-0" />
-                      <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
-                        Divisão / Metodologia (PPL, ABC, etc.):
-                      </span>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsCreateSplitModalOpen(true)}
-                      className="text-[11px] h-7 text-primary hover:bg-primary/10 rounded-xl font-black cursor-pointer self-start sm:self-auto"
-                    >
-                      <Plus size={12} className="mr-1" /> + Nova Divisão
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                    {splits.map((s) => {
-                      const isSelected = s.id === activeSplitId;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => {
-                            setActiveSplitId(s.id);
-                            if (s.workouts && s.workouts.length > 0) {
-                              handleLoadWorkout(s.workouts[0]);
-                              handleUpdateScheduleDay(selectedCoachDayIndex, s.workouts[0].title, s.workouts[0].id);
-                            }
-                          }}
-                          className={`rounded-xl px-3 py-1.5 text-xs font-black transition-all shrink-0 cursor-pointer ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground shadow-md ring-1 ring-primary'
-                              : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground border border-border/60'
-                          }`}
-                        >
-                          {s.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Treinos da Divisão Atribuíveis para o Dia Selecionado */}
-                  <div className="space-y-1.5 pt-1 border-t border-border/40">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
-                      Atribuir Treino à {weeklySchedule[selectedCoachDayIndex]?.shortDay || 'Dia'}:
-                    </span>
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                      {(activeSplit?.workouts || []).map((w) => {
-                        const isCurrent = weeklySchedule[selectedCoachDayIndex]?.workoutTitle === w.title;
-                        const wTitle = w?.title || 'Treino';
-                        return (
-                          <button
-                            key={w.id}
-                            type="button"
-                            onClick={() => {
-                              handleUpdateScheduleDay(selectedCoachDayIndex, w.title, w.id);
-                              handleLoadWorkout(w);
-                            }}
-                            className={`rounded-xl px-3 py-1.5 text-xs font-black transition-all shrink-0 cursor-pointer ${
-                              isCurrent
-                                ? 'bg-[#00E5FF] text-black shadow-sm ring-1 ring-[#00E5FF]'
-                                : 'bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground border border-border/60'
-                            }`}
-                          >
-                            ⚡ {wTitle.split('—')[0].trim()}
-                          </button>
-                        );
-                      })}
-
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateScheduleDay(selectedCoachDayIndex, 'Descanso / Recuperação')}
-                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                          weeklySchedule[selectedCoachDayIndex]?.workoutTitle.toLowerCase().includes('descanso')
-                            ? 'bg-primary/20 text-primary border border-primary/40'
-                            : 'bg-background/40 text-muted-foreground hover:bg-background/60 border border-border/40'
-                        }`}
-                      >
-                        💤 Descanso
-                      </button>
-
-                      <Button
-                        size="sm"
-                        onClick={() => setIsNewWorkoutModalOpen(true)}
-                        className="bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 font-black text-xs rounded-xl h-7 cursor-pointer shrink-0"
-                      >
-                        <Plus size={12} className="mr-1" /> + Novo Treino no Split
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Resumo Dinâmico dos Músculos deste Treino vs Teto Semanal (Volume Direto + Residual) */}
-                <div className="rounded-xl border border-border/60 bg-background/40 p-3 space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Target size={12} className="text-primary" /> Balanço de Séries no Microciclo (Volume Efetivo Direto + Residual vs Teto):
+              {/* 3. LISTA DE EXERCÍCIOS ULTRA-MINIMALISTA (LINHAS HORIZONTAIS ESTILO NOTION/HEVY) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Dumbbell size={13} className="text-primary" /> Exercícios ({exercises.length}):
                   </span>
-                  <div className="flex flex-wrap gap-2">
-                    {Array.from(
-                      new Set([
-                        ...exercises.map((e) => e.muscle),
-                        ...exercises.flatMap((e) => e.secondaryMuscles || []),
-                      ])
-                    ).map((muscle) => {
-                      const breakdown = weeklyAllocatedSetsPerMuscle[muscle] || { direct: 0, residual: 0, total: 0 };
-                      const ceiling = muscleCeilings[muscle] ?? 14;
-                      const isAtLimit = breakdown.total >= ceiling;
-                      const remaining = Math.max(0, ceiling - breakdown.total);
-
-                      return (
-                        <div
-                          key={muscle}
-                          className={`rounded-xl px-3 py-1.5 border text-xs font-mono font-bold flex items-center gap-2 ${
-                            isAtLimit
-                              ? 'border-destructive/60 bg-destructive/15 text-destructive'
-                              : 'border-primary/40 bg-card text-foreground'
-                          }`}
-                        >
-                          <div>
-                            <span className="text-muted-foreground">{muscle}: </span>
-                            <strong className={isAtLimit ? 'text-destructive font-black' : 'text-primary font-black'}>
-                              {breakdown.total}/{ceiling}s
-                            </strong>
-                            <span className="text-[9px] text-muted-foreground block font-normal">
-                              {breakdown.direct}d + {breakdown.residual}r (0.5x)
-                            </span>
-                          </div>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-black shrink-0 ${
-                            isAtLimit ? 'bg-destructive text-white' : 'bg-primary/20 text-primary'
-                          }`}>
-                            {isAtLimit ? 'Teto Atingido' : `Livre: ${remaining}`}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddExerciseModalOpen(true)}
+                    className="text-xs font-black text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus size={12} /> Adicionar
+                  </button>
                 </div>
 
-                {/* ===================================================================== */}
-                {/* ETAPA 3 & 4: LISTA HORIZONTAL E MINIMALISTA DE EXERCÍCIOS              */}
-                {/* ===================================================================== */}
-                <div className="space-y-3 pt-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Dumbbell size={14} className="text-primary" /> Exercícios Prescritos para este Dia ({exercises.length}):
-                    </span>
+                {exercises.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-border/80 p-6 text-center space-y-2">
+                    <p className="text-xs font-bold text-muted-foreground">
+                      Nenhum exercício neste treino.
+                    </p>
                     <Button
                       size="sm"
                       onClick={() => setIsAddExerciseModalOpen(true)}
-                      className="bg-primary text-primary-foreground font-black text-xs rounded-xl h-7 px-3 cursor-pointer shadow-xs"
+                      className="bg-primary text-primary-foreground font-black text-xs rounded-xl cursor-pointer"
                     >
                       <Plus size={12} className="mr-1" /> + Adicionar Exercício
                     </Button>
                   </div>
+                ) : (
+                  exercises.map((ex, exIndex) => {
+                    const muscleBreakdown = weeklyAllocatedSetsPerMuscle[ex.muscle] || { direct: 0, residual: 0, total: 0 };
+                    const muscleCeiling = muscleCeilings[ex.muscle] ?? 14;
+                    const isAtCeiling = muscleBreakdown.total >= muscleCeiling;
+                    const currentRest = ex.targetRestSeconds || restWorkingSeconds;
 
-                  {exercises.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-3">
-                      <Dumbbell size={32} className="mx-auto text-muted-foreground opacity-50" />
-                      <p className="text-sm font-bold text-muted-foreground">
-                        Nenhum exercício cadastrado para o treino deste dia.
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsAddExerciseModalOpen(true)}
-                        className="bg-primary text-primary-foreground font-black text-xs rounded-xl cursor-pointer"
+                    return (
+                      <div
+                        key={ex.id}
+                        className="rounded-xl border border-border/70 bg-card/70 p-2.5 sm:p-3 hover:border-primary/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs"
                       >
-                        <Plus size={13} className="mr-1" /> + Adicionar Exercício
-                      </Button>
-                    </div>
-                  ) : (
-                    exercises.map((ex, exIndex) => {
-                      const preparatorySets = ex.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
-                      const workingSets = ex.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
-                      const currentRest = ex.targetRestSeconds || restWorkingSeconds;
-                      const muscleBreakdown = weeklyAllocatedSetsPerMuscle[ex.muscle] || { direct: 0, residual: 0, total: 0 };
-                      const muscleCeiling = muscleCeilings[ex.muscle] ?? 14;
-                      const muscleAllocated = muscleBreakdown.total;
-                      const isAtCeiling = muscleAllocated >= muscleCeiling;
-
-                      return (
-                        <div key={ex.id} className="rounded-2xl border border-border/80 bg-card/70 p-3.5 sm:p-4 transition-all space-y-3 shadow-xs">
-                          {/* Linha Superior: Cabeçalho com Nome, Badges e Botão Excluir */}
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground shrink-0">
-                                #{exIndex + 1}
-                              </span>
-                              <div className="flex flex-col gap-0.5 shrink-0">
-                                <button
-                                  disabled={exIndex === 0}
-                                  onClick={() => handleMoveExercise(exIndex, 'up')}
-                                  className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
-                                >
-                                  <ChevronUp size={13} />
-                                </button>
-                                <button
-                                  disabled={exIndex === exercises.length - 1}
-                                  onClick={() => handleMoveExercise(exIndex, 'down')}
-                                  className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
-                                >
-                                  <ChevronDown size={13} />
-                                </button>
-                              </div>
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="text-sm sm:text-base font-black text-foreground truncate">
-                                    {ex.name}
-                                  </h3>
-                                  <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0" title="Músculo Primário (1.0x por série)">
-                                    🎯 {ex.muscle}
-                                  </span>
-                                  {ex.secondaryMuscles && ex.secondaryMuscles.length > 0 && (
-                                    <span className="rounded-full bg-[#00E5FF]/15 px-2 py-0.5 text-[9px] font-bold text-[#00E5FF] shrink-0" title="Sinergistas que recebem 0.5 série residual">
-                                      ⚡ Residuais: {ex.secondaryMuscles.join(', ')} (+0.5x)
-                                    </span>
-                                  )}
-                                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-mono font-bold uppercase shrink-0 ${
-                                    isAtCeiling
-                                      ? 'bg-destructive/20 text-destructive border border-destructive/40'
-                                      : 'bg-secondary text-muted-foreground'
-                                  }`}>
-                                    {isAtCeiling ? `⚠️ Teto de ${ex.muscle} Atingido (${muscleBreakdown.total}/${muscleCeiling}s)` : `${ex.muscle}: ${muscleBreakdown.total}/${muscleCeiling}s`}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveExercise(ex.id)}
-                                className="size-7 text-muted-foreground hover:text-destructive rounded-xl cursor-pointer"
-                                title="Remover exercício do treino"
-                              >
-                                <Trash2 size={13} />
-                              </Button>
-                            </div>
-                          </div>
-
-                          {/* Linha Intermediária: Tempo de Descanso Rápido Específico deste Exercício */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-primary/25 bg-background/50 p-2.5">
-                            <div className="flex items-center gap-2">
-                              <Clock size={14} className="text-primary shrink-0" />
-                              <div>
-                                <span className="text-xs font-bold text-foreground">Tempo de Descanso deste Exercício:</span>
-                                <span className="text-[10px] text-muted-foreground ml-1.5 hidden xs:inline">Acionado pós-série</span>
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-1">
-                              {[45, 60, 90, 120, 180].map((presetSecs) => {
-                                const isCurrent = currentRest === presetSecs;
-                                return (
-                                  <button
-                                    key={presetSecs}
-                                    type="button"
-                                    onClick={() => handleUpdateExerciseRest(ex.id, presetSecs)}
-                                    className={`rounded-lg px-2 py-0.5 text-[11px] font-black transition-all cursor-pointer ${
-                                      isCurrent
-                                        ? 'bg-[#FFD600] text-black shadow-xs ring-1 ring-[#FFD600]'
-                                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                                    }`}
-                                  >
-                                    {presetSecs}s
-                                  </button>
-                                );
-                              })}
-                              <div className="flex items-center gap-1 bg-background px-1.5 py-0.5 rounded-lg border border-border/80 ml-1">
-                                <input
-                                  type="number"
-                                  min="10"
-                                  max="600"
-                                  value={currentRest}
-                                  onChange={(e) => handleUpdateExerciseRest(ex.id, parseInt(e.target.value) || 60)}
-                                  className="!w-10 !h-5 !p-0 !bg-transparent text-center font-bold text-xs text-foreground focus:outline-none"
-                                />
-                                <span className="text-[9px] text-muted-foreground font-mono">s</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Linha Inferior: Resumo das Metas e Botão de Janela Extra */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
-                            <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-muted-foreground">
-                              <span>Meta: <strong className="text-foreground">{ex.targetWeightKg ?? 40} kg</strong> × <strong className="text-foreground">{ex.targetReps ?? 10} reps</strong></span>
-                              <span>•</span>
-                              <span>Total de Séries: <strong className="text-primary font-bold">{ex.sets.length}</strong> ({preparatorySets.length} prep / {workingSets.length} work)</span>
-                            </div>
-
-                            <Button
-                              size="sm"
-                              onClick={() => setConfiguringExerciseId(ex.id)}
-                              className="bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-black text-xs rounded-xl h-8 px-3.5 transition-all cursor-pointer flex items-center gap-1.5 border border-primary/35 shadow-xs self-start sm:self-auto"
+                        {/* Esquerda: Ordenação, Número, Nome, Músculo e Resumo */}
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="flex flex-col gap-0.5 shrink-0">
+                            <button
+                              disabled={exIndex === 0}
+                              onClick={() => handleMoveExercise(exIndex, 'up')}
+                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
+                              title="Subir"
                             >
-                              <Sliders size={13} />
-                              <span>⚙️ Configurar Séries & Cargas (Janela Extra)</span>
-                            </Button>
+                              <ChevronUp size={12} />
+                            </button>
+                            <button
+                              disabled={exIndex === exercises.length - 1}
+                              onClick={() => handleMoveExercise(exIndex, 'down')}
+                              className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
+                              title="Descer"
+                            >
+                              <ChevronDown size={12} />
+                            </button>
+                          </div>
+
+                          <span className="flex size-6 items-center justify-center rounded-md bg-secondary font-mono text-[11px] font-black text-foreground shrink-0">
+                            {exIndex + 1}
+                          </span>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h4 className="text-xs sm:text-sm font-black text-foreground truncate">
+                                {ex.name}
+                              </h4>
+                              <span className="rounded bg-primary/20 px-1.5 py-0.2 text-[9px] font-bold text-primary shrink-0">
+                                {ex.muscle}
+                              </span>
+                              {ex.secondaryMuscles && ex.secondaryMuscles.length > 0 && (
+                                <span className="rounded bg-[#00E5FF]/15 px-1.5 py-0.2 text-[9px] font-bold text-[#00E5FF] shrink-0 hidden xs:inline">
+                                  +{ex.secondaryMuscles.join(', ')}
+                                </span>
+                              )}
+                              {isAtCeiling && (
+                                <span className="rounded bg-destructive/20 text-destructive text-[9px] font-black px-1.5 py-0.2 shrink-0">
+                                  ⚠️ Teto ({muscleBreakdown.total}/{muscleCeiling}s)
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono mt-0.5 flex-wrap">
+                              <span><strong>{ex.sets.length}</strong> séries</span>
+                              <span>•</span>
+                              <span>{ex.targetWeightKg ?? 40}kg × {ex.targetReps ?? 10}reps</span>
+                              <span>•</span>
+                              <span>⏱️ {currentRest}s</span>
+                            </div>
                           </div>
                         </div>
-                      );
-                    })
-                  )}
-                </div>
+
+                        {/* Direita: Ações Rápidas (Configurar Séries & Excluir) */}
+                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                          <Button
+                            size="sm"
+                            onClick={() => setConfiguringExerciseId(ex.id)}
+                            className="bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-black text-xs rounded-xl h-7 px-2.5 transition-all cursor-pointer flex items-center gap-1 border border-primary/30"
+                          >
+                            <Sliders size={12} />
+                            <span>Séries & Cargas</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveExercise(ex.id)}
+                            className="size-7 text-muted-foreground hover:text-destructive rounded-xl cursor-pointer"
+                            title="Remover exercício"
+                          >
+                            <Trash2 size={13} />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
-              {/* Botão Final de Publicação */}
-              <div className="rounded-2xl border border-[#232733] bg-[#161920] p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
-                <div>
-                  <h3 className="text-base font-black text-white">
-                    Pronto para enviar ao atleta?
-                  </h3>
-                  <p className="text-xs text-[#8F9BBA]">
-                    Publica imediatamente a ficha configurada para o ambiente de execução minimalista do aluno.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    onClick={() => setWorkoutMode('FAZER')}
-                    className="text-xs border-[#232733] text-[#8F9BBA] hover:text-white rounded-xl cursor-pointer"
-                  >
-                    👁️ Ver como Aluno
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleSaveCurrentWorkoutToSplit();
-                      setWorkoutMode('FAZER');
-                      showScheduleToast('🚀 Treino publicado e atualizado na conta do aluno!');
-                    }}
-                    className="flex-1 sm:flex-initial rounded-xl bg-[#FFD600] text-[#0F1115] hover:bg-[#FFD600]/90 font-black text-xs px-5 py-3 shadow-lg shadow-[#FFD600]/20 flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                  >
-                    <Save size={14} />
-                    <span>Publicar / Atualizar Treino na Conta do Aluno</span>
-                  </button>
-                </div>
+              {/* 4. BARRA DE AÇÃO INFERIOR DISCRETA (SEM BANNERS GIGANTES) */}
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setWorkoutMode('FAZER')}
+                  className="text-xs text-muted-foreground hover:text-foreground rounded-xl cursor-pointer"
+                >
+                  👁️ Ver como Aluno
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    handleSaveCurrentWorkoutToSplit();
+                    setWorkoutMode('FAZER');
+                    showScheduleToast('🚀 Treino salvo e publicado na conta do aluno!');
+                  }}
+                  className="bg-primary text-primary-foreground font-black text-xs rounded-xl px-4 py-2 shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <Save size={13} />
+                  <span>Salvar & Publicar Treino</span>
+                </Button>
               </div>
             </div>
           )}
