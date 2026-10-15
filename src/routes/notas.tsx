@@ -168,6 +168,7 @@ function NotasPage() {
   const [activeNoteId, setActiveNoteId] = useState<string>(notes[0]?.id ?? 'n-3d');
   const [filterCategory, setFilterCategory] = useState<string>('Todas');
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileTab, setMobileTab] = useState<'list' | 'editor'>('editor');
 
   // Modal para criar nova nota
   const [isCreatingNote, setIsCreatingNote] = useState(false);
@@ -570,10 +571,38 @@ function NotasPage() {
         </div>
       )}
 
+      {/* SELETOR MOBILE ENTRE LISTA DE NOTAS E EDITOR */}
+      <div className="flex md:hidden items-center gap-1.5 p-1 rounded-2xl bg-card border border-border/80 mb-4 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setMobileTab('list')}
+          className={`flex-1 py-2 px-3 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            mobileTab === 'list'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <FolderPlus size={13} />
+          <span>Minhas Notas ({filteredNotes.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('editor')}
+          className={`flex-1 py-2 px-3 text-xs font-black rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            mobileTab === 'editor'
+              ? 'bg-primary text-primary-foreground shadow-md'
+              : 'text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <FileText size={13} />
+          <span>Editor da Nota</span>
+        </button>
+      </div>
+
       {/* GRID: SIDEBAR LATERAL + EDITOR COMPLETO NOTION-LIKE */}
       <div className="grid gap-6 md:grid-cols-[280px_1fr] items-start">
         {/* SIDEBAR LATERAL COM PÁGINAS E CATEGORIAS */}
-        <div className="panel p-4 space-y-4">
+        <div className={`panel p-4 space-y-4 ${mobileTab === 'editor' ? 'hidden md:block' : 'block'}`}>
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-black uppercase text-muted-foreground tracking-wider flex items-center gap-1.5">
               <FolderPlus size={13} className="text-primary" /> Minhas Notas
@@ -621,7 +650,10 @@ function NotasPage() {
               return (
                 <div
                   key={note.id}
-                  onClick={() => setActiveNoteId(note.id)}
+                  onClick={() => {
+                    setActiveNoteId(note.id);
+                    setMobileTab('editor');
+                  }}
                   className={`group flex cursor-pointer items-center justify-between rounded-xl p-2.5 text-xs transition-all ${
                     isActive
                       ? 'bg-primary/15 text-primary border border-primary/40 font-bold shadow-sm'
@@ -655,7 +687,21 @@ function NotasPage() {
         </div>
 
         {/* EDITOR CENTRAL: DOCUMENTO UNIFICADO (TEXTO + CHECKLISTS + TÍTULOS + CANETA) */}
-        <div className="panel p-6 min-h-[600px] space-y-6">
+        <div className={`panel p-4 sm:p-6 min-h-[500px] sm:min-h-[600px] space-y-6 ${mobileTab === 'list' ? 'hidden md:block' : 'block'}`}>
+          {/* BOTÃO MOBILE: VOLTAR PARA LISTA DE NOTAS */}
+          <div className="md:hidden flex items-center justify-between pb-2 border-b border-border/50">
+            <button
+              type="button"
+              onClick={() => setMobileTab('list')}
+              className="text-xs font-black text-primary flex items-center gap-1 cursor-pointer"
+            >
+              ← Ver todas as notas ({filteredNotes.length})
+            </button>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {activeNote?.blocks.length} blocos
+            </span>
+          </div>
+
           {/* HEADER DA NOTA: TÍTULO EDITÁVEL + TAGS + BOTÃO MODO CANETA */}
           <div className="space-y-3 border-b border-border/70 pb-4">
             <div className="flex flex-wrap items-center justify-between gap-3">

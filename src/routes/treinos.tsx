@@ -608,6 +608,9 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
   const [newWorkoutTitleInput, setNewWorkoutTitleInput] = useState('');
   const [newWorkoutCategoryInput, setNewWorkoutCategoryInput] = useState<BiomechanicalCategory>('Push');
 
+  // Modal de Janela Extra para Configurar Séries e Cargas de um Exercício sem poluir a tela principal
+  const [configuringExerciseId, setConfiguringExerciseId] = useState<string | null>(null);
+
   // Agenda Semanal - Modais e Notificações
   const [isWeeklyScheduleModalOpen, setIsWeeklyScheduleModalOpen] = useState(false);
   const [isMrvModalOpen, setIsMrvModalOpen] = useState(false);
@@ -2746,45 +2749,102 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                   </div>
                 </div>
 
-                {/* Seletor Rápido de Treino para este Dia */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                    Atribuir à {weeklySchedule[selectedCoachDayIndex]?.shortDay || 'Dia'}:
-                  </span>
+                {/* ===================================================================== */}
+                {/* ETAPA 2: SELEÇÃO DA DIVISÃO / TIPO DE TREINO (PPL, ABC, ETC) E TREINO */}
+                {/* ===================================================================== */}
+                <div className="rounded-2xl border border-border/80 bg-background/50 p-3 sm:p-4 space-y-3 shadow-xs">
+                  {/* Linha de Divisões (Splits) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <Layers size={14} className="text-primary shrink-0" />
+                      <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                        Divisão / Metodologia (PPL, ABC, etc.):
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsCreateSplitModalOpen(true)}
+                      className="text-[11px] h-7 text-primary hover:bg-primary/10 rounded-xl font-black cursor-pointer self-start sm:self-auto"
+                    >
+                      <Plus size={12} className="mr-1" /> + Nova Divisão
+                    </Button>
+                  </div>
+
                   <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                    {(activeSplit?.workouts || []).map((w) => {
-                      const isCurrent = weeklySchedule[selectedCoachDayIndex]?.workoutTitle === w.title;
-                      const wTitle = w?.title || 'Treino';
+                    {splits.map((s) => {
+                      const isSelected = s.id === activeSplitId;
                       return (
                         <button
-                          key={w.id}
+                          key={s.id}
                           type="button"
                           onClick={() => {
-                            handleUpdateScheduleDay(selectedCoachDayIndex, w.title, w.id);
-                            handleLoadWorkout(w);
+                            setActiveSplitId(s.id);
+                            if (s.workouts && s.workouts.length > 0) {
+                              handleLoadWorkout(s.workouts[0]);
+                              handleUpdateScheduleDay(selectedCoachDayIndex, s.workouts[0].title, s.workouts[0].id);
+                            }
                           }}
                           className={`rounded-xl px-3 py-1.5 text-xs font-black transition-all shrink-0 cursor-pointer ${
-                            isCurrent
-                              ? 'bg-[#00E5FF] text-black shadow-sm ring-1 ring-[#00E5FF]'
-                              : 'bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground border border-border/60'
+                            isSelected
+                              ? 'bg-primary text-primary-foreground shadow-md ring-1 ring-primary'
+                              : 'bg-card text-muted-foreground hover:bg-muted hover:text-foreground border border-border/60'
                           }`}
                         >
-                          ⚡ {wTitle.split('—')[0].trim()}
+                          {s.name}
                         </button>
                       );
                     })}
+                  </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateScheduleDay(selectedCoachDayIndex, 'Descanso / Recuperação')}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                        weeklySchedule[selectedCoachDayIndex]?.workoutTitle.toLowerCase().includes('descanso')
-                          ? 'bg-primary/20 text-primary border border-primary/40'
-                          : 'bg-background/40 text-muted-foreground hover:bg-background/60 border border-border/40'
-                      }`}
-                    >
-                      💤 Descanso
-                    </button>
+                  {/* Treinos da Divisão Atribuíveis para o Dia Selecionado */}
+                  <div className="space-y-1.5 pt-1 border-t border-border/40">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block">
+                      Atribuir Treino à {weeklySchedule[selectedCoachDayIndex]?.shortDay || 'Dia'}:
+                    </span>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      {(activeSplit?.workouts || []).map((w) => {
+                        const isCurrent = weeklySchedule[selectedCoachDayIndex]?.workoutTitle === w.title;
+                        const wTitle = w?.title || 'Treino';
+                        return (
+                          <button
+                            key={w.id}
+                            type="button"
+                            onClick={() => {
+                              handleUpdateScheduleDay(selectedCoachDayIndex, w.title, w.id);
+                              handleLoadWorkout(w);
+                            }}
+                            className={`rounded-xl px-3 py-1.5 text-xs font-black transition-all shrink-0 cursor-pointer ${
+                              isCurrent
+                                ? 'bg-[#00E5FF] text-black shadow-sm ring-1 ring-[#00E5FF]'
+                                : 'bg-background/60 text-muted-foreground hover:bg-background hover:text-foreground border border-border/60'
+                            }`}
+                          >
+                            ⚡ {wTitle.split('—')[0].trim()}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateScheduleDay(selectedCoachDayIndex, 'Descanso / Recuperação')}
+                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                          weeklySchedule[selectedCoachDayIndex]?.workoutTitle.toLowerCase().includes('descanso')
+                            ? 'bg-primary/20 text-primary border border-primary/40'
+                            : 'bg-background/40 text-muted-foreground hover:bg-background/60 border border-border/40'
+                        }`}
+                      >
+                        💤 Descanso
+                      </button>
+
+                      <Button
+                        size="sm"
+                        onClick={() => setIsNewWorkoutModalOpen(true)}
+                        className="bg-primary/15 text-primary hover:bg-primary/25 border border-primary/30 font-black text-xs rounded-xl h-7 cursor-pointer shrink-0"
+                      >
+                        <Plus size={12} className="mr-1" /> + Novo Treino no Split
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
@@ -2834,8 +2894,23 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                   </div>
                 </div>
 
-                {/* Lista de Exercícios do Treino */}
-                <div className="space-y-4 pt-1">
+                {/* ===================================================================== */}
+                {/* ETAPA 3 & 4: LISTA HORIZONTAL E MINIMALISTA DE EXERCÍCIOS              */}
+                {/* ===================================================================== */}
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Dumbbell size={14} className="text-primary" /> Exercícios Prescritos para este Dia ({exercises.length}):
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAddExerciseModalOpen(true)}
+                      className="bg-primary text-primary-foreground font-black text-xs rounded-xl h-7 px-3 cursor-pointer shadow-xs"
+                    >
+                      <Plus size={12} className="mr-1" /> + Adicionar Exercício
+                    </Button>
+                  </div>
+
                   {exercises.length === 0 ? (
                     <div className="rounded-xl border border-dashed border-border p-8 text-center space-y-3">
                       <Dumbbell size={32} className="mx-auto text-muted-foreground opacity-50" />
@@ -2861,49 +2936,42 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                       const isAtCeiling = muscleAllocated >= muscleCeiling;
 
                       return (
-                        <div key={ex.id} className="rounded-2xl border border-border/80 bg-background/50 p-4 sm:p-5 transition-all space-y-4">
-                          {/* Header do Exercício */}
-                          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-border/60 pb-3">
-                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                              <div className="flex items-center gap-1 shrink-0">
-                                <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground">
-                                  #{exIndex + 1}
-                                </span>
-                                <div className="flex flex-col gap-0.5">
-                                  <button
-                                    disabled={exIndex === 0}
-                                    onClick={() => handleMoveExercise(exIndex, 'up')}
-                                    className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
-                                  >
-                                    <ChevronUp size={13} />
-                                  </button>
-                                  <button
-                                    disabled={exIndex === exercises.length - 1}
-                                    onClick={() => handleMoveExercise(exIndex, 'down')}
-                                    className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
-                                  >
-                                    <ChevronDown size={13} />
-                                  </button>
-                                </div>
+                        <div key={ex.id} className="rounded-2xl border border-border/80 bg-card/70 p-3.5 sm:p-4 transition-all space-y-3 shadow-xs">
+                          {/* Linha Superior: Cabeçalho com Nome, Badges e Botão Excluir */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className="flex size-7 items-center justify-center rounded-lg bg-secondary font-mono text-xs font-black text-foreground shrink-0">
+                                #{exIndex + 1}
+                              </span>
+                              <div className="flex flex-col gap-0.5 shrink-0">
+                                <button
+                                  disabled={exIndex === 0}
+                                  onClick={() => handleMoveExercise(exIndex, 'up')}
+                                  className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
+                                >
+                                  <ChevronUp size={13} />
+                                </button>
+                                <button
+                                  disabled={exIndex === exercises.length - 1}
+                                  onClick={() => handleMoveExercise(exIndex, 'down')}
+                                  className="p-0.5 rounded text-muted-foreground hover:text-foreground disabled:opacity-20 cursor-pointer"
+                                >
+                                  <ChevronDown size={13} />
+                                </button>
                               </div>
-
-                              <div className="min-w-0 flex-1">
+                              <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="text-sm sm:text-base font-black text-foreground">
+                                  <h3 className="text-sm sm:text-base font-black text-foreground truncate">
                                     {ex.name}
                                   </h3>
                                   <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[9px] font-bold text-primary shrink-0" title="Músculo Primário (1.0x por série)">
                                     🎯 {ex.muscle}
                                   </span>
-
-                                  {/* Sinergistas Residuais */}
                                   {ex.secondaryMuscles && ex.secondaryMuscles.length > 0 && (
                                     <span className="rounded-full bg-[#00E5FF]/15 px-2 py-0.5 text-[9px] font-bold text-[#00E5FF] shrink-0" title="Sinergistas que recebem 0.5 série residual">
                                       ⚡ Residuais: {ex.secondaryMuscles.join(', ')} (+0.5x)
                                     </span>
                                   )}
-
-                                  {/* Badge de Teto do Músculo */}
                                   <span className={`rounded-full px-2 py-0.5 text-[9px] font-mono font-bold uppercase shrink-0 ${
                                     isAtCeiling
                                       ? 'bg-destructive/20 text-destructive border border-destructive/40'
@@ -2911,22 +2979,6 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                                   }`}>
                                     {isAtCeiling ? `⚠️ Teto de ${ex.muscle} Atingido (${muscleBreakdown.total}/${muscleCeiling}s)` : `${ex.muscle}: ${muscleBreakdown.total}/${muscleCeiling}s`}
                                   </span>
-                                </div>
-
-                                <div className="flex items-center gap-1.5 mt-2 w-full">
-                                  <span className="text-[10px] font-bold text-primary flex items-center gap-1 shrink-0">
-                                    <Play size={10} /> YouTube:
-                                  </span>
-                                  <input
-                                    type="text"
-                                    value={ex.video_url || ''}
-                                    onChange={(e) => {
-                                      const newUrl = e.target.value;
-                                      setExercises((prev) => prev.map((item) => item.id === ex.id ? { ...item, video_url: newUrl } : item));
-                                    }}
-                                    placeholder="https://youtu.be/..."
-                                    className="w-full min-w-0 rounded-xl border border-border/80 bg-card px-2 py-1 text-xs text-foreground font-mono focus:border-primary"
-                                  />
                                 </div>
                               </div>
                             </div>
@@ -2937,29 +2989,23 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                                 size="icon"
                                 onClick={() => handleRemoveExercise(ex.id)}
                                 className="size-7 text-muted-foreground hover:text-destructive rounded-xl cursor-pointer"
+                                title="Remover exercício do treino"
                               >
                                 <Trash2 size={13} />
                               </Button>
                             </div>
                           </div>
 
-                          {/* TEMPO DE DESCANSO ESPECÍFICO DESTE EXERCÍCIO */}
-                          <div className="rounded-xl border border-primary/30 bg-card/60 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          {/* Linha Intermediária: Tempo de Descanso Rápido Específico deste Exercício */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-primary/25 bg-background/50 p-2.5">
                             <div className="flex items-center gap-2">
-                              <div className="flex size-7 items-center justify-center rounded-lg bg-primary/20 text-primary">
-                                <Clock size={14} />
-                              </div>
+                              <Clock size={14} className="text-primary shrink-0" />
                               <div>
-                                <span className="text-xs font-black text-foreground">
-                                  Tempo de Descanso deste Exercício:
-                                </span>
-                                <span className="text-[10px] text-muted-foreground block">
-                                  Disparado automaticamente ao concluir cada série deste exercício
-                                </span>
+                                <span className="text-xs font-bold text-foreground">Tempo de Descanso deste Exercício:</span>
+                                <span className="text-[10px] text-muted-foreground ml-1.5 hidden xs:inline">Acionado pós-série</span>
                               </div>
                             </div>
-
-                            <div className="flex flex-wrap items-center gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1">
                               {[45, 60, 90, 120, 180].map((presetSecs) => {
                                 const isCurrent = currentRest === presetSecs;
                                 return (
@@ -2967,174 +3013,46 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
                                     key={presetSecs}
                                     type="button"
                                     onClick={() => handleUpdateExerciseRest(ex.id, presetSecs)}
-                                    className={`rounded-xl px-2.5 py-1 text-xs font-black transition-all cursor-pointer ${
+                                    className={`rounded-lg px-2 py-0.5 text-[11px] font-black transition-all cursor-pointer ${
                                       isCurrent
-                                        ? 'bg-[#FFD600] text-black shadow-sm ring-1 ring-[#FFD600]'
-                                        : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                        ? 'bg-[#FFD600] text-black shadow-xs ring-1 ring-[#FFD600]'
+                                        : 'bg-muted/50 text-muted-foreground hover:bg-muted'
                                     }`}
                                   >
                                     {presetSecs}s
                                   </button>
                                 );
                               })}
-
-                              <div className="flex items-center gap-1 bg-background px-2 py-0.5 rounded-xl border border-border/80 ml-1">
+                              <div className="flex items-center gap-1 bg-background px-1.5 py-0.5 rounded-lg border border-border/80 ml-1">
                                 <input
                                   type="number"
                                   min="10"
                                   max="600"
-                                  step="5"
                                   value={currentRest}
-                                  onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 60;
-                                    handleUpdateExerciseRest(ex.id, val);
-                                  }}
-                                  className="!w-12 !h-6 !p-0 !bg-transparent text-center font-bold text-xs text-foreground focus:outline-none"
+                                  onChange={(e) => handleUpdateExerciseRest(ex.id, parseInt(e.target.value) || 60)}
+                                  className="!w-10 !h-5 !p-0 !bg-transparent text-center font-bold text-xs text-foreground focus:outline-none"
                                 />
-                                <span className="text-[10px] text-muted-foreground font-mono">s</span>
+                                <span className="text-[9px] text-muted-foreground font-mono">s</span>
                               </div>
                             </div>
                           </div>
 
-                          {/* Metas Prescritas */}
-                          <div className="rounded-xl border border-border/60 bg-muted/20 p-2.5 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                            <span className="font-bold text-muted-foreground flex items-center gap-1">
-                              <Target size={13} className="text-primary" /> Metas Prescritas:
-                            </span>
-                            <div className="flex items-center gap-2 font-mono self-start sm:self-auto">
-                              <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
-                                <span className="text-[9px] font-black text-muted-foreground uppercase">CARGA:</span>
-                                <input
-                                  type="number"
-                                  step="0.5"
-                                  value={ex.targetWeightKg ?? 40}
-                                  onChange={(e) => handleUpdateExerciseTarget(ex.id, parseFloat(e.target.value) || 0, ex.targetReps ?? 10)}
-                                  className="!w-12 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
-                                />
-                                <span className="text-[10px] text-muted-foreground">kg</span>
-                              </div>
-                              <div className="flex items-center gap-1 bg-background px-2 py-1 rounded-xl border border-border/80">
-                                <span className="text-[9px] font-black text-muted-foreground uppercase">REPS:</span>
-                                <input
-                                  type="number"
-                                  value={ex.targetReps ?? 10}
-                                  onChange={(e) => handleUpdateExerciseTarget(ex.id, ex.targetWeightKg ?? 40, parseInt(e.target.value) || 0)}
-                                  className="!w-10 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Séries com Bloqueio Rígido de Teto */}
-                          <div className="space-y-4">
-                            {/* Séries Preparatórias */}
-                            <div className="rounded-2xl border border-border/40 bg-muted/10 p-3 sm:p-4 space-y-2.5">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <span className="text-[11px] font-black uppercase text-muted-foreground flex items-center gap-1.5">
-                                  <Clock size={13} className="text-amber-500" /> Séries Preparatórias
-                                </span>
-                                <div className="flex items-center gap-1 flex-wrap">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleAddPreparatorySet(ex.id, 'WARMUP')}
-                                    className="text-[10px] h-6 px-2 text-muted-foreground border border-dashed rounded-lg cursor-pointer"
-                                  >
-                                    + Aquecimento
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleAddPreparatorySet(ex.id, 'FEEDER')}
-                                    className="text-[10px] h-6 px-2 text-amber-500 border border-dashed border-amber-500/40 rounded-lg cursor-pointer"
-                                  >
-                                    + Feeder
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleAddPreparatorySet(ex.id, 'PAP')}
-                                    className="text-[10px] h-6 px-2 text-cyan-400 border border-dashed border-cyan-500/40 rounded-lg cursor-pointer"
-                                  >
-                                    + PAP
-                                  </Button>
-                                </div>
-                              </div>
-
-                              {preparatorySets.map((set) => (
-                                <AdvancedSetRow
-                                  key={set.id}
-                                  data={{
-                                    ...set,
-                                    restSeconds: set.restSeconds ?? currentRest,
-                                  }}
-                                  mode="PLAN"
-                                  restWarmupSeconds={restWarmupSeconds}
-                                  restWorkingSeconds={currentRest}
-                                  onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
-                                  onDelete={() => handleDeleteSet(ex.id, set.id)}
-                                  onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Preparação`)}
-                                />
-                              ))}
+                          {/* Linha Inferior: Resumo das Metas e Botão de Janela Extra */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-muted-foreground">
+                              <span>Meta: <strong className="text-foreground">{ex.targetWeightKg ?? 40} kg</strong> × <strong className="text-foreground">{ex.targetReps ?? 10} reps</strong></span>
+                              <span>•</span>
+                              <span>Total de Séries: <strong className="text-primary font-bold">{ex.sets.length}</strong> ({preparatorySets.length} prep / {workingSets.length} work)</span>
                             </div>
 
-                            {/* Séries de Trabalho Efetivas com Controle de Teto */}
-                            <div className={`rounded-2xl border p-3 sm:p-4 space-y-2.5 ${
-                              isAtCeiling ? 'border-destructive/40 bg-destructive/5' : 'border-primary/30 bg-card/60'
-                            }`}>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
-                                    <Flame size={14} className="text-primary" /> Séries de Trabalho
-                                  </span>
-                                  {isAtCeiling ? (
-                                    <span className="text-[10px] font-black text-destructive uppercase">
-                                      ⚠️ Teto atingido ({muscleAllocated}/{muscleCeiling}s)
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] font-mono text-muted-foreground">
-                                      ({muscleAllocated}/{muscleCeiling}s semanais)
-                                    </span>
-                                  )}
-                                </div>
-
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isAtCeiling}
-                                  onClick={() => handleAddWorkingSet(ex.id)}
-                                  className={`text-xs border-dashed rounded-lg cursor-pointer ${
-                                    isAtCeiling
-                                      ? 'border-destructive/40 text-destructive opacity-50 cursor-not-allowed'
-                                      : 'text-primary border-primary/40'
-                                  }`}
-                                  title={isAtCeiling ? `Teto de ${ex.muscle} atingido. Aumente na aba Limites.` : 'Adicionar Working Set'}
-                                >
-                                  <Plus size={12} className="mr-1" />
-                                  {isAtCeiling ? 'Teto Atingido' : '+ Série'}
-                                </Button>
-                              </div>
-
-                              {workingSets.map((set, wIdx) => (
-                                <AdvancedSetRow
-                                  key={set.id}
-                                  data={{
-                                    ...set,
-                                    restSeconds: set.restSeconds ?? currentRest,
-                                    targetWeight: set.targetWeight ?? ex.targetWeightKg,
-                                    targetReps: set.targetReps ?? ex.targetReps,
-                                  }}
-                                  mode="PLAN"
-                                  workingIndex={wIdx + 1}
-                                  restWarmupSeconds={restWarmupSeconds}
-                                  restWorkingSeconds={currentRest}
-                                  onUpdate={(updated) => handleUpdateSet(ex.id, updated)}
-                                  onDelete={() => handleDeleteSet(ex.id, set.id)}
-                                  onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${ex.name} - Série #${wIdx + 1}`)}
-                                  onCelebratePR={(info) => handleTriggerPRCelebration(ex.name, info)}
-                                />
-                              ))}
-                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => setConfiguringExerciseId(ex.id)}
+                              className="bg-primary/15 hover:bg-primary text-primary hover:text-primary-foreground font-black text-xs rounded-xl h-8 px-3.5 transition-all cursor-pointer flex items-center gap-1.5 border border-primary/35 shadow-xs self-start sm:self-auto"
+                            >
+                              <Sliders size={13} />
+                              <span>⚙️ Configurar Séries & Cargas (Janela Extra)</span>
+                            </Button>
                           </div>
                         </div>
                       );
@@ -3517,6 +3435,253 @@ export function TreinosPage({ defaultMode, forceAdmin }: { defaultMode?: 'FAZER'
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* JANELA EXTRA / MODAL DE CONFIGURAÇÃO DE SÉRIES & CARGAS DO EXERCÍCIO       */}
+      {/* ========================================================================= */}
+      {configuringExerciseId && (() => {
+        const targetEx = exercises.find((e) => e.id === configuringExerciseId);
+        if (!targetEx) return null;
+
+        const preparatorySets = targetEx.sets.filter((s) => s.baseType === 'WARMUP' || s.baseType === 'FEEDER' || s.baseType === 'PAP');
+        const workingSets = targetEx.sets.filter((s) => s.baseType === 'WORKING' || s.baseType === 'BACKOFF');
+        const currentRest = targetEx.targetRestSeconds || restWorkingSeconds;
+        const muscleBreakdown = weeklyAllocatedSetsPerMuscle[targetEx.muscle] || { direct: 0, residual: 0, total: 0 };
+        const muscleCeiling = muscleCeilings[targetEx.muscle] ?? 14;
+        const muscleAllocated = muscleBreakdown.total;
+        const isAtCeiling = muscleAllocated >= muscleCeiling;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-4 backdrop-blur-md animate-in fade-in">
+            <div className="panel max-w-2xl w-full p-4 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto border border-primary/40 shadow-2xl">
+              {/* Header da Janela Extra */}
+              <div className="flex items-center justify-between border-b border-border/70 pb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary border border-primary/30">
+                    <Sliders size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-black text-foreground truncate">
+                      {targetEx.name}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
+                      <span>Músculo Primário: <strong className="text-primary">{targetEx.muscle}</strong></span>
+                      {targetEx.secondaryMuscles && targetEx.secondaryMuscles.length > 0 && (
+                        <span>• Sinergistas: <strong className="text-[#00E5FF]">{targetEx.secondaryMuscles.join(', ')}</strong> (+0.5x)</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setConfiguringExerciseId(null)}
+                  className="size-8 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer text-sm font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Banner de Controle de Teto Semanal (Volume Direto + Residual) */}
+              <div className={`rounded-xl border p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                isAtCeiling ? 'border-destructive/60 bg-destructive/15' : 'border-primary/40 bg-card/90'
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black uppercase text-foreground">
+                      Controle do Teto Semanal ({targetEx.muscle}):
+                    </span>
+                    <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded uppercase ${
+                      isAtCeiling ? 'bg-destructive text-white' : 'bg-primary/20 text-primary'
+                    }`}>
+                      {isAtCeiling ? '⚠️ TETO ATINGIDO' : 'DENTRO DO LIMITE'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                    Alocado no microciclo: <strong className="text-foreground">{muscleAllocated}</strong> de <strong className="text-foreground">{muscleCeiling}</strong> séries efetivas 
+                    (Diretas: {muscleBreakdown.direct} | Residuais: {muscleBreakdown.residual} ×0.5)
+                  </p>
+                </div>
+                {isAtCeiling && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfiguringExerciseId(null);
+                      setCoachSubTab('LIMITES');
+                    }}
+                    className="text-[11px] font-bold text-destructive hover:underline cursor-pointer self-start sm:self-auto shrink-0"
+                  >
+                    Ajustar Teto na Aba Limites →
+                  </button>
+                )}
+              </div>
+
+              {/* Metas Prescritas do Exercício (Carga & Reps) */}
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <span className="font-bold text-muted-foreground flex items-center gap-1.5">
+                  <Target size={14} className="text-primary" /> Metas Padrão do Exercício:
+                </span>
+                <div className="flex items-center gap-3 font-mono">
+                  <div className="flex items-center gap-1 bg-background px-2.5 py-1 rounded-xl border border-border/80">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase">CARGA:</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={targetEx.targetWeightKg ?? 40}
+                      onChange={(e) => handleUpdateExerciseTarget(targetEx.id, parseFloat(e.target.value) || 0, targetEx.targetReps ?? 10)}
+                      className="!w-14 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
+                    />
+                    <span className="text-[10px] text-muted-foreground">kg</span>
+                  </div>
+                  <div className="flex items-center gap-1 bg-background px-2.5 py-1 rounded-xl border border-border/80">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase">REPS:</span>
+                    <input
+                      type="number"
+                      value={targetEx.targetReps ?? 10}
+                      onChange={(e) => handleUpdateExerciseTarget(targetEx.id, targetEx.targetWeightKg ?? 40, parseInt(e.target.value) || 0)}
+                      className="!w-12 !h-6 !p-0 !bg-transparent text-center font-bold text-foreground focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Séries Preparatórias (Aquecimento, Feeder, PAP) */}
+              <div className="rounded-2xl border border-border/60 bg-muted/15 p-3.5 sm:p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2">
+                  <div>
+                    <span className="text-xs font-black uppercase text-amber-500 flex items-center gap-1.5">
+                      <Clock size={14} /> Séries Preparatórias ({preparatorySets.length})
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Não contabilizam no teto de volume hipertrófico
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddPreparatorySet(targetEx.id, 'WARMUP')}
+                      className="text-[10px] h-6 px-2.5 text-muted-foreground border border-dashed rounded-lg cursor-pointer"
+                    >
+                      + Aquecimento
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddPreparatorySet(targetEx.id, 'FEEDER')}
+                      className="text-[10px] h-6 px-2.5 text-amber-500 border border-dashed border-amber-500/40 rounded-lg cursor-pointer"
+                    >
+                      + Feeder
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleAddPreparatorySet(targetEx.id, 'PAP')}
+                      className="text-[10px] h-6 px-2.5 text-cyan-400 border border-dashed border-cyan-500/40 rounded-lg cursor-pointer"
+                    >
+                      + PAP
+                    </Button>
+                  </div>
+                </div>
+
+                {preparatorySets.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic py-1">
+                    Nenhuma série preparatória. Adicione aquecimento ou feeder se for o primeiro exercício composto.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {preparatorySets.map((set) => (
+                      <AdvancedSetRow
+                        key={set.id}
+                        data={{
+                          ...set,
+                          restSeconds: set.restSeconds ?? currentRest,
+                        }}
+                        mode="PLAN"
+                        restWarmupSeconds={restWarmupSeconds}
+                        restWorkingSeconds={currentRest}
+                        onUpdate={(updated) => handleUpdateSet(targetEx.id, updated)}
+                        onDelete={() => handleDeleteSet(targetEx.id, set.id)}
+                        onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${targetEx.name} - Preparação`)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Séries de Trabalho Efetivas com Trava Rígida de Teto */}
+              <div className={`rounded-2xl border p-3.5 sm:p-4 space-y-3 ${
+                isAtCeiling ? 'border-destructive/40 bg-destructive/5' : 'border-primary/30 bg-card/70'
+              }`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2">
+                  <div>
+                    <span className="text-xs font-black uppercase text-primary flex items-center gap-1.5">
+                      <Flame size={14} className="text-primary" /> Séries de Trabalho ({workingSets.length})
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      Contabilizam como 1.0 série direta para {targetEx.muscle}
+                    </span>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isAtCeiling}
+                    onClick={() => handleAddWorkingSet(targetEx.id)}
+                    className={`text-xs font-black border-dashed rounded-xl h-7 px-3 cursor-pointer ${
+                      isAtCeiling
+                        ? 'border-destructive/40 text-destructive opacity-50 cursor-not-allowed'
+                        : 'text-primary border-primary/50 hover:bg-primary/10'
+                    }`}
+                    title={isAtCeiling ? `Teto de ${targetEx.muscle} atingido. Aumente na aba Limites.` : 'Adicionar Working Set'}
+                  >
+                    <Plus size={12} className="mr-1" />
+                    {isAtCeiling ? 'Teto Atingido' : '+ Nova Série de Trabalho'}
+                  </Button>
+                </div>
+
+                {workingSets.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic py-1">
+                    Nenhuma série de trabalho cadastrada. Toque em "+ Nova Série de Trabalho" acima.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {workingSets.map((set, wIdx) => (
+                      <AdvancedSetRow
+                        key={set.id}
+                        data={{
+                          ...set,
+                          restSeconds: set.restSeconds ?? currentRest,
+                          targetWeight: set.targetWeight ?? targetEx.targetWeightKg,
+                          targetReps: set.targetReps ?? targetEx.targetReps,
+                        }}
+                        mode="PLAN"
+                        workingIndex={wIdx + 1}
+                        restWarmupSeconds={restWarmupSeconds}
+                        restWorkingSeconds={currentRest}
+                        onUpdate={(updated) => handleUpdateSet(targetEx.id, updated)}
+                        onDelete={() => handleDeleteSet(targetEx.id, set.id)}
+                        onTriggerRestTimer={(seconds) => triggerFloatingTimer(seconds, `${targetEx.name} - Série #${wIdx + 1}`)}
+                        onCelebratePR={(info) => handleTriggerPRCelebration(targetEx.name, info)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Botão de Fechar e Concluir Edição */}
+              <div className="flex justify-end pt-2 border-t border-border/60">
+                <Button
+                  onClick={() => setConfiguringExerciseId(null)}
+                  className="bg-primary text-primary-foreground font-black text-xs px-5 py-2.5 rounded-xl cursor-pointer shadow-md"
+                >
+                  ✓ Concluir e Voltar ao Treino
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL ADICIONAR NOVO GRUPAMENTO MUSCULAR (CRUD DE VOLUME) */}
       {isAddMuscleModalOpen && (

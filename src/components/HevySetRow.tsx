@@ -100,7 +100,7 @@ export function HevySetRow({
     if (isWarmup) {
       return (
         <span className="inline-flex items-center text-[10px] sm:text-[11px] font-bold text-muted-foreground bg-muted/60 border border-border/50 px-2 py-0.5 rounded-full">
-          Warm-up • Aquecimento
+          Warm-up
         </span>
       );
     }
@@ -159,12 +159,14 @@ export function HevySetRow({
     const weightDisplay = effectiveTargetWeight > 0 ? `${effectiveTargetWeight} kg` : 'Carga livre';
 
     return (
-      <span className="text-[11px] font-mono text-muted-foreground">
-        {repsDisplay} × {weightDisplay} • {effectiveRest}s total
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] sm:text-[11px] font-mono text-muted-foreground leading-tight">
+        <span>{repsDisplay} × {weightDisplay}</span>
+        <span>•</span>
+        <span>{effectiveRest}s</span>
         {tech && data.technique !== 'DROP_SET' && (
-          <span className="text-primary font-bold ml-1">({effectiveIntraRest}s intra)</span>
+          <span className="text-primary font-bold">({effectiveIntraRest}s intra)</span>
         )}
-      </span>
+      </div>
     );
   };
 
